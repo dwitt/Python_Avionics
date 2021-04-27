@@ -81,22 +81,6 @@ BORDER = 2
 display = adafruit_displayio_sh1107.SH1107(display_bus, 
     width=WIDTH, height=HEIGHT)
 
-# background = displayio.Bitmap(display.width,
-#             display.height,
-#             2)
-# for i in range(480):
-#     for j in range(int(160)):
-#         background[i, j] = 1
-
-# background_palette = displayio.Palette(2)
-# background_palette[0] = 0xff3300
-# background_palette[1] = 0x0000ff
-# background_tilegrid = displayio.TileGrid(
-#     background,
-#     pixel_shader = background_palette)
-
-
-
 # --------------------------------------------------------------------
 # --- Create an altitude display object                            ---
 #---------------------------------------------------------------------
@@ -104,59 +88,17 @@ display = adafruit_displayio_sh1107.SH1107(display_bus,
 group = displayio.Group(max_size=3)
 display.show(group)
 print("Group Created")
-
-# altimeter = Altimeter(480, 272)
-
-# group.append(background_tilegrid)
-# group.append(altimeter.group)
-
-
-
-# # Display the Altimeter Tape
-# altimeter_tape = AltimeterTape()
-# altimeter_tape.group.x = 460
-# altimeter_tape.group.y = 160
-# group.append(altimeter_tape.group)
-
-
-
-# altimeter_display = AltimeterDisplay()
-# altimeter_display.group.x = 460
-# altimeter_display.group.y = 160
-# group.append(altimeter_display.group)
-
-
-
-
-
 text = "29.92"
-#font = terminalio.FONT 
+
+font = terminalio.FONT 
 #font = bitmap_font.load_font("Tahoma-20.bdf")
 color = 0xFFFFFF
-text_area = label.Label(terminalio.FONT, text = text, color = color)
+text_area = label.Label(font = font, text = text, color = color)
 text_area.anchor_point = (1.0,0.0)
 text_area.anchored_position = (128,0)
 
-
 group.append(text_area)
 
-
-
-color_bitmap = displayio.Bitmap(WIDTH, HEIGHT, 1)
-color_palette = displayio.Palette(1)
-color_palette[0] = 0xFFFFFF
-
-bg_sprite = displayio.TileGrid(color_bitmap, pixel_shader=color_palette, x=0, y=0)
-group.append(bg_sprite)
-
-
-#for i in range (12001):
-#    altimeter_display.value = i
-    #time.sleep(.05)
-
-# for i in range(20000):
-#     altitude_display.altitude = i
-#     #time.sleep(0.001)
 
 
 
@@ -170,6 +112,8 @@ last_Position = None
 last_Time_Millis = int(time.monotonic_ns() / 1000000)
 
 while True:
+    time.sleep(1.0)
+    text_area.text ="help"
     pass
 
 
