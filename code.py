@@ -17,8 +17,8 @@ from adafruit_display_text import label
 #from adafruit_bitmap_font import bitmap_font
 
 
-#from HoneywellHSC import HoneywellHSC
-#from kalman_filter import KalmanFilter
+from HoneywellHSC import HoneywellHSC
+from kalman_filter import KalmanFilter
 
 # Comment out libraries not used
 #from altitude_display import AltitudeDisplay
