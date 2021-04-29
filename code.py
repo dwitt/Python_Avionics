@@ -215,14 +215,8 @@ try:
         temperature = my_hsc.temperature
 
         if (altitude != previous_altitude):
-            #text_area.text = "help"
             ALT_text_area.text = str(altitude)
-            #display.show(group)
-            #print(text_area.text)
-            #altimeter.altitude = altitude
             previous_altitude = altitude
-
- 
 
 finally:
     print("Unlocking")
