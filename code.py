@@ -13,7 +13,6 @@ import adafruit_displayio_sh1107
 from adafruit_display_text import label
 
 # Comment out libraries not used
-#from adafruit_hx8357 import HX8357
 
 #from adafruit_imageload import load
 #from adafruit_bitmap_font import bitmap_font
@@ -21,13 +20,6 @@ from adafruit_display_text import label
 
 from HoneywellHSC import HoneywellHSC
 from kalman_filter import KalmanFilter
-
-# Comment out libraries not used
-#from altitude_display import AltitudeDisplay
-#from numeric_wheel import NumericWheel
-#from altimeter_display import AltimeterDisplay
-#from altimeter_tape import AltimeterTape
-#from altimeter import Altimeter
 
 # Constants
 OUTPUT_MIN = 1638
@@ -39,13 +31,6 @@ QNH_Standard = 2992
 
 cols = 20
 rows = 4
-
-reset = DigitalInOut(board.D12)
-reset.direction = Direction.OUTPUT  
-reset.value = False
-#time.sleep(.5)
-reset.value = True
-#time.sleep(2)
 
 print("Starting")
 
