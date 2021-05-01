@@ -2,7 +2,7 @@
 import board
 import busio
 
-from micropython import const 
+from micropython import const # type: ignore
 
 # pressure sensor constants
 _OUTPUT_MIN = const(1638)
