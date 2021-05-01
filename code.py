@@ -199,6 +199,10 @@ try:
 # ---    only if a resonable interval has elapsed. (conserve cycles) ---
 # --- 6. Transmit CAN data for AAV, STATICP and QNH periodically     ---
 # ----------------------------------------------------------------------
+# --- Units
+# --- Static Pressure = kPa
+# --- QNH = inHg
+# --- Altitude = ft
  
     while True:
 
@@ -273,8 +277,12 @@ try:
                                (altitude >> 16) & 0xff,
                                0,
                                0)
-        #STATICP_data = struct.pack("<h",)
+        STATICP_data = struct.pack("<hbBBBBB",
+                                   int(static_pressure / 10),
+                                   int(temperature),
+                                   0,0,0,0,0)
 
+        print(STATICP_data)
 finally:
     print("Unlocking")
     i2c.unlock()
