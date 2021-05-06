@@ -166,7 +166,7 @@ last_Time_Millis = int(time.monotonic_ns() / 1000000)
 # -----------------------------------------------------------------------------
 
 qnh_match = canio.Match(id=CAN_QNH_Msg_id)
-qnh_listener = can.listen(matches=[qnh_match], timeout=0.1)
+qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 
 # ------------------------------------------------------------------------------
 # Wait here until we can lock the i2C to allow us to scan it
@@ -234,15 +234,15 @@ try:
             static_pressure = my_hsc.pressure
             static_pressure = pressure_filter.filter(static_pressure)
 
-            if (static_pressure != previous_static_pressure):
-                PRES_text_area.text = str(int(static_pressure))
+            # if (static_pressure != previous_static_pressure):
+            #     PRES_text_area.text = str(int(static_pressure))
 
         # ---------------------------------------------------------------------
         # --- Check for a QNH message on the CAN bus                        ---
         # ---------------------------------------------------------------------
         
-        if (qnh_listener.in_waiting):
-            message = qnh_listener.receive
+        if (qnh_listener.in_waiting()):
+            message = qnh_listener.receive()
             
             if (isinstance(message, canio.RemoteTransmissionRequest)):
                 pass
@@ -251,12 +251,13 @@ try:
                 if len(data) != 8:
                     print(f'Unusual message length {len(data)}')
                     continue # THIS JUMPS OUT OF THE WHILE LOOP???
+                previous_qnh = qnh
                 # unpack the message data
                 # QNH contains a two byte short integer
-                qnh_hpa = data.unpack("<h")
+                (qnh_hpa, qnh, null3, null4, null5, null6) = struct.unpack("<hhBBBB",data)
                 # convert hPa to inHg * 100
-                previous_qnh = qnh
-                qnh = int(qnh_hpa * 0.0295299875 * 100)
+                
+                #qnh = int(qnh_hpa * 2.95299875 )
         
         # --- qnh updated if recieved                                ---
 
@@ -286,8 +287,8 @@ try:
         # --- Display the new altitude if changed                           ---
         # ---------------------------------------------------------------------
         
-        if (altitude != previous_altitude):
-            ALT_text_area.text = str(altitude)
+        # if (altitude != previous_altitude):
+        #     ALT_text_area.text = str(altitude)
 
 
         # ---------------------------------------------------------------------
@@ -308,7 +309,7 @@ try:
             message = canio.Message(CAN_Air_Msg_id, Air_data)
             can.send(message)
             CAN_Air_Timestamp = current_time_millis
-            print("Can Air")
+            #print("Can Air")
           
         # --- Send Raw pressure and temperature sensor data                 ---  
         if (current_time_millis > CAN_RAW_Timestamp + CAN_Raw_Period +
@@ -321,20 +322,21 @@ try:
             message = canio.Message(CAN_Raw_Msg_id, Raw_data)
             can.send(message)
             CAN_RAW_Timestamp = current_time_millis
-            print("Can Raw")
+            #print("Can Raw")
             
         # --- Send the qnh value if it has not been updated. qnh is         ---
         # --- normally sent from the display (rPi) but if not received is   ---
         # --- rebroadcast in case something else needs it.                  ---
         if (current_time_millis > CAN_QNH_Timestamp + CAN_QNH_Period):
             qnh_hpa = int(qnh / 2.95299875)
-            QNH_data = struct.pack("<hBBBBBB",
+            QNH_data = struct.pack("<hhBBBB",
                                    qnh_hpa,
-                                   0,0,0,0,0,0)
+                                   qnh,
+                                   0,0,0,0)
             message = canio.Message(CAN_QNH_Msg_id, QNH_data)
             can.send(message)
             CAN_QNH_Timestamp = current_time_millis
-            print("Can QNH")
+            #print("Can QNH")
 
         
 finally:
