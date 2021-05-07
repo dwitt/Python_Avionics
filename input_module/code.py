@@ -35,13 +35,20 @@ while True:
     position = enc.position
     if (position != last_position or 
         current_time_millis > CAN_QNH_Timestamp + CAN_QNH_Period):
+        
         last_position = position
-        qnh = 2992 + position
+        #sanitize qnh - Should have a range of 2200 3150
+        qnh = 2992 + position / 4.0
+        if (qnh > 3150):
+            qnh = 3150
+        elif (qnh < 2200):
+            qnh = 2200
+
         print(qnh)
         qnh_hpa = int(qnh / 2.95299875)
         QNH_data = struct.pack("<hhBBBB",
                                 qnh_hpa,
-                                qnh,
+                                int(qnh*4),
                                 0,0,0,0)
         message = canio.Message(CAN_QNH_Msg_id, QNH_data)
         can.send(message)
