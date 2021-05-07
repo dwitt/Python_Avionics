@@ -7,26 +7,35 @@ import rotaryio
 from adafruit_mcp2515 import canio
 from adafruit_mcp2515 import MCP2515 as CAN
 
-spi = busio.SPI(clock=board.GP6, MOSI=board.GP7, MISO=board.GP4)
-cs = digitalio.DigitalInOut(board.GP5)
-cs.direction = digitalio.Direction.OUTPUT
-
-
-can = CAN(spi, cs, baudrate=500000)
-
-listener = can.listen(timeout=0.1)
-# encP1 = digitalio.DigitalInOut(board.GP14)
-# encP2 = digitalio.DigitalInOut(board.GP15)
-# encP1.pull = digitalio.Pull.UP
-# encP2.pull = digitalio.Pull.UP
-
-enc = rotaryio.IncrementalEncoder(board.GP2, board.GP3)
+# Set constants for CAN bus use
 
 CAN_QNH_Msg_id = 0x02E
 CAN_QNH_Period = 5000 # ms between messages
 CAN_QNH_Timestamp = 0
 
+# Set last postion of encoder
+
 last_position = 0
+
+# Setup SPI bus and CS for CAN
+
+spi = busio.SPI(clock=board.GP6, MOSI=board.GP7, MISO=board.GP4)
+cs = digitalio.DigitalInOut(board.GP5)
+cs.direction = digitalio.Direction.OUTPUT
+
+# Create CAN interface
+
+can = CAN(spi, cs, baudrate=500000)
+
+# create a listener for the CAN bus
+
+listener = can.listen(timeout=0.1)
+
+# Create a rotary encoder
+
+enc = rotaryio.IncrementalEncoder(board.GP2, board.GP3)
+
+# Loop here
 
 while True:
     
@@ -67,4 +76,5 @@ while True:
                 print(f'Unusual message length {len(data)}')
                 continue # THIS JUMPS OUT OF THE WHILE LOOP???
             print(message.id)
+            # TODO handle an incoming qnh value
         
