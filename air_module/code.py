@@ -254,11 +254,12 @@ try:
                 previous_qnh = qnh
                 # unpack the message data
                 # QNH contains a two byte short integer
-                (qnh_hpa, qnh, null3, null4, null5, null6) = struct.unpack("<hhBBBB",data)
+                (qnh_hpa, qnhx4, null3, null4, null5, null6) = struct.unpack("<hhBBBB",data)
                 # convert hPa to inHg * 100
                 
                 #qnh = int(qnh_hpa * 2.95299875 )
-        
+                qnh = qnhx4 / 4.0
+
         # --- qnh updated if recieved                                ---
 
         # --- update the display only if the value changed    
@@ -331,7 +332,7 @@ try:
             qnh_hpa = int(qnh / 2.95299875)
             QNH_data = struct.pack("<hhBBBB",
                                    qnh_hpa,
-                                   qnh,
+                                   int(qnh*4),
                                    0,0,0,0)
             message = canio.Message(CAN_QNH_Msg_id, QNH_data)
             can.send(message)
