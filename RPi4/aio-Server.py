@@ -90,17 +90,20 @@ class WebSocketResponseHandler:
         # save the request now that it is prepared
         self.ws = ws
 
-        async for msg in ws:
-            print("message recieved")
-            if msg.type == aiohttp.WSMsgType.TEXT:
-                if msg.data == 'close':
-                    await ws.close()
-                #else:
-                #    await ws.send_str(msg.data + '/answer')
-            elif msg.type == aiohttp.WSMsgType.ERROR:
-                print('ws connection closed with exception %s' % ws.exception())
-        
-        print('websocket connection closed')
+        try:
+            async for msg in ws:
+                print("message recieved")
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    if msg.data == 'close':
+                        await ws.close()
+                    #else:
+                    #    await ws.send_str(msg.data + '/answer')
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    print('ws connection closed with exception %s' % ws.exception())
+            
+            print('websocket connection closed')
+        finally:
+            await ws.close()
         
         return ws
 
@@ -121,13 +124,13 @@ async def process_can_messages(reader, data):
         await asyncio.sleep(.01)
 
 async def send_json(handler, data):
-    i = 0
+
     while True:
-        if (handler.ws != None):
+        if (handler.ws != None and not handler.ws.closed):
             await handler.ws.send_json(data.altitude)
-            i = i + 1
             
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.01)
+
 
 # -----------------------------------------------------------------------------
 # --- Main Loop                                                             ---
