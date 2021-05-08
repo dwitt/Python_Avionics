@@ -6,12 +6,14 @@ import can
 import Encoder
 import RPi.GPIO as GPIO
 
+from pathlib import Path
+
 global webServer, webSocket
 
 # -----------------------------------------------------------------------------
 # --- Asynchronous function to create the web and websocket servers         ---
 # -----------------------------------------------------------------------------
-# --- handler = the response handler to be used for the websocket serve     ---
+# --- handler = the response handler to be used for the websocket serve     --- 
 # -----------------------------------------------------------------------------
 async def create_servers(handler):
     
@@ -20,11 +22,13 @@ async def create_servers(handler):
 
     # --- Create the web server                                             ---
     server = web.Application()
-    # TODO - Change the static route to a handler that serves the index page
-    # TODO - This implementation appears to block using the server for
-    # TODO - websockets causing me to create a new server on a different port
-    server.add_routes([web.static('/', 
-            '/home/pi/Documents/Projects/PythonAvionics')])
+
+    server.add_routes([web.get('/', get_index),
+                       web.static('/support/','./support/'),
+                       web.get('/ws', handler)])
+    
+    #server.add_routes([web.static('/', 
+    #        './')])
 
     # Create the application runner
     runner = web.AppRunner(server)
@@ -38,19 +42,19 @@ async def create_servers(handler):
     # Start the Site
     await site.start()
 
-    # -------------------------------------------------------------------------
-    # --- Create the web socket server                                      ---
-    webSocket = web.Application()
-    webSocket.add_routes([web.get('/ws', handler)])
-
-    socketRunner = web.AppRunner(webSocket)
-    await socketRunner.setup()
-
-    socketSite = web.TCPSite(socketRunner, 'localhost', 8081)
-
-    await socketSite.start()
-
     print("Servers Started")
+
+# -----------------------------------------------------------------------------
+# --- handler for get                                                       ---
+# -----------------------------------------------------------------------------
+
+async def get_index(request):
+    if request.path == '/':
+ 
+        indexFile = open(Path.cwd() / 'index.html')
+        indexContent = indexFile.read()
+
+    return web.Response(text=indexContent, content_type="text/html")
 
 # 
 class AvionicsData:
