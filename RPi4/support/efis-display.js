@@ -47,7 +47,7 @@ var XMLHttpRequestObject = false;
 // XMLHttpRequestObject = new XMLHttpRequest();
 // console.debug("XMLHttpRequestObject is " + XMLHttpRequestObject);
 
-var myWebSocket = new WebSocket("ws://localhost:8081/ws");
+var myWebSocket = new WebSocket("ws://localhost:8080/ws");
 console.debug(myWebSocket);
 
 myWebSocket.addEventListener('open', function(event){
