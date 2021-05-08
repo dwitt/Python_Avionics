@@ -1,4 +1,5 @@
-// Aliases
+// Aliases - Allows for changes in PIXI.JS
+// TODO - Make sure we have all of the necessary aliases set
 let Application = PIXI.Application,
     loader = PIXI.Loader.shared,
     resources = PIXI.Loader.shared.resources,
@@ -18,6 +19,7 @@ let app = new Application({
 );
 
 // Create another application as a test
+// This sets up a second canvas for display. This is just a test canvas
 let app2 = new Application({
     width: 800,
     height: 128,
@@ -31,11 +33,6 @@ let app2 = new Application({
 document.body.appendChild(app.view);
 document.body.appendChild(app2.view);
 
-// load an image and run the `setup` function when it's done
-
-// loader
-//     .add("treasureHunter.json")
-//     .load(setup);
 
 let myNumericWheel;
 let value = 0;
@@ -43,65 +40,55 @@ let adjustment = 1;
 
 // 
 var XMLHttpRequestObject = false;
-// // Might need to test window.XMLHttpRequest - see page 85
-// XMLHttpRequestObject = new XMLHttpRequest();
-// console.debug("XMLHttpRequestObject is " + XMLHttpRequestObject);
+
+// Connect to websocket
 
 var myWebSocket = new WebSocket("ws://localhost:8080/ws");
-console.debug(myWebSocket);
+//console.debug(myWebSocket);
 
 myWebSocket.addEventListener('open', function(event){
-    console.debug(myWebSocket);
+    //console.debug(myWebSocket);
+    // Let the server no we are ready for data
     myWebSocket.send("ready")
 })
 
 
 
 document.fonts.ready.then(function() {
+    // When the fonts have loaded run setup
     setup();
 });
 
+// ----------------------------------------------------------------------------
+// --- End of Script - We should be event based from this point onward      ---
+// ----------------------------------------------------------------------------
 
-
-//myWebSocket.send("ready");
 
 myWebSocket.onmessage = function (event) {
     value = JSON.parse(event.data);
-    console.debug(event.data);
+    //console.debug(event.data);
 }
 
-// if (XMLHttpRequestObject) {
-//     XMLHttpRequestObject.open("GET", "data")
 
-//     XMLHttpRequestObject.onreadystatechange = function()
-//     {
-//         if (XMLHttpRequestObject.readyState == 4 && XMLHttpRequestObject.status == 200) {
-//             jsonData = XMLHttpRequestObject.responseText;
-//             console.log(jsonData);
-//             data = JSON.parse(jsonData);
-//             console.log(data);
-//         }
-//     }
-//     XMLHttpRequestObject.send(null);
-//}
 
 
 // This `setup` function will run when the image has loaded
 function setup() {
 
+    altitudeWheel = new AltitudeWheel(app, 150, 150)
 
     // Test Code to try my Object
-    myNumericWheel = new NumericWheel("Tahoma", "28px", 33, 30, 1 ,20, true, 150, 150);
-    app.stage.addChild(myNumericWheel.digit_container);
+    // myNumericWheel = new NumericWheel("Tahoma", "28px", 33, 30, 1 ,20, true, 150, 150);
+    // app.stage.addChild(myNumericWheel.digit_container);
 
-    hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, 1, true, 135, 150);
-    app.stage.addChild(hundredsWheel.digit_container);
+    // hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, 1, true, 135, 150);
+    // app.stage.addChild(hundredsWheel.digit_container);
 
-    thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, 1, true, 115, 150);
-    app.stage.addChild(thousandsWheel.digit_container);
+    // thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, 1, true, 115, 150);
+    // app.stage.addChild(thousandsWheel.digit_container);
 
-    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, 1, true, 95, 150);
-    app.stage.addChild(tenThousandsWheel.digit_container);
+    // tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, 1, true, 95, 150);
+    // app.stage.addChild(tenThousandsWheel.digit_container);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -113,31 +100,49 @@ function randomInt(min, max) {
 
 function DisplayUpdateLoop(delta) {
 
+    altitudeWheel.value = value
     //value = value + adjustment;
-    myNumericWheel.value = value;
-    hundredsWheel.value = value;
-    thousandsWheel.value = value;
-    tenThousandsWheel.value = value;
+    // myNumericWheel.value = value;
+    // hundredsWheel.value = value;
+    // thousandsWheel.value = value;
+    // tenThousandsWheel.value = value;
 
-
-    // 
-
-    if (XMLHttpRequestObject) {
-        XMLHttpRequestObject.open("GET", "data")
-    
-        XMLHttpRequestObject.onreadystatechange = function()
-        {
-            if (XMLHttpRequestObject.readyState == 4 && XMLHttpRequestObject.status == 200) {
-                jsonData = XMLHttpRequestObject.responseText;
-                //console.log(jsonData);
-                data = JSON.parse(jsonData);
-                //console.log(data);
-            }
-        }
-        XMLHttpRequestObject.send(null);
-    }
 
 }
+
+// ----------------------------------------------------------------------------
+// --- AltitudeWheel object                                                 ---
+// ----------------------------------------------------------------------------
+
+function AltitudeWheel(app, x, y){
+    this.x = x;
+    this.y = y;
+    this.app = app;
+
+    tensWheel = new NumericWheel("Tahoma", "28px", 33, 30, 1 ,20, true, this.x, y);
+    this.app.stage.addChild(tensWheel.digit_container);
+
+    hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, 1, true, this.x - 15,this.y);
+    this.app.stage.addChild(hundredsWheel.digit_container);
+
+    thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, 1, true, this.x - 35, this.y);
+    this.app.stage.addChild(thousandsWheel.digit_container);
+
+    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, 1, true, this.x - 55, this.y);
+    this.app.stage.addChild(tenThousandsWheel.digit_container);
+}
+
+Object.defineProperties( AltitudeWheel.prototype, {
+    value: { 
+        set: function(value) {
+            tensWheel.value = value;
+            hundredsWheel.value = value;
+            thousandsWheel.value = value;
+            tenThousandsWheel.value = value;
+        }
+    }
+})
+
 // ----------------------------------------------------------------------------
 // --- NumericWheel object                                                  ---
 // ----------------------------------------------------------------------------
