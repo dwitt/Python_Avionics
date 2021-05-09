@@ -5,6 +5,7 @@ import json
 import can
 import Encoder
 import RPi.GPIO as GPIO
+import json
 
 from pathlib import Path
 
@@ -107,6 +108,8 @@ class WebSocketResponseHandler:
         
         return ws
 
+# -----------------------------------------------------------------------------
+
 async def process_can_messages(reader, data):
     while True:
         msg = await reader.get_message()
@@ -118,18 +121,21 @@ async def process_can_messages(reader, data):
             # print(msg.data[4])
             data.altitude = msg.data[2] + (msg.data[3]<<8) + (msg.data[4]<<16)
             #print(data.altitude)
-        if (msg.arbitration_id == 0x2E):
-            print(msg)
+        #if (msg.arbitration_id == 0x2E):
+        #    print(msg)
         #print(msg)
-        await asyncio.sleep(.01)
+        await asyncio.sleep(0.05)
 
+# -----------------------------------------------------------------------------
+# --- Send regular updates to the client using json                         ---
+# -----------------------------------------------------------------------------
 async def send_json(handler, data):
 
     while True:
         if (handler.ws != None and not handler.ws.closed):
-            await handler.ws.send_json(data.altitude)
+            await handler.ws.send_json(data.__dict__)
             
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.05)
 
 
 # -----------------------------------------------------------------------------

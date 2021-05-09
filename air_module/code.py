@@ -43,7 +43,7 @@ CAN_Air_Msg_id = 0x028
 CAN_Raw_Msg_id = 0x02B
 CAN_QNH_Msg_id = 0x02E
 
-CAN_Air_Period = 200 # ms between messages
+CAN_Air_Period = 100 # ms between messages
 CAN_Raw_Period = 500 # ms between messages
 CAN_QNH_Period = 5000 # ms between messages
 

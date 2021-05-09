@@ -4,27 +4,28 @@
   <meta charset="utf-8">
   <title>Hello World</title>
   <style>
+      @font-face {
+        font-family: Tahoma;
+        src: url('support/Tahoma.ttf') format('truetype');
+        font-weight: normal;
+      }
+
+      @font-face {
+      font-family: Tahoma;
+      src: url('support/Tahoma Bold.ttf') format('truetype');
+      font-weight: bold;
+      } 
       body {
           margin: 0;
           padding: 0;
           background-color: #FFFFFF;
           line-height: 0px;
       }
-
-      @font-face {
-        font-family: Tahoma;
-        src: url('support/Tahoma\ Bold.ttf');
-        font-weight: bold;
-      }      
-      @font-face {
-        font-family: Tahoma;
-        src: url('support/Tahoma.ttf');
-      }
   </style>
   <script src="support/pixi.min.js"></script>
 </head>
 
-<body style="font-family: Tahoma;">
+<body">
   <script src="support/efis-display.js"></script>
 </body>
 </html>

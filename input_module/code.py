@@ -10,7 +10,7 @@ from adafruit_mcp2515 import MCP2515 as CAN
 # Set constants for CAN bus use
 
 CAN_QNH_Msg_id = 0x02E
-CAN_QNH_Period = 5000 # ms between messages
+CAN_QNH_Period = 1000 # ms between messages
 CAN_QNH_Timestamp = 0
 
 # Set last postion of encoder
@@ -53,7 +53,7 @@ while True:
         elif (qnh < 2200):
             qnh = 2200
 
-        print(qnh)
+        #print(qnh)
         qnh_hpa = int(qnh / 2.95299875)
         QNH_data = struct.pack("<hhBBBB",
                                 qnh_hpa,
