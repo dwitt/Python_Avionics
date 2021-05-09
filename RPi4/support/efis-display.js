@@ -31,12 +31,15 @@ let app2 = new Application({
 
 //Add the canvas that Pixi automatically created for you to the HTML document
 document.body.appendChild(app.view);
-document.body.appendChild(app2.view);
+//document.body.appendChild(app2.view);
 
 
 let myNumericWheel;
 let value = 0;
 let adjustment = 1;
+
+var dataObject = new Object();
+dataObject._altitude = 0
 
 // 
 var XMLHttpRequestObject = false;
@@ -52,43 +55,48 @@ myWebSocket.addEventListener('open', function(event){
     myWebSocket.send("ready")
 })
 
+//document.fonts.load("bold 28px Tahoma");
+//document.fonts.load("28px bold Tahoma");
+//document.fonts.load("normal Tahoma")
+var tahoma_normal_font = new FontFace('Tahoma', 'url(support/Tahoma.ttf)', {weight: 400});
+var tahoma_bold_font = new FontFace('Tahoma', 'url(support/Tahoma%20Bold.ttf)', {weight: 800});
+
+tahoma_normal_font.load().then(function(loaded_face){
+    document.fonts.add(loaded_face);
+});
+tahoma_bold_font.load().then(function(loaded_face){
+    document.fonts.add(loaded_face);
+})
 
 
 document.fonts.ready.then(function() {
+
+        setup();
     // When the fonts have loaded run setup
-    setup();
+
 });
 
 // ----------------------------------------------------------------------------
 // --- End of Script - We should be event based from this point onward      ---
 // ----------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------
+// --- Process messages received from the websocket connection              ---
+// ----------------------------------------------------------------------------
 
 myWebSocket.onmessage = function (event) {
-    value = JSON.parse(event.data);
-    //console.debug(event.data);
+    dataObject = JSON.parse(event.data);
+    console.debug(event.data);
+    value = dataObject._altitude;
 }
 
-
+// ----------------------------------------------------------------------------
 
 
 // This `setup` function will run when the image has loaded
 function setup() {
 
-    altitudeWheel = new AltitudeWheel(app, 150, 150)
-
-    // Test Code to try my Object
-    // myNumericWheel = new NumericWheel("Tahoma", "28px", 33, 30, 1 ,20, true, 150, 150);
-    // app.stage.addChild(myNumericWheel.digit_container);
-
-    // hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, 1, true, 135, 150);
-    // app.stage.addChild(hundredsWheel.digit_container);
-
-    // thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, 1, true, 115, 150);
-    // app.stage.addChild(thousandsWheel.digit_container);
-
-    // tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, 1, true, 95, 150);
-    // app.stage.addChild(tenThousandsWheel.digit_container);
+    altitudeWheel = new AltitudeWheel(app, 750, 240)
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -100,12 +108,7 @@ function randomInt(min, max) {
 
 function DisplayUpdateLoop(delta) {
 
-    altitudeWheel.value = value
-    //value = value + adjustment;
-    // myNumericWheel.value = value;
-    // hundredsWheel.value = value;
-    // thousandsWheel.value = value;
-    // tenThousandsWheel.value = value;
+    altitudeWheel.value = dataObject._altitude
 
 
 }
@@ -121,14 +124,19 @@ function AltitudeWheel(app, x, y){
 
     tensWheel = new NumericWheel("Tahoma", "28px", 33, 30, 1 ,20, true, this.x, y);
     this.app.stage.addChild(tensWheel.digit_container);
+    width1 = tensWheel.digit_width
 
-    hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, 1, true, this.x - 15,this.y);
+
+    hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, 1, true, this.x - width1, this.y);
     this.app.stage.addChild(hundredsWheel.digit_container);
+    width2 = width1 + hundredsWheel.digit_width
 
-    thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, 1, true, this.x - 35, this.y);
+
+    thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, 1, true, this.x - width2, this.y);
     this.app.stage.addChild(thousandsWheel.digit_container);
+    width3 = width2 + thousandsWheel.digit_width
 
-    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, 1, true, this.x - 55, this.y);
+    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, 1, true, this.x - width3, this.y);
     this.app.stage.addChild(tenThousandsWheel.digit_container);
 }
 
@@ -165,10 +173,10 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
         fontFamily: this.font_name,
         fontSize: this.font_size,
         fill: "white",
-        fontWeight: "normal"
+        fontWeight: "bold"
     });
 
-    // Calculate the font ration (digit_height/10)
+    // Calculate the font ratio (digit_height/10)
     this.font_ratio = this.digit_height / 10;
 
     // Create sample text to measure
@@ -183,7 +191,7 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     
     // measured values being used
     this.message_height = this.sample_metrics.height;                   // currently used
-    this.digit_width = Math.floor(this.sample_message.width / 10);
+    this.digit_width = Math.ceil(this.sample_message.width / 10);
     if (this.resolution_tens == true && this.digit_position_in_wheel == 1) {
         this.digit_width = this.digit_width * 2;
     }
@@ -232,7 +240,7 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     this.rectangle = new PIXI.Graphics();
     this.rectangle.beginFill(0x0000000);
     //console.debug(this.digit_width, this.digit_height, this.window_height);
-    this.rectangle.drawRect(x, y - (this.digit_height / 2 + this.window_height) ,this.digit_width, this.digit_height + (2 * this.window_height));
+    this.rectangle.drawRect(x - this.digit_width, y - (this.digit_height / 2 + this.window_height) ,this.digit_width, this.digit_height + (2 * this.window_height));
     //console.debug((this.digit_height / 2 + this.window_height));
 
 
@@ -257,7 +265,7 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     this.digit_container.addChild(this.rectangle1);
 
     // Position the container in the parent
-    this.digit_container.position.set(x,y);
+    this.digit_container.position.set(x - this.digit_width,y);
     
     for (i = 0; i <= 9; i++) {
         this.digit_container.addChild(this['digit' + String(i)].text);
@@ -384,7 +392,7 @@ function NumericWheelDigit(digitHeight, fontName, fontSize, digit) {
         fontFamily: this.fontName,
         fontSize: this.fontSize,
         fill: "white",
-        fontWeight: "normal"
+        fontWeight: "bold"
     });
     this.text = new PIXI.Text(digit, this.style);
 
