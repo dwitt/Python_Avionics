@@ -16,6 +16,8 @@ CAN_QNH_Timestamp = 0
 # Set last postion of encoder
 
 last_position = 0
+last_timestamp = int(time.monotonic_ns() / 1000000)
+qnh = 2992
 
 # Setup SPI bus and CS for CAN
 
@@ -45,9 +47,23 @@ while True:
     if (position != last_position or 
         current_time_millis > CAN_QNH_Timestamp + CAN_QNH_Period):
         
+        # Check encoder rate
+        position_change = last_position - position
+        if ((current_time_millis - last_timestamp ) != 0):
+            rate = abs(position_change / (current_time_millis - last_timestamp))
+        else:
+            rate = .0001
+
+        last_timestamp = current_time_millis
         last_position = position
+        
+        
+
+        if (rate < .008):
+            position_change = position_change / 4.0
+
         #sanitize qnh - Should have a range of 2200 3150
-        qnh = 2992 + position / 4.0
+        qnh = qnh + position_change
         if (qnh > 3150):
             qnh = 3150
         elif (qnh < 2200):
@@ -75,6 +91,6 @@ while True:
             if len(data) !=8:
                 print(f'Unusual message length {len(data)}')
                 continue # THIS JUMPS OUT OF THE WHILE LOOP???
-            print(message.id)
+            #print(message.id)
             # TODO handle an incoming qnh value
         

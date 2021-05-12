@@ -6,6 +6,7 @@ import can
 import Encoder
 import RPi.GPIO as GPIO
 import json
+import struct
 
 from pathlib import Path
 
@@ -115,16 +116,19 @@ async def process_can_messages(reader, data):
         msg = await reader.get_message()
         # kluge to get the altitued
         if (msg.arbitration_id == 0x28):
-            # print(msg)
-            # print(msg.data[2])
-            # print(msg.data[3])
-            # print(msg.data[4])
-            data.altitude = msg.data[2] + (msg.data[3]<<8) + (msg.data[4]<<16)
-            #print(data.altitude)
-        #if (msg.arbitration_id == 0x2E):
-        #    print(msg)
-        #print(msg)
-        await asyncio.sleep(0.05)
+            data.altitude = msg.data[2] | (msg.data[3]<<8) | (msg.data[4]<<16)
+
+            # Check for obvious signs of negative data
+            # Check if high bit is a 1
+            if ((msg.data[4] & 1<<7) == 1<<7):
+                #XOR to peform 1s compliment (high byte was not sent by CAN)
+                data.altitude = -1 * (data.altitude ^ 0xffffff)
+        elif (msg.arbitration_id == 0x2E):
+            (qnh_hpa, qnhx4, null3, null4, null5, null6) = struct.unpack("<hhBBBB",msg.data)
+            data.qnh = qnhx4 / 4.0
+            print(data.qnh)
+
+        await asyncio.sleep(0.02)
 
 # -----------------------------------------------------------------------------
 # --- Send regular updates to the client using json                         ---
@@ -135,7 +139,7 @@ async def send_json(handler, data):
         if (handler.ws != None and not handler.ws.closed):
             await handler.ws.send_json(data.__dict__)
             
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.02)
 
 
 # -----------------------------------------------------------------------------

@@ -5,7 +5,8 @@ let Application = PIXI.Application,
     resources = PIXI.Loader.shared.resources,
     TextureCache = PIXI.utils.TextureCache
     Sprite = PIXI.Sprite,
-    Rectangle = PIXI.Rectangle;
+    Rectangle = PIXI.Rectangle,
+    Graphics = PIXI.Graphics;
 
 
 //Create a Pixi Application
@@ -86,8 +87,8 @@ document.fonts.ready.then(function() {
 
 myWebSocket.onmessage = function (event) {
     dataObject = JSON.parse(event.data);
-    console.debug(event.data);
-    value = dataObject._altitude;
+    //console.debug(event.data);
+    //value = dataObject._altitude;
 }
 
 // ----------------------------------------------------------------------------
@@ -114,6 +115,29 @@ function DisplayUpdateLoop(delta) {
 }
 
 // ----------------------------------------------------------------------------
+// --- QNH display                                                          ---
+// ----------------------------------------------------------------------------
+
+// Constructor
+
+function QNHDisplay(){
+
+        // Create a style to be used for the qnh characters
+        this.style = new PIXI.TextStyle({
+        fontFamily: 'Tahoma',
+        fontSize: '20px',
+        fill: "white",
+        fontWeight: "normal"
+    });
+
+    this.QNHText = new PIXI.Text("29.92", this.style);
+
+    this.QNHText.text.anchor(0,1)
+}
+
+
+
+// ----------------------------------------------------------------------------
 // --- AltitudeWheel object                                                 ---
 // ----------------------------------------------------------------------------
 
@@ -138,6 +162,31 @@ function AltitudeWheel(app, x, y){
 
     tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, 1, true, this.x - width3, this.y);
     this.app.stage.addChild(tenThousandsWheel.digit_container);
+    width = width3 + tenThousandsWheel.digit_width
+
+
+
+    AltitudeWheelOutline(app,x,y, true, width, 30/2 , width1, (30/2 + 20) );
+}
+
+function AltitudeWheelOutline(app,x,y,right,width,height,left_width,left_height){
+    let line = new Graphics();
+    line.lineStyle(2,0xff0000);
+    line.moveTo(x+6,y);
+    line.lineTo(x+1,y-5);
+    line.lineTo(x+1,y-(1+left_height));
+    line.lineTo(x-(1+left_width),y-(1+left_height));
+    line.lineTo(x-(1+left_width),y-(1+height));
+    line.lineTo(x-(1+width),y-(1+height));
+    line.lineTo(x-(1+width),y+(2+height));
+    line.lineTo(x-(1+left_width),y+(2+height));
+    line.lineTo(x-(1+left_width),y+(1+left_height));
+    line.lineTo(x+1,y+(1+left_height));
+    line.lineTo(x+1,y+5);
+    line.lineTo(x+6,y);
+
+    app.stage.addChild(line);
+
 }
 
 Object.defineProperties( AltitudeWheel.prototype, {
@@ -222,6 +271,10 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
         this['blank'] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, "  ");
     }
 
+    // Create a negative digit
+    this['negative'] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, "-");
+    this['negative'].text.anchor.set(0, this.character_centre);
+
     this._zero_ok = false;
     if ((resolution_tens && digit_position_in_wheel == 1) || (!resolution_tens && digit_position_in_wheel == 0)) {
         this._zero_ok = true;
@@ -270,11 +323,11 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     for (i = 0; i <= 9; i++) {
         this.digit_container.addChild(this['digit' + String(i)].text);
     }
-
+    this.digit_container.addChild(this['negative'].text);
 
     // This will force a call to the set function so all objects need to be created first
     
-    this.digit_container.mask = this.rectangle;
+    //this.digit_container.mask = this.rectangle;
 
     this.value = 0;
 }
@@ -282,6 +335,14 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
 Object.defineProperties(NumericWheel.prototype, {
     value: {
         set: function(value) {
+            if (value < 0 ) {
+                value = Math.abs(value);
+                negative = true
+            } else {
+                negative = false
+            }
+
+
             //console.debug(value);
             // Calculate the smallest base 10 number that is represented when
             //   this digit is non zero. This multiplier is to be used to extract
@@ -363,15 +424,20 @@ Object.defineProperties(NumericWheel.prototype, {
                 wheel_digit[i] = (_digit + (i + 6)) % 10 
             }
 
-            // Statically put some digits in the container
-            //console.log(_digit);
+            
             for (i = -4 ; i <= 5 ; i++) {
                 
                 if (_digit == 0 && i == 0 && _hide_zero) {
-                    //this["blank"].text.position.set(0,-this.digit_height * i + rotation * this.font_ratio);
-                    this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_height * 10 + rotation * this.font_ratio);
+                    // Display a blank digit by pushing the digit out of the screen???
+                    this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_height * 6 + rotation * this.font_ratio);
+                    if (negative) {
+                        this['negative'].text.position.set(0,0);
+                    } else {
+                        this['negative'].text.position.set(0,-this.digit_height * 7 + rotation * this.font_ratio)
+                    }
                 } else {
-                this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_height * i + rotation * this.font_ratio);
+                    this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_height * i + rotation * this.font_ratio);
+                    
                 }
             }
 
