@@ -59,7 +59,7 @@ while True:
         
         
 
-        if (rate < .008):
+        if (rate < .001):
             position_change = position_change / 4.0
 
         #sanitize qnh - Should have a range of 2200 3150
