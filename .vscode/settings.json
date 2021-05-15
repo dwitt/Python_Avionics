@@ -17,6 +17,5 @@
     ],
     "circuitpython.board.version": null,
     "circuitpython.board.vid": "0x239A",
-    "circuitpython.board.pid": "0x80CE",
-    "python.pythonPath": "/Users/david/.pyenv/versions/3.9.1/bin/python"
+    "circuitpython.board.pid": "0x80CE"
 }

@@ -52,13 +52,12 @@ var myWebSocket = new WebSocket("ws://localhost:8080/ws");
 
 myWebSocket.addEventListener('open', function(event){
     //console.debug(myWebSocket);
-    // Let the server no we are ready for data
+    // Let the server know we are ready for data
     myWebSocket.send("ready")
 })
 
-//document.fonts.load("bold 28px Tahoma");
-//document.fonts.load("28px bold Tahoma");
-//document.fonts.load("normal Tahoma")
+// Load Fonts
+
 var tahoma_normal_font = new FontFace('Tahoma', 'url(support/Tahoma.ttf)', {weight: 400});
 var tahoma_bold_font = new FontFace('Tahoma', 'url(support/Tahoma%20Bold.ttf)', {weight: 800});
 
@@ -97,7 +96,11 @@ myWebSocket.onmessage = function (event) {
 // This `setup` function will run when the image has loaded
 function setup() {
 
-    altitudeWheel = new AltitudeWheel(app, 750, 240)
+    altitudeWheel = new AltitudeWheel(app, 750, 240);
+    qnhDisplay = new QNHDisplay(app);
+
+    //app.stage.addChild(qnhDisplay.QNHText);
+    //app.stage.addChild(qnhDisplay.QNHRectangle);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -109,10 +112,14 @@ function randomInt(min, max) {
 
 function DisplayUpdateLoop(delta) {
 
-    altitudeWheel.value = dataObject._altitude
+    altitudeWheel.value = dataObject._altitude;
+    qnhDisplay.QNHText.text = String(Math.floor(dataObject.qnh)/100);
 
 
 }
+
+
+
 
 // ----------------------------------------------------------------------------
 // --- QNH display                                                          ---
@@ -120,10 +127,13 @@ function DisplayUpdateLoop(delta) {
 
 // Constructor
 
-function QNHDisplay(){
+function QNHDisplay(app){
 
-        // Create a style to be used for the qnh characters
-        this.style = new PIXI.TextStyle({
+    this.screen_width = app.screen.width;
+
+
+    // Create a style to be used for the qnh characters
+    this.style = new PIXI.TextStyle({
         fontFamily: 'Tahoma',
         fontSize: '20px',
         fill: "white",
@@ -131,8 +141,20 @@ function QNHDisplay(){
     });
 
     this.QNHText = new PIXI.Text("29.92", this.style);
+    this.QNHText.anchor.set(1,0);
+    this.QNHText.position.set(this.screen_width-5,0);
 
-    this.QNHText.text.anchor(0,1)
+    this.display_box_width = 60;
+    this.display_box_height = 26;
+
+    this.QNHRectangle = new PIXI.Graphics();
+    this.QNHRectangle.beginFill(0x000000); 
+    this.QNHRectangle.lineStyle(2,0xFFFFFF);
+    this.QNHRectangle.drawRect(this.screen_width - this.display_box_width,0,this.display_box_width,this.display_box_height);
+    this.QNHRectangle.endFill();
+
+    app.stage.addChild(this.QNHRectangle);
+    app.stage.addChild(this.QNHText)
 }
 
 
@@ -146,32 +168,39 @@ function AltitudeWheel(app, x, y){
     this.y = y;
     this.app = app;
 
-    tensWheel = new NumericWheel("Tahoma", "28px", 33, 30, 1 ,20, true, this.x, y);
-    this.app.stage.addChild(tensWheel.digit_container);
+
+    tensWheel = new NumericWheel("Tahoma", "28px", 33, 30, 1 ,false, 20, true, this.x, y);
+    //this.app.stage.addChild(tensWheel.digit_container);
     width1 = tensWheel.digit_width
 
 
-    hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, 1, true, this.x - width1, this.y);
-    this.app.stage.addChild(hundredsWheel.digit_container);
+    hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, false, 1, true, this.x - width1, this.y);
+    //this.app.stage.addChild(hundredsWheel.digit_container);
     width2 = width1 + hundredsWheel.digit_width
 
 
-    thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, 1, true, this.x - width2, this.y);
-    this.app.stage.addChild(thousandsWheel.digit_container);
+    thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, false, 1, true, this.x - width2, this.y);
+    //this.app.stage.addChild(thousandsWheel.digit_container);
     width3 = width2 + thousandsWheel.digit_width
 
-    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, 1, true, this.x - width3, this.y);
-    this.app.stage.addChild(tenThousandsWheel.digit_container);
+    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, true, 1, true, this.x - width3, this.y);
+    //this.app.stage.addChild(tenThousandsWheel.digit_container);
     width = width3 + tenThousandsWheel.digit_width
 
 
 
     AltitudeWheelOutline(app,x,y, true, width, 30/2 , width1, (30/2 + 20) );
+
+    this.app.stage.addChild(tensWheel.digit_container);
+    this.app.stage.addChild(hundredsWheel.digit_container);
+    this.app.stage.addChild(thousandsWheel.digit_container);
+    this.app.stage.addChild(tenThousandsWheel.digit_container);
 }
 
 function AltitudeWheelOutline(app,x,y,right,width,height,left_width,left_height){
     let line = new Graphics();
-    line.lineStyle(2,0xff0000);
+    line.lineStyle(2,0xFFFFFF);
+    line.beginFill(0x000000);
     line.moveTo(x+6,y);
     line.lineTo(x+1,y-5);
     line.lineTo(x+1,y-(1+left_height));
@@ -184,6 +213,7 @@ function AltitudeWheelOutline(app,x,y,right,width,height,left_width,left_height)
     line.lineTo(x+1,y+(1+left_height));
     line.lineTo(x+1,y+5);
     line.lineTo(x+6,y);
+    line.endFill();
 
     app.stage.addChild(line);
 
@@ -205,8 +235,9 @@ Object.defineProperties( AltitudeWheel.prototype, {
 // ----------------------------------------------------------------------------
 // Constructor
 
-function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_position_in_wheel, window_height, resolution_tens, x ,y){
+function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_position_in_wheel, display_negative_symbol, window_height, resolution_tens, x ,y){
     this.digit_position_in_wheel = digit_position_in_wheel;
+    this.display_negative_symbol = display_negative_symbol;
     this.font_name = font_name;             // text 
     this.font_size = font_size;             // pixels
     this.digit_height = digit_height;       // pixels
@@ -272,15 +303,16 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     }
 
     // Create a negative digit
-    this['negative'] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, "-");
-    this['negative'].text.anchor.set(0, this.character_centre);
+    if (this.display_negative_symbol) {
+        this['negative'] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, "-");
+        this['negative'].text.anchor.set(0, this.character_centre);
+    }
 
     this._zero_ok = false;
     if ((resolution_tens && digit_position_in_wheel == 1) || (!resolution_tens && digit_position_in_wheel == 0)) {
         this._zero_ok = true;
     }
 
-    // Test code for container
     // Create rectangle for mask
 
     // Create container
@@ -290,32 +322,33 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     // The mask co-ordinates are based on parent container (current canvas)
     //   Hence we need to position the mask where we want it to appear in the parent 
     //   Position the mask with the upper left corner at x, y
-    this.rectangle = new PIXI.Graphics();
-    this.rectangle.beginFill(0x0000000);
+    this.mask_rectangle = new PIXI.Graphics();
+    this.mask_rectangle.beginFill(0xFF0000);    // Red Mask
     //console.debug(this.digit_width, this.digit_height, this.window_height);
-    this.rectangle.drawRect(x - this.digit_width, y - (this.digit_height / 2 + this.window_height) ,this.digit_width, this.digit_height + (2 * this.window_height));
+    this.mask_rectangle.drawRect(x - this.digit_width, y - (this.digit_height / 2 + this.window_height) ,this.digit_width, this.digit_height + (2 * this.window_height));
     //console.debug((this.digit_height / 2 + this.window_height));
 
 
-    this.rectangle.endFill;
+    this.mask_rectangle.endFill;
     //console.debug(this.rectangle);
 
+    // Not using this background
     // Create background rectange for inside the container
-    this.rectangle1 = new PIXI.Graphics();
-    this.rectangle1.beginFill(0x00cccc);
-    this.rectangle1.drawRect(0,0 - (this.digit_height / 2 + this.window_height), this.digit_width, this.digit_height + ( 2 * this.window_height));
-    this.rectangle1.endFill;
+    // this.rectangle1 = new PIXI.Graphics();
+    // this.rectangle1.beginFill(0x00cccc);
+    // this.rectangle1.drawRect(0,0 - (this.digit_height / 2 + this.window_height), this.digit_width, this.digit_height + ( 2 * this.window_height));
+    // this.rectangle1.endFill;
 
     // Position the background within the container
     //   Was alredy setup above but set it here for fun.
-    this.rectangle1.position.set(0,0);
+    //this.rectangle1.position.set(0,0);
 
     // Apply the mask to the container
     //this.digit_container.mask = this.rectangle;
 
 
     // Put the background rectangle inside the container
-    this.digit_container.addChild(this.rectangle1);
+    //this.digit_container.addChild(this.rectangle1);
 
     // Position the container in the parent
     this.digit_container.position.set(x - this.digit_width,y);
@@ -323,11 +356,13 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     for (i = 0; i <= 9; i++) {
         this.digit_container.addChild(this['digit' + String(i)].text);
     }
-    this.digit_container.addChild(this['negative'].text);
+    if (this.display_negative_symbol) {
+        this.digit_container.addChild(this['negative'].text);
+    }
 
     // This will force a call to the set function so all objects need to be created first
     
-    //this.digit_container.mask = this.rectangle;
+    this.digit_container.mask = this.mask_rectangle;
 
     this.value = 0;
 }
@@ -430,14 +465,16 @@ Object.defineProperties(NumericWheel.prototype, {
                 if (_digit == 0 && i == 0 && _hide_zero) {
                     // Display a blank digit by pushing the digit out of the screen???
                     this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_height * 6 + rotation * this.font_ratio);
-                    if (negative) {
-                        this['negative'].text.position.set(0,0);
-                    } else {
-                        this['negative'].text.position.set(0,-this.digit_height * 7 + rotation * this.font_ratio)
+                    if (this.display_negative_symbol) {
+                        if (negative) {
+                            this['negative'].text.position.set(0,0);
+                        } else  {
+                            this['negative'].text.position.set(0,-this.digit_height * 7 + rotation * this.font_ratio)
+                        }
                     }
                 } else {
                     this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_height * i + rotation * this.font_ratio);
-                    
+                    //this['negative'].text.position.set(0,-this.digit_height * 7 + rotation * this.font_ratio)
                 }
             }
 
