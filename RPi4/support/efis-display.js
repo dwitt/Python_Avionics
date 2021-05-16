@@ -6,7 +6,8 @@ let Application = PIXI.Application,
     TextureCache = PIXI.utils.TextureCache
     Sprite = PIXI.Sprite,
     Rectangle = PIXI.Rectangle,
-    Graphics = PIXI.Graphics;
+    Graphics = PIXI.Graphics,
+    Container = PIXI.Container;
 
 
 //Create a Pixi Application
@@ -96,6 +97,9 @@ myWebSocket.onmessage = function (event) {
 // This `setup` function will run when the image has loaded
 function setup() {
 
+    background = new BackgroundDisplay(app);
+    bank_arc = new Bank_Arc(app);
+    altimeter_ribbon = new Altimeter_Ribbon(app);
     altitudeWheel = new AltitudeWheel(app, 750, 240);
     qnhDisplay = new QNHDisplay(app);
 
@@ -118,6 +122,152 @@ function DisplayUpdateLoop(delta) {
 
 }
 
+// ----------------------------------------------------------------------------
+// --- Temporary background display                                         ---
+// ----------------------------------------------------------------------------
+
+function BackgroundDisplay(app){
+
+    // get the dimensions of the app rectangle
+    this.display_width = app.screen.width;
+    this.display_height = app.screen.height;
+
+    // Create a container so that we can hold two different color rectangles
+
+    this.background_container = new Container();
+
+    // Create the sky rectangle
+    this.sky_rectangle = new Graphics();
+    this.sky_rectangle.beginFill(0x000088);
+    this.sky_rectangle.drawRect(0,0,800,240);
+    this.sky_rectangle.endFill();
+
+    this.ground_rectangle = new Graphics();
+    this.ground_rectangle.beginFill(0x884400);
+    this.ground_rectangle.drawRect(0,240,800,480);
+    this.ground_rectangle.endFill();
+
+    this.background_container.addChild(this.sky_rectangle);
+    this.background_container.addChild(this.ground_rectangle);
+
+    app.stage.addChild(this.background_container);
+
+}
+
+// ----------------------------------------------------------------------------
+// --- Altimeter Ribbon                                                     ---
+// ----------------------------------------------------------------------------
+
+function Altimeter_Ribbon(app) {
+
+    this.value = 0;
+
+    this.ribbon_container = new Container();
+
+    this.ribbon = new Graphics();
+
+    this.ribbon.lineStyle(1, 0x000000, .5);
+    this.ribbon.beginFill(0x000000, 0.25);
+    this.ribbon.drawRect(0,-200,100,400);
+    this.ribbon.endFill();
+
+    this.ribbon_container.addChild(this.ribbon);
+    this.ribbon_container.position.set(660, 240);
+    app.stage.addChild(this.ribbon_container);
+}
+
+Object.defineProperties(Altimeter_Ribbon.prototype, {
+    value: { 
+        set: function(new_value) {
+            this.test = new_value;
+
+        }
+    }
+})
+
+// ----------------------------------------------------------------------------
+// --- Bank Angle Arc                                                       ---
+// ----------------------------------------------------------------------------
+
+function Bank_Arc(app) {
+
+    // Parameters
+    this.radius = 180;
+    this.start_radians = 7 / 6 * Math.PI;   // 210 deg
+    this.end_radians = 11 / 6 * Math.PI;    // 330 deg
+    this.major_length = 20;
+    this.minor_length = 15;
+
+    // Tic mark locations measured in PI radians
+    this.major_marks = [7/6, 8/6, 10/6, 11/6];  
+    this.minor_marks = [5/4, 25/18, 26/18, 28/18, 29/18, 7/4];  
+
+    // get the dimensions of the app rectangle
+    this.display_width = app.screen.width;
+    this.display_height = app.screen.height;
+
+    this.centre_x = this.display_width / 2;
+    this.centre_y = this.display_height / 2
+
+    // Create the container to hold the arc
+    this.arc_container = new Container();
+
+    // Create the arc
+    this.arc = new Graphics();
+    
+    // Draw the arc shape with a semi transparent background
+    this.arc.beginFill(0x880088, 0.5);  // background fill
+    this.arc.lineStyle(1,0x000088);     // Outline (set to background colour)
+    this.arc.arc(this.centre_x, this.centre_y,this.radius, this.start_radians, this.end_radians,false);
+    x = (this.radius + this.major_length) * Math.cos((2 * Math.PI) - this.end_radians) + this.centre_x;
+    y = -(this.radius + this.major_length) * Math.sin((2 * Math.PI) - this.end_radians) + this.centre_y;
+    this.arc.lineTo(x,y);
+    this.arc.arc(this.centre_x, this.centre_y,this.radius + this.major_length, this.end_radians, this.start_radians,true);
+    x = (this.radius) * Math.cos((2 * Math.PI) - this.start_radians) + this.centre_x;
+    y = -(this.radius) * Math.sin((2 * Math.PI) - this.start_radians) + this.centre_y;
+    this.arc.lineTo(x,y);
+    this.arc.endFill();
+
+    // Draw the are line
+    this.arc.lineStyle(1,0xFFFFFF);
+    this.arc.arc(this.centre_x, this.centre_y,this.radius, this.start_radians, this.end_radians,false);
+
+    // Draw the markings
+    
+    this.arc.lineStyle(1,0xFFFFFF);
+    for (let i = 0; i < this.major_marks.length; i = i + 1) {
+        angle = 2 * Math.PI - this.major_marks[i] * Math.PI; 
+        unit_x = Math.cos(angle);
+        unit_y = Math.sin(angle);
+
+        x = this.radius * unit_x + this.centre_x;
+        y = -this.radius * unit_y + this.centre_y;
+        x1 = (this.radius + this.major_length) * unit_x + this.centre_x;
+        y1 = -(this.radius + this.major_length) * unit_y + this.centre_y;
+
+        this.arc.moveTo(x,y);
+        this.arc.lineTo(x1,y1);
+    }
+
+    for (let i = 0; i < this.minor_marks.length; i = i + 1) {
+        angle = 2 * Math.PI - this.minor_marks[i] * Math.PI; 
+        unit_x = Math.cos(angle);
+        unit_y = Math.sin(angle);
+
+        x = this.radius * unit_x + this.centre_x;
+        y = -this.radius * unit_y + this.centre_y;
+        x1 = (this.radius + this.minor_length) * unit_x + this.centre_x;
+        y1 = -(this.radius + this.minor_length) * unit_y + this.centre_y;
+
+        this.arc.moveTo(x,y);
+        this.arc.lineTo(x1,y1);
+    }
+
+    // Save the are in the container and display it
+    this.arc_container.addChild(this.arc);
+    app.stage.addChild(this.arc_container);
+
+}
 
 
 
@@ -150,7 +300,7 @@ function QNHDisplay(app){
     this.QNHRectangle = new PIXI.Graphics();
     this.QNHRectangle.beginFill(0x000000); 
     this.QNHRectangle.lineStyle(2,0xFFFFFF);
-    this.QNHRectangle.drawRect(this.screen_width - this.display_box_width,0,this.display_box_width,this.display_box_height);
+    this.QNHRectangle.drawRect(this.screen_width - (this.display_box_width + 1),0,this.display_box_width,this.display_box_height);
     this.QNHRectangle.endFill();
 
     app.stage.addChild(this.QNHRectangle);
