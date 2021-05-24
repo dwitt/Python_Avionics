@@ -7,7 +7,8 @@ let Application = PIXI.Application,
     Sprite = PIXI.Sprite,
     Rectangle = PIXI.Rectangle,
     Graphics = PIXI.Graphics,
-    Container = PIXI.Container;
+    Container = PIXI.Container,
+    Text = PIXI.Text;
 
 
 //Create a Pixi Application
@@ -99,7 +100,7 @@ function setup() {
 
     background = new BackgroundDisplay(app);
     bank_arc = new Bank_Arc(app);
-    altimeter_ribbon = new Altimeter_Ribbon(app);
+    altimeter_ribbon = new Ribbon(app);
     altitudeWheel = new AltitudeWheel(app, 750, 240);
     qnhDisplay = new QNHDisplay(app);
 
@@ -117,7 +118,10 @@ function randomInt(min, max) {
 function DisplayUpdateLoop(delta) {
 
     altitudeWheel.value = dataObject._altitude;
-    qnhDisplay.QNHText.text = String(Math.floor(dataObject.qnh)/100);
+    qnhformat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
+    qnhDisplay.QNHText.text = qnhformat.format((Math.floor(dataObject.qnh)/100));
+    //qnhDisplay.QNHText.text = String(Math.floor(dataObject.qnh)/100);
+    altimeter_ribbon.value = dataObject._altitude;
 
 
 }
@@ -158,28 +162,137 @@ function BackgroundDisplay(app){
 // --- Altimeter Ribbon                                                     ---
 // ----------------------------------------------------------------------------
 
-function Altimeter_Ribbon(app) {
+// Constructor
 
-    this.value = 0;
+function Ribbon(app, height, width, right) {
 
+    // --- set Parameters -----------------------------------------------------
+
+    this.ribbon_height = 400;           // height in pixels
+    this.ribbon_width = 100;            // width in pixels
+    this.ribbon_position_right = true;  // position the ribbon relative to it's right edge
+
+    this.ribbon_interval_power = 2;     // Scaling is not working
+    this.ribbon_interval = Math.pow(10, this.ribbon_interval_power);
+    this.ribbon_minor_intervals = 4;
+
+    // --- create a container to hold the entire ribbon including text --------
     this.ribbon_container = new Container();
 
-    this.ribbon = new Graphics();
+    // --- create the semi-transparent background -----------------------------
+    this.ribbon_background = new Graphics();
 
-    this.ribbon.lineStyle(1, 0x000000, .5);
-    this.ribbon.beginFill(0x000000, 0.25);
-    this.ribbon.drawRect(0,-200,100,400);
-    this.ribbon.endFill();
+    this.ribbon_background.beginFill(0x000000, 0.15);  // black, 25%
+    if (this.ribbon_position_right) {
+        ribbon_position = -1;
+    } else {
+        ribbon_position = 1;
+    }
+    this.ribbon_background.drawRect(0, 0 ,ribbon_position * this.ribbon_width, this.ribbon_height);
+    this.ribbon_background.endFill();
 
-    this.ribbon_container.addChild(this.ribbon);
-    this.ribbon_container.position.set(660, 240);
+    // --- create the ruler tick marks ----------------------------------------
+    this.ruler = new Graphics()
+    this.ruler.lineStyle(2,0xFFFFFF);
+    if (this.ribbon_position_right) {
+        multiplier = -1;
+    } else {
+        multiplier = 1;
+    }
+    for(i = -this.ribbon_interval; i <= (5 * this.ribbon_interval); i = i + this.ribbon_interval/this.ribbon_minor_intervals){
+        this.ruler.moveTo(0,i);
+        if ((i % 100) == 0) {
+            this.ruler.lineTo(multiplier * 20,i);
+        } else {
+            this.ruler.lineTo(multiplier * 10,i);
+        }
+    }
+
+    // --- create the ribbon mask ---------------------------------------------
+    // Masks must be positioned absolutely
+    this.ribbon_mask = new Graphics();
+    this.ribbon_mask.beginFill(0xFF0000);
+    this.ribbon_mask.drawRect(660,40,100,400);
+    this.ribbon_mask.endFill();
+
+    // --- set the position of the container ----------------------------------
+
+    this.ribbon_container.position.set(760, 40);
+
+
+    this.ribbon_container.addChild(this.ribbon_background);
+    this.ribbon_container.addChild(this.ruler);
+
+    this.ribbon_container.mask = this.ribbon_mask;
+
     app.stage.addChild(this.ribbon_container);
+
+    // --- create the text elements for the ribbon ----------------------------
+
+    text_style = new PIXI.TextStyle({
+        fontFamily: "Tahoma",
+        fontSize: 22,
+        fill: "white",
+        fontWeight: "normal"
+        
+    });
+
+    this.text_stack = [];
+    // Create 5 text objects 
+    for (i = 0; i < 5; i = i + 1) {
+        this.text_stack[i] = new Text(String(i*100), text_style);
+        this.text_stack[i].anchor.set(1,.5);
+        this.text_stack[i].position.set(-30, 200 - i*100);
+        this.ribbon_container.addChild(this.text_stack[i]);
+    }
+
+
+    this._value = 0;
+    this.value = 0;
+
 }
 
-Object.defineProperties(Altimeter_Ribbon.prototype, {
+// Value setter for Altimeter_Ribbon Object
+
+Object.defineProperties(Ribbon.prototype, {
     value: { 
         set: function(new_value) {
-            this.test = new_value;
+
+            if (new_value == this._value) {
+                return;
+            }
+
+            this._value = new_value;
+            interval = Math.pow(10, this.ribbon_interval_power);
+
+            // if the numbers in 100 are evenly spaced we should have
+            //   no more than 5 displayed at any one time
+
+            if (new_value >= 0 ) {
+                value_interval = (Math.floor(new_value / interval) * interval) ;
+            } else {
+                value_interval = (Math.ceil(new_value / interval) * interval) ;
+            }
+            remainder = new_value % interval;
+
+            this.ruler.position.set(0, remainder);
+
+            for (i = 0; i < 5; i = i + 1) {
+                // show values based on the remainder
+                // This is not fully scalable
+                if (remainder < interval / 2) {
+                    // extra digits to the bottom
+                    this.text_stack[i].position.set(-30,this.ribbon_height - ((i * interval) - remainder));
+                    this.text_stack[i].text = String(i * interval + value_interval - (this.ribbon_height / 2));
+                } else {
+                    // extra digits to the top
+                    this.text_stack[i].position.set(-30,(this.ribbon_height - interval) - ((i * interval) - remainder));
+                    this.text_stack[i].text = String(i * interval + value_interval - (this.ribbon_height / 2 - interval));
+                }
+                 
+            }
+
+
 
         }
     }
@@ -479,26 +592,8 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     //console.debug((this.digit_height / 2 + this.window_height));
 
 
-    this.mask_rectangle.endFill;
+    this.mask_rectangle.endFill();
     //console.debug(this.rectangle);
-
-    // Not using this background
-    // Create background rectange for inside the container
-    // this.rectangle1 = new PIXI.Graphics();
-    // this.rectangle1.beginFill(0x00cccc);
-    // this.rectangle1.drawRect(0,0 - (this.digit_height / 2 + this.window_height), this.digit_width, this.digit_height + ( 2 * this.window_height));
-    // this.rectangle1.endFill;
-
-    // Position the background within the container
-    //   Was alredy setup above but set it here for fun.
-    //this.rectangle1.position.set(0,0);
-
-    // Apply the mask to the container
-    //this.digit_container.mask = this.rectangle;
-
-
-    // Put the background rectangle inside the container
-    //this.digit_container.addChild(this.rectangle1);
 
     // Position the container in the parent
     this.digit_container.position.set(x - this.digit_width,y);
