@@ -9,13 +9,13 @@ import digitalio
 #import rotaryio
 #import adafruit_character_lcd.character_lcd_i2c as character_lcd
 
-import displayio
-import terminalio
+#import displayio
+#import terminalio
 from digitalio import DigitalInOut, Direction, Pull
 
-import adafruit_ssd1327 
-import adafruit_displayio_sh1107
-from adafruit_display_text import label
+#import adafruit_ssd1327 
+#import adafruit_displayio_sh1107
+#from adafruit_display_text import label
 
 # Comment out libraries not used
 
@@ -55,10 +55,10 @@ CAN_QNH_Timestamp = 0
 
 
 
-cols = 20
-rows = 4
+#cols = 20
+#rows = 4
 
-print("Starting")
+#print("Starting")
 
 # --------------------------------------------------------------------
 # --- Setup communication buses for various peripherals            ---
@@ -89,76 +89,72 @@ pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325)
 
 my_hsc = HoneywellHSC(i2c, 0x28)
 
+# TODO - Remove the following
 
-# i2c - SH1107 display
-displayio.release_displays()
-display_bus = displayio.I2CDisplay(i2c, device_address=0x3C)
+# # i2c - SH1107 display
+# displayio.release_displays()
+# display_bus = displayio.I2CDisplay(i2c, device_address=0x3C)
 
-WIDTH = 128
-HEIGHT = 64
-BORDER = 2
+# WIDTH = 128
+# HEIGHT = 64
+# BORDER = 2
 
-display = adafruit_displayio_sh1107.SH1107(display_bus,
-    width = WIDTH, height = HEIGHT)
+# display = adafruit_displayio_sh1107.SH1107(display_bus,
+#     width = WIDTH, height = HEIGHT)
 
 
-# --------------------------------------------------------------------
-# --- Create an altitude display object                            ---
-#---------------------------------------------------------------------
+# # --------------------------------------------------------------------
+# # --- Create an altitude display object                            ---
+# #---------------------------------------------------------------------
 
-group = displayio.Group(max_size=5)
-display.show(group)
-print("Group Created")
-text = " "*20
+# group = displayio.Group(max_size=5)
+# display.show(group)
+# print("Group Created")
+# text = " "*20
 
-font = terminalio.FONT 
-#font = bitmap_font.load_font("Tahoma-20.bdf")
-color = 0xFFFFFF
-ALT_text_area = label.Label(font = font, text = text, scale = 2, color = color)
-ALT_text_area.anchor_point = (1.0,1.0)
-ALT_text_area.anchored_position = (127,63)
-ALT_text_area.text = "working"
+# font = terminalio.FONT 
+# #font = bitmap_font.load_font("Tahoma-20.bdf")
+# color = 0xFFFFFF
+# ALT_text_area = label.Label(font = font, text = text, scale = 2, color = color)
+# ALT_text_area.anchor_point = (1.0,1.0)
+# ALT_text_area.anchored_position = (127,63)
+# ALT_text_area.text = "working"
 
-ALT_LABEL_text_area = label.Label(font = font, text = text, scale = 2, color = color)
-ALT_LABEL_text_area.anchor_point = (0.0, 1.0)
-ALT_LABEL_text_area.anchored_position = (0, 63)
-ALT_LABEL_text_area.text = "ALT"
+# ALT_LABEL_text_area = label.Label(font = font, text = text, scale = 2, color = color)
+# ALT_LABEL_text_area.anchor_point = (0.0, 1.0)
+# ALT_LABEL_text_area.anchored_position = (0, 63)
+# ALT_LABEL_text_area.text = "ALT"
 
-PRES_LABEL_text_area = label.Label(font = font, text = text, scale = 2, color = color)
-PRES_LABEL_text_area.anchor_point = (0.0, 1.0)
-PRES_LABEL_text_area.anchored_position = (0, 42)
-PRES_LABEL_text_area.text = "P"
+# PRES_LABEL_text_area = label.Label(font = font, text = text, scale = 2, color = color)
+# PRES_LABEL_text_area.anchor_point = (0.0, 1.0)
+# PRES_LABEL_text_area.anchored_position = (0, 42)
+# PRES_LABEL_text_area.text = "P"
 
-PRES_text_area = label.Label(font = font, text = text, scale = 2, color = color)
-PRES_text_area.anchor_point = (1.0, 1.0)
-PRES_text_area.anchored_position = (127, 42)
-PRES_text_area.text = str(101325)
+# PRES_text_area = label.Label(font = font, text = text, scale = 2, color = color)
+# PRES_text_area.anchor_point = (1.0, 1.0)
+# PRES_text_area.anchored_position = (127, 42)
+# PRES_text_area.text = str(101325)
 
-QNH_text_area = label.Label(font = font, text = text, color = color)
-QNH_text_area.anchor_point = (1.0, 0)
-QNH_text_area.anchored_position = (128,0)
-QNH_text_area.text = str(qnh / 100)
+# QNH_text_area = label.Label(font = font, text = text, color = color)
+# QNH_text_area.anchor_point = (1.0, 0)
+# QNH_text_area.anchored_position = (128,0)
+# QNH_text_area.text = str(qnh / 100)
 
-group.append(ALT_text_area)
-group.append(ALT_LABEL_text_area)
-group.append(PRES_LABEL_text_area)
-group.append(PRES_text_area)
-group.append(QNH_text_area)
+# group.append(ALT_text_area)
+# group.append(ALT_LABEL_text_area)
+# group.append(PRES_LABEL_text_area)
+# group.append(PRES_text_area)
+# group.append(QNH_text_area)
 
 
 
 
 # Initialize rotary encoder
 
-last_Position = None
+#last_Position = None
 
 
 last_Time_Millis = int(time.monotonic_ns() / 1000000)
-
-#while True:
-#     time.sleep(1.0)
-#     text_area.text ="help3"
-#    pass
 
 # -----------------------------------------------------------------------------
 # --- Create a CAN bus message mask for the QNH message and create a        ---
@@ -176,16 +172,16 @@ qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 
 #ALT_text_area.text = "help3"
 
-while not i2c.try_lock():
-    pass
+# while not i2c.try_lock():
+#     pass
 
-try:
+# try:
 
-    print("I2C address found:", [hex(device_address) for device_address
-                                 in i2c.scan()])
-    i2c.unlock()
+#     print("I2C address found:", [hex(device_address) for device_address
+#                                  in i2c.scan()])
+#     i2c.unlock()
 # -----------------------------------------------------------------------------
-#try:
+try:
 
     # --- Read the initial presser from the transducer                      ---
     my_hsc.read_transducer()
@@ -234,9 +230,6 @@ try:
             static_pressure = my_hsc.pressure
             static_pressure = pressure_filter.filter(static_pressure)
 
-            # if (static_pressure != previous_static_pressure):
-            #     PRES_text_area.text = str(int(static_pressure))
-
         # ---------------------------------------------------------------------
         # --- Check for a QNH message on the CAN bus                        ---
         # ---------------------------------------------------------------------
@@ -264,8 +257,8 @@ try:
 
         # --- update the display only if the value changed    
 
-        if (previous_qnh != qnh):
-            QNH_text_area.text = str(qnh / 100)
+        # if (previous_qnh != qnh):
+        #     QNH_text_area.text = str(qnh / 100)
 
         # ---------------------------------------------------------------------
         # --- Calculate the altitued only if the pressure or QNH            ---
@@ -283,14 +276,6 @@ try:
 
         my_hsc.read_transducer()
         temperature = my_hsc.temperature
-
-        # ---------------------------------------------------------------------
-        # --- Display the new altitude if changed                           ---
-        # ---------------------------------------------------------------------
-        
-        # if (altitude != previous_altitude):
-        #     ALT_text_area.text = str(altitude)
-
 
         # ---------------------------------------------------------------------
         # --- Send CAN data                                                 ---
