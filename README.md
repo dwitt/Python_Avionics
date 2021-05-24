@@ -2,6 +2,6 @@
 
 This is my project to create a primarily python based avionics system for experimental aircraft.
 
-| Message Description | ID (hex) | byte 1 | byte 2 | byte 3 | byte 4 | byte 5 | byte 6 | byte 7 | byte 8 |
-|---------------------|----------|--------|--------|--------|--------|--------|--------|--------|--------|
-|Airspeed, Altitude, VSI|0x29|Airspeed|Airspeed|Altitude|Altitude|Altitude|Vertical Speed|Vertical Speed||
+This project is inspired by http://experimentalavionics.com and by https://customgt6.com/2021/03/28/custom-digital-gauge-cluster/.
+
+The hardware is based on various Feather boards running CircuitPython that can be found at Adafruit (https://www.adafruit.com).
