@@ -1,0 +1,10 @@
+[Unit]
+Description=PiEfis
+DefaultDependencies=false
+
+[Service]
+ Type = simple
+ ExecStart = python3 aio-Server.py
+
+[Install]
+ WantedBy=multi-user.target
