@@ -1,5 +1,7 @@
+// ----------------------------------------------------------------------------
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
+// ----------------------------------------------------------------------------
 let Application = PIXI.Application,
     loader = PIXI.Loader.shared,
     resources = PIXI.Loader.shared.resources,
@@ -10,8 +12,9 @@ let Application = PIXI.Application,
     Container = PIXI.Container,
     Text = PIXI.Text;
 
-
-//Create a Pixi Application
+// ----------------------------------------------------------------------------
+// ---Create a Pixi Application                                             ---
+// ----------------------------------------------------------------------------
 let app = new Application({
     width: 800, 
     height: 480,
@@ -21,8 +24,10 @@ let app = new Application({
     }
 );
 
+// ----------------------------------------------------------------------------
 // Create another application as a test
 // This sets up a second canvas for display. This is just a test canvas
+// TODO: Delete this section
 let app2 = new Application({
     width: 800,
     height: 128,
@@ -32,37 +37,41 @@ let app2 = new Application({
     }
 );
 
-//Add the canvas that Pixi automatically created for you to the HTML document
+// ----------------------------------------------------------------------------
+// --- Add the canvas that Pixi automatically created for you to the HTML   ---
+// --- document                                                             ---
+// ----------------------------------------------------------------------------
 document.body.appendChild(app.view);
-//document.body.appendChild(app2.view);
 
+// ----------------------------------------------------------------------------
+// --- Create a new object to hold the data object coming from the websocket---
+// ----------------------------------------------------------------------------
 
-let myNumericWheel;
-let value = 0;
-let adjustment = 1;
+//TODO: Not sure if this can be deleted. Need to add a pause and see what happens
+//var dataObject = new Object();
+//dataObject._altitude = 0;
 
-var dataObject = new Object();
-dataObject._altitude = 0
-
-// 
-var XMLHttpRequestObject = false;
-
-// Connect to websocket
+// ----------------------------------------------------------------------------
+// --- Connect to the websocket to recieve the data from the can bus as     ---
+// --- objects.                                                             ---
+// ----------------------------------------------------------------------------
 
 var myWebSocket = new WebSocket("ws://localhost:8080/ws");
-//console.debug(myWebSocket);
 
+// listen for the 'open' event and respond with "ready"
 myWebSocket.addEventListener('open', function(event){
-    //console.debug(myWebSocket);
     // Let the server know we are ready for data
     myWebSocket.send("ready")
 })
 
-// Load Fonts
+// ----------------------------------------------------------------------------
+// --- Load Fonts                                                           ---
+// ----------------------------------------------------------------------------
 
 var tahoma_normal_font = new FontFace('Tahoma', 'url(support/Tahoma.ttf)', {weight: 400});
 var tahoma_bold_font = new FontFace('Tahoma', 'url(support/Tahoma%20Bold.ttf)', {weight: 800});
 
+// Load the fonts asynchronously. If they load addthem to the document
 tahoma_normal_font.load().then(function(loaded_face){
     document.fonts.add(loaded_face);
 });
@@ -70,35 +79,37 @@ tahoma_bold_font.load().then(function(loaded_face){
     document.fonts.add(loaded_face);
 })
 
+// ----------------------------------------------------------------------------
+// --- Wait for the document to report the fonts are loaded then call setup ---
+// ----------------------------------------------------------------------------
 
 document.fonts.ready.then(function() {
-
-        setup();
-    // When the fonts have loaded run setup
-
+    setup();
 });
 
 // ----------------------------------------------------------------------------
 // --- End of Script - We should be event based from this point onward      ---
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
 
 // ----------------------------------------------------------------------------
 // --- Process messages received from the websocket connection              ---
 // ----------------------------------------------------------------------------
 
 myWebSocket.onmessage = function (event) {
+    // parse the event.data into a data object
+    // this will contain the data from the CAN buss
     dataObject = JSON.parse(event.data);
-    //console.debug(event.data);
-    //value = dataObject._altitude;
+
 }
 
 // ----------------------------------------------------------------------------
-
-
-// This `setup` function will run when the image has loaded
+// This `setup` function will run when the image has loaded                 ---
+// ----------------------------------------------------------------------------
 function setup() {
 
-    background = new BackgroundDisplay(app);
+    background = new BackgroundDisplay(app);            
     bank_arc = new Bank_Arc(app);
     altimeter_ribbon = new Ribbon(app);
     altitudeWheel = new AltitudeWheel(app, 750, 240);
@@ -110,17 +121,15 @@ function setup() {
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
 
-// Not required for EFIS Display at present
-function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+// ----------------------------------------------------------------------------
+// --- Update called by ticker to update the display                        ---
+// ----------------------------------------------------------------------------
+
 
 function DisplayUpdateLoop(delta) {
 
     altitudeWheel.value = dataObject._altitude;
-    qnhformat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
-    qnhDisplay.QNHText.text = qnhformat.format((Math.floor(dataObject.qnh)/100));
-    //qnhDisplay.QNHText.text = String(Math.floor(dataObject.qnh)/100);
+    qnhDisplay.value = dataObject.qnh;
     altimeter_ribbon.value = dataObject._altitude;
 
 
@@ -403,7 +412,10 @@ function QNHDisplay(app){
         fontWeight: "normal"
     });
 
-    this.QNHText = new PIXI.Text("29.92", this.style);
+    this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
+    text = this.QNHFormat.format(29.92);
+
+    this.QNHText = new PIXI.Text(text, this.style);
     this.QNHText.anchor.set(1,0);
     this.QNHText.position.set(this.screen_width-5,0);
 
@@ -420,7 +432,13 @@ function QNHDisplay(app){
     app.stage.addChild(this.QNHText)
 }
 
-
+Object.defineProperties(QNHDisplay.prototype,{
+    value: {
+        set: function(new_value) {
+            this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100);
+        }
+    }
+})
 
 // ----------------------------------------------------------------------------
 // --- AltitudeWheel object                                                 ---

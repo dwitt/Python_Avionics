@@ -20,7 +20,7 @@ global webServer, webSocket
 async def create_servers(handler):
     
     #Create the application and add routes
-    #global webServer, runner, site
+    #global webServer, webSocket
 
     # --- Create the web server                                             ---
     server = web.Application()
@@ -47,7 +47,7 @@ async def create_servers(handler):
     print("Servers Started")
 
 # -----------------------------------------------------------------------------
-# --- handler for get                                                       ---
+# --- handler for get_index                                                ---
 # -----------------------------------------------------------------------------
 
 async def get_index(request):
@@ -58,7 +58,11 @@ async def get_index(request):
 
     return web.Response(text=indexContent, content_type="text/html")
 
-# 
+# -----------------------------------------------------------------------------
+# --- Class for Avionics Data                                               ---
+# -----------------------------------------------------------------------------
+# TODO - Not sure if this is needed
+
 class AvionicsData:
     def __init__(self):
         self.altitude = 0
@@ -163,7 +167,8 @@ async def main():
 
     # --- Create an instance of the web socket response handler
     web_socket_handler = WebSocketResponseHandler()
-    # --- Create the html and web socket servers and provide the web socket
+
+    # --- Create the html and web socket servers and provide the web_socket
     # --- handler
     await create_servers(web_socket_handler.real_time_data)
     
