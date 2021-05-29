@@ -3,7 +3,6 @@ from aiohttp import web
 import aiohttp
 import json
 import can
-import Encoder
 import RPi.GPIO as GPIO
 import json
 import struct
