@@ -26,8 +26,9 @@ cs = digitalio.DigitalInOut(board.GP5)
 cs.direction = digitalio.Direction.OUTPUT
 
 # Create CAN interface
-
-can = CAN(spi, cs, baudrate=500000)
+# The can board in use has an 8 Mhz xtal but the baudrate is based on a 16 MHz
+# xtal. Therefore, the baudrate below is actually 250000.
+can = CAN(spi, cs, baudrate=500000)    # Actual 250,000 see above
 
 # create a listener for the CAN bus
 
