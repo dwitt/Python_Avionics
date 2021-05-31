@@ -6,22 +6,8 @@ import board
 import busio
 import canio
 import digitalio
-#import rotaryio
-#import adafruit_character_lcd.character_lcd_i2c as character_lcd
 
-#import displayio
-#import terminalio
 from digitalio import DigitalInOut, Direction, Pull
-
-#import adafruit_ssd1327 
-#import adafruit_displayio_sh1107
-#from adafruit_display_text import label
-
-# Comment out libraries not used
-
-#from adafruit_imageload import load
-#from adafruit_bitmap_font import bitmap_font
-
 
 from honeywellHSC import HoneywellHSC 
 from kalman_filter import KalmanFilter
@@ -50,15 +36,6 @@ CAN_QNH_Period = 5000 # ms between messages
 CAN_Air_Timestamp = 0
 CAN_RAW_Timestamp = 0
 CAN_QNH_Timestamp = 0
-
-
-
-
-
-#cols = 20
-#rows = 4
-
-#print("Starting")
 
 # --------------------------------------------------------------------
 # --- Setup communication buses for various peripherals            ---
@@ -89,72 +66,8 @@ pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325)
 
 my_hsc = HoneywellHSC(i2c, 0x28)
 
-# TODO - Remove the following
-
-# # i2c - SH1107 display
-# displayio.release_displays()
-# display_bus = displayio.I2CDisplay(i2c, device_address=0x3C)
-
-# WIDTH = 128
-# HEIGHT = 64
-# BORDER = 2
-
-# display = adafruit_displayio_sh1107.SH1107(display_bus,
-#     width = WIDTH, height = HEIGHT)
-
-
-# # --------------------------------------------------------------------
-# # --- Create an altitude display object                            ---
-# #---------------------------------------------------------------------
-
-# group = displayio.Group(max_size=5)
-# display.show(group)
-# print("Group Created")
-# text = " "*20
-
-# font = terminalio.FONT 
-# #font = bitmap_font.load_font("Tahoma-20.bdf")
-# color = 0xFFFFFF
-# ALT_text_area = label.Label(font = font, text = text, scale = 2, color = color)
-# ALT_text_area.anchor_point = (1.0,1.0)
-# ALT_text_area.anchored_position = (127,63)
-# ALT_text_area.text = "working"
-
-# ALT_LABEL_text_area = label.Label(font = font, text = text, scale = 2, color = color)
-# ALT_LABEL_text_area.anchor_point = (0.0, 1.0)
-# ALT_LABEL_text_area.anchored_position = (0, 63)
-# ALT_LABEL_text_area.text = "ALT"
-
-# PRES_LABEL_text_area = label.Label(font = font, text = text, scale = 2, color = color)
-# PRES_LABEL_text_area.anchor_point = (0.0, 1.0)
-# PRES_LABEL_text_area.anchored_position = (0, 42)
-# PRES_LABEL_text_area.text = "P"
-
-# PRES_text_area = label.Label(font = font, text = text, scale = 2, color = color)
-# PRES_text_area.anchor_point = (1.0, 1.0)
-# PRES_text_area.anchored_position = (127, 42)
-# PRES_text_area.text = str(101325)
-
-# QNH_text_area = label.Label(font = font, text = text, color = color)
-# QNH_text_area.anchor_point = (1.0, 0)
-# QNH_text_area.anchored_position = (128,0)
-# QNH_text_area.text = str(qnh / 100)
-
-# group.append(ALT_text_area)
-# group.append(ALT_LABEL_text_area)
-# group.append(PRES_LABEL_text_area)
-# group.append(PRES_text_area)
-# group.append(QNH_text_area)
-
-
-
-
-# Initialize rotary encoder
-
-#last_Position = None
-
-
 last_Time_Millis = int(time.monotonic_ns() / 1000000)
+last_pressure_time_millis = last_Time_Millis
 
 # -----------------------------------------------------------------------------
 # --- Create a CAN bus message mask for the QNH message and create a        ---
@@ -168,9 +81,6 @@ qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 # Wait here until we can lock the i2C to allow us to scan it
 # ------------------------------------------------------------------------------
 
-# This can probably be deleted
-
-#ALT_text_area.text = "help3"
 
 # while not i2c.try_lock():
 #     pass
@@ -221,14 +131,14 @@ try:
 #       --- Read the pressure transducer after every 50 ms           ---
 
         if current_time_millis - last_Time_Millis > 50:
-            
-            last_Time_Millis = current_time_millis
-            
+            # read the pressure transducer
             my_hsc.read_transducer()
             
             previous_static_pressure = static_pressure
             static_pressure = my_hsc.pressure
             static_pressure = pressure_filter.filter(static_pressure)
+            
+            last_Time_Millis = current_time_millis
 
         # ---------------------------------------------------------------------
         # --- Check for a QNH message on the CAN bus                        ---
@@ -246,19 +156,11 @@ try:
                     continue # THIS JUMPS OUT OF THE WHILE LOOP???
                 previous_qnh = qnh
                 # unpack the message data
-                # QNH contains a two byte short integer
+                # QNH contains two, two byte short integers
                 (qnh_hpa, qnhx4, null3, null4, null5, null6) = struct.unpack("<hhBBBB",data)
-                # convert hPa to inHg * 100
-                
-                #qnh = int(qnh_hpa * 2.95299875 )
+
                 qnh = qnhx4 / 4.0
 
-        # --- qnh updated if recieved                                ---
-
-        # --- update the display only if the value changed    
-
-        # if (previous_qnh != qnh):
-        #     QNH_text_area.text = str(qnh / 100)
 
         # ---------------------------------------------------------------------
         # --- Calculate the altitued only if the pressure or QNH            ---
@@ -273,6 +175,10 @@ try:
                 pow(float(qnh / 2992), 0.1902632)
                 - pow(float(static_pressure / 101325), 0.1902632)
             ))
+            
+            time_between_altitude_calculations = current_time_millis - last_pressure_time_millis
+            vsi = (altitude - previous_altitude) / time_between_altitude_calculations * 60000
+            
 
         my_hsc.read_transducer()
         temperature = my_hsc.temperature
@@ -290,7 +196,7 @@ try:
                                    altitude & 0x0ff,
                                    (altitude >> 8) & 0xff,
                                    (altitude >> 16) & 0xff,
-                                   0,
+                                   int(vsi),
                                    0)
             message = canio.Message(CAN_Air_Msg_id, Air_data)
             can.send(message)
