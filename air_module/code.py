@@ -91,21 +91,21 @@ qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 #                                  in i2c.scan()])
 #     i2c.unlock()
 # -----------------------------------------------------------------------------
-try:
+#try:
 
-    # --- Read the initial presser from the transducer                      ---
-    my_hsc.read_transducer()
-    
-    static_pressure = my_hsc.pressure
-    static_pressure = pressure_filter.filter(static_pressure)
-    
-    altitude = int(145442.0 * (
-        pow(float(qnh / 2992), 0.1902632)
-        - pow(float(static_pressure / 101325), 0.1902632)))
+# --- Read the initial presser from the transducer                      ---
+my_hsc.read_transducer()
 
-    # --- Set the previous values to 0 to trigger future operations         ---
-    previous_static_pressure = 0
-    previous_altitude = 0
+static_pressure = my_hsc.pressure
+static_pressure = pressure_filter.filter(static_pressure)
+
+altitude = int(145442.0 * (
+    pow(float(qnh / 2992), 0.1902632)
+    - pow(float(static_pressure / 101325), 0.1902632)))
+
+# --- Set the previous values to 0 to trigger future operations         ---
+previous_static_pressure = 0
+previous_altitude = 0
 
 # ----------------------------------------------------------------------
 # --- Main Loop                                                      ---
@@ -115,6 +115,7 @@ try:
 # --- 2. Check if QNH has been transmitted                           ---
 # --- 3. Update QNH and the QNH display if received                  ---
 # --- 4. Update the altitude if either the pressure or QNH have change -
+# ---    Calculate the VSI                                           ---
 # --- 5. Update the local display only when the values change and    ---
 # ---    only if a resonable interval has elapsed. (conserve cycles) ---
 # --- 6. Transmit CAN data for AAV, STATICP and QNH periodically     ---
@@ -123,116 +124,115 @@ try:
 # --- Static Pressure = kPa
 # --- QNH = inHg
 # --- Altitude = ft
- 
-    while True:
 
-        current_time_millis = int(time.monotonic_ns() / 1000000)
+while True:
 
-#       --- Read the pressure transducer after every 50 ms           ---
+    current_time_millis = int(time.monotonic_ns() / 1000000)
 
-        if current_time_millis - last_Time_Millis > 50:
-            # read the pressure transducer
-            my_hsc.read_transducer()
-            
-            previous_static_pressure = static_pressure
-            static_pressure = my_hsc.pressure
-            static_pressure = pressure_filter.filter(static_pressure)
-            
-            last_Time_Millis = current_time_millis
+#       --- Read the pressure transducer after every 100 ms           ---
 
-        # ---------------------------------------------------------------------
-        # --- Check for a QNH message on the CAN bus                        ---
-        # ---------------------------------------------------------------------
-        
-        if (qnh_listener.in_waiting()):
-            message = qnh_listener.receive()
-            
-            if (isinstance(message, canio.RemoteTransmissionRequest)):
-                pass
-            if (isinstance(message, canio.Message)):
-                data = message.data
-                if len(data) != 8:
-                    print(f'Unusual message length {len(data)}')
-                    continue # THIS JUMPS OUT OF THE WHILE LOOP???
-                previous_qnh = qnh
-                # unpack the message data
-                # QNH contains two, two byte short integers
-                (qnh_hpa, qnhx4, null3, null4, null5, null6) = struct.unpack("<hhBBBB",data)
-
-                qnh = qnhx4 / 4.0
-
-
-        # ---------------------------------------------------------------------
-        # --- Calculate the altitued only if the pressure or QNH            ---
-        # --- changed                                                       ---
-        # ---------------------------------------------------------------------
-
-        if (previous_static_pressure != static_pressure or 
-            previous_qnh != qnh):
-
-            previous_altitude = altitude
-            altitude = int(145442.0 * (
-                pow(float(qnh / 2992), 0.1902632)
-                - pow(float(static_pressure / 101325), 0.1902632)
-            ))
-            
-            time_between_altitude_calculations = current_time_millis - last_pressure_time_millis
-            vsi = (altitude - previous_altitude) / time_between_altitude_calculations * 60000
-            
-
+    if current_time_millis - last_Time_Millis > 100:
+        # read the pressure transducer
         my_hsc.read_transducer()
-        temperature = my_hsc.temperature
+        
+        previous_static_pressure = static_pressure
+        static_pressure = my_hsc.pressure
+        static_pressure = pressure_filter.filter(static_pressure)
+        
+        last_Time_Millis = current_time_millis
 
-        # ---------------------------------------------------------------------
-        # --- Send CAN data                                                 ---
-        # ---------------------------------------------------------------------
+    # ---------------------------------------------------------------------
+    # --- Check for a QNH message on the CAN bus                        ---
+    # ---------------------------------------------------------------------
+    
+    if (qnh_listener.in_waiting()):
+        message = qnh_listener.receive()
+        
+        if (isinstance(message, canio.RemoteTransmissionRequest)):
+            pass
+        if (isinstance(message, canio.Message)):
+            data = message.data
+            if len(data) != 8:
+                print(f'Unusual message length {len(data)}')
+                continue # THIS JUMPS OUT OF THE WHILE LOOP???
+            previous_qnh = qnh
+            # unpack the message data
+            # QNH contains two, two byte short integers
+            (qnh_hpa, qnhx4, null3, null4, null5, null6) = struct.unpack("<hhBBBB",data)
 
-        # --- Send Air Speed, Altitude and Vertical Speed                   ---
-        if (current_time_millis > CAN_Air_Timestamp + CAN_Air_Period + 
-            random.randint(0,50)):
-            
-            Air_data = struct.pack("<hBBBhB",
-                                   0,
-                                   altitude & 0x0ff,
-                                   (altitude >> 8) & 0xff,
-                                   (altitude >> 16) & 0xff,
-                                   int(vsi),
-                                   0)
-            message = canio.Message(CAN_Air_Msg_id, Air_data)
-            can.send(message)
-            CAN_Air_Timestamp = current_time_millis
-            #print("Can Air")
-          
-        # --- Send Raw pressure and temperature sensor data                 ---  
-        if (current_time_millis > CAN_RAW_Timestamp + CAN_Raw_Period +
-            random.randint(0,50)):
-            
-            Raw_data = struct.pack("<hbBBBBB",
-                                int(static_pressure / 10),
-                                int(temperature),
-                                0,0,0,0,0)
-            message = canio.Message(CAN_Raw_Msg_id, Raw_data)
-            can.send(message)
-            CAN_RAW_Timestamp = current_time_millis
-            #print("Can Raw")
-            
-        # --- Send the qnh value if it has not been updated. qnh is         ---
-        # --- normally sent from the display (rPi) but if not received is   ---
-        # --- rebroadcast in case something else needs it.                  ---
-        if (current_time_millis > CAN_QNH_Timestamp + CAN_QNH_Period):
-            qnh_hpa = int(qnh / 2.95299875)
-            QNH_data = struct.pack("<hhBBBB",
-                                   qnh_hpa,
-                                   int(qnh*4),
-                                   0,0,0,0)
-            message = canio.Message(CAN_QNH_Msg_id, QNH_data)
-            can.send(message)
-            CAN_QNH_Timestamp = current_time_millis
-            #print("Can QNH")
+            qnh = qnhx4 / 4.0
+
+
+    # ---------------------------------------------------------------------
+    # --- Calculate the altitued only if the pressure or QNH            ---
+    # --- changed                                                       ---
+    # ---------------------------------------------------------------------
+
+    if (previous_static_pressure != static_pressure or 
+        previous_qnh != qnh):
+
+        previous_altitude = altitude
+        altitude = int(145442.0 * (
+            pow(float(qnh / 2992), 0.1902632)
+            - pow(float(static_pressure / 101325), 0.1902632)
+        ))
+        
+        time_between_altitude_calculations = current_time_millis - last_pressure_time_millis
+        vsi = (altitude - previous_altitude) / time_between_altitude_calculations * 60000
+        
+
+    my_hsc.read_transducer()
+    temperature = my_hsc.temperature
+
+    # ---------------------------------------------------------------------
+    # --- Send CAN data                                                 ---
+    # ---------------------------------------------------------------------
+
+    # --- Send Air Speed, Altitude and Vertical Speed                   ---
+    if (current_time_millis > CAN_Air_Timestamp + CAN_Air_Period + 
+        random.randint(0,50)):
+        
+        Air_data = struct.pack("<hBBBhB",
+                                0,
+                                altitude & 0x0ff,
+                                (altitude >> 8) & 0xff,
+                                (altitude >> 16) & 0xff,
+                                int(vsi),
+                                0)
+        message = canio.Message(CAN_Air_Msg_id, Air_data)
+        can.send(message)
+        CAN_Air_Timestamp = current_time_millis
+        #print("Can Air")
+        
+    # --- Send Raw pressure and temperature sensor data                 ---  
+    if (current_time_millis > CAN_RAW_Timestamp + CAN_Raw_Period +
+        random.randint(0,50)):
+        
+        Raw_data = struct.pack("<hbBBBBB",
+                            int(static_pressure / 10),
+                            int(temperature),
+                            0,0,0,0,0)
+        message = canio.Message(CAN_Raw_Msg_id, Raw_data)
+        can.send(message)
+        CAN_RAW_Timestamp = current_time_millis
+        #print("Can Raw")
+        
+    # --- Send the qnh value if it has not been updated. qnh is         ---
+    # --- normally sent from the display (rPi) but if not received is   ---
+    # --- rebroadcast in case something else needs it.                  ---
+    if (current_time_millis > CAN_QNH_Timestamp + CAN_QNH_Period):
+        qnh_hpa = int(qnh / 2.95299875)
+        QNH_data = struct.pack("<hhBBBB",
+                                qnh_hpa,
+                                int(qnh*4),
+                                0,0,0,0)
+        message = canio.Message(CAN_QNH_Msg_id, QNH_data)
+        can.send(message)
+        CAN_QNH_Timestamp = current_time_millis
 
         
-finally:
-    print("Unlocking")
-    i2c.unlock()
+# finally:
+#     print("Unlocking")
+#     i2c.unlock()
 
 

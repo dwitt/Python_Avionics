@@ -152,12 +152,12 @@ function BackgroundDisplay(app){
     // Create the sky rectangle
     this.sky_rectangle = new Graphics();
     this.sky_rectangle.beginFill(0x000088);
-    this.sky_rectangle.drawRect(0,0,800,240);
+    this.sky_rectangle.drawRect(0,0,799,239);
     this.sky_rectangle.endFill();
 
     this.ground_rectangle = new Graphics();
     this.ground_rectangle.beginFill(0x884400);
-    this.ground_rectangle.drawRect(0,240,800,480);
+    this.ground_rectangle.drawRect(0,240,799,479);
     this.ground_rectangle.endFill();
 
     this.background_container.addChild(this.sky_rectangle);
