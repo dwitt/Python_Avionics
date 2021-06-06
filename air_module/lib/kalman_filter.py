@@ -1,8 +1,9 @@
 class KalmanFilter:
 
     def __init__(self, q, r, x):
-        self._q = q     # covariance of process noise
-        self._r = r     # covariance of observation noise
+        self._q = q     # covariance of "process noise"
+        self._r = r     # covariance of observation noise - or measurement
+                        #  uncertainty or Variance (sigma squared)
         self._x = x     # initial state
         
         self._p = 0     # initialize internal variables
