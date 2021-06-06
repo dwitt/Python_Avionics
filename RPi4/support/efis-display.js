@@ -87,7 +87,7 @@ document.fonts.ready.then(function() {
     setup();
 });
 
-// ----------------------------------------------------------------------------
+// ****************************************************************************
 // --- End of Script - We should be event based from this point onward      ---
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
@@ -114,6 +114,7 @@ function setup() {
     altimeter_ribbon = new Ribbon(app);
     altitudeWheel = new AltitudeWheel(app, 750, 240);
     qnhDisplay = new QNHDisplay(app);
+    vsiDisplay = new VSIDisplay(app);
 
     //app.stage.addChild(qnhDisplay.QNHText);
     //app.stage.addChild(qnhDisplay.QNHRectangle);
@@ -131,6 +132,7 @@ function DisplayUpdateLoop(delta) {
     altitudeWheel.value = dataObject._altitude;
     qnhDisplay.value = dataObject.qnh;
     altimeter_ribbon.value = dataObject._altitude;
+    vsiDisplay.value = dataObject.vsi;
 
 
 }
@@ -391,6 +393,52 @@ function Bank_Arc(app) {
 
 }
 
+// ----------------------------------------------------------------------------
+// --- VSI Temporary display                                                          ---
+// ----------------------------------------------------------------------------
+
+// Constructor
+
+function VSIDisplay(app){
+
+    this.screen_width = app.screen.width;
+    this.screen_height = app.screen.height;
+
+    // Create a style to be used for the qnh characters
+    this.style = new PIXI.TextStyle({
+        fontFamily: 'Tahoma',
+        fontSize: '20px',
+        fill: "white",
+        fontWeight: "normal"
+    });
+
+    this.VSIFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 0});
+    text = this.VSIFormat.format(0);
+
+    this.VSIText = new PIXI.Text(text, this.style);
+    this.VSIText.anchor.set(1,0);
+    this.VSIText.position.set(this.screen_width-5,this.screen_height - 26);
+
+    this.display_box_width = 60;
+    this.display_box_height = 26;
+
+    this.VSIRectangle = new PIXI.Graphics();
+    this.VSIRectangle.beginFill(0x000000); 
+    this.VSIRectangle.lineStyle(2,0xFFFFFF);
+    this.VSIRectangle.drawRect(this.screen_width - (this.display_box_width + 1), this.screen_height - (this.display_box_height + 1), this.display_box_width, this.display_box_height);
+    this.VSIRectangle.endFill();
+
+    app.stage.addChild(this.VSIRectangle);
+    app.stage.addChild(this.VSIText);
+}
+
+Object.defineProperties(VSIDisplay.prototype,{
+    value: {
+        set: function(new_value) {
+            this.VSIText.text = this.VSIFormat.format(new_value);
+        }
+    }
+})
 
 
 // ----------------------------------------------------------------------------
@@ -402,7 +450,6 @@ function Bank_Arc(app) {
 function QNHDisplay(app){
 
     this.screen_width = app.screen.width;
-
 
     // Create a style to be used for the qnh characters
     this.style = new PIXI.TextStyle({

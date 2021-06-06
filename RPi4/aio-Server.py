@@ -126,10 +126,17 @@ async def process_can_messages(reader, data):
             if ((msg.data[4] & 1<<7) == 1<<7):
                 #XOR to peform 1s compliment (high byte was not sent by CAN)
                 data.altitude = -1 * (data.altitude ^ 0xffffff)
+            (data.airspeed, null2, null3, null4, data.vsi, null7) = (
+                struct.unpack("<hBBBhB", msg.data))
+            
+            print(data.vsi)
+            
         elif (msg.arbitration_id == 0x2E):
-            (qnh_hpa, qnhx4, null3, null4, null5, null6) = struct.unpack("<hhBBBB",msg.data)
+            (qnh_hpa, qnhx4, null3, null4, null5, null6) = (
+                struct.unpack("<hhBBBB",msg.data))
             data.qnh = qnhx4 / 4.0
             print(data.qnh)
+
 
         await asyncio.sleep(0.02)
 

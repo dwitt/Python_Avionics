@@ -13,6 +13,9 @@ from honeywellHSC import HoneywellHSC
 from kalman_filter import KalmanFilter
 
 # Constants
+DEBUG = True
+
+
 OUTPUT_MIN = 1638
 OUTPUT_MAX = 14745
 PRESSURE_MIN = 0
@@ -50,24 +53,31 @@ i2c = board.I2C()
 if hasattr(board, 'CAN_STANDBY'):
     standby = digitalio.DigitalInOut(board.CAN_STANDBY)
     standby.switch_to_output(False)
-    print("Standby off")
+    if DEBUG:
+        print("Standby off")
     
 if hasattr(board, 'BOOST_ENABLE'):
     boost_enable = digitalio.DigitalInOut(board.BOOST_ENABLE)
     boost_enable.switch_to_output(True)
-    print("Boost On")
+    if DEBUG:
+        print("Boost On")
     
 can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
                 baudrate=250_000, auto_restart=True)
 
 # ----------------------------------------------------------------------
-  
-pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325)
+
+# q is process noise, r is measurement uncertainty
+#pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325)
+pressure_filter = KalmanFilter(q = .1, r = 100, x = 101325)
+vsi_filter = KalmanFilter(q=10, r = 1000, x = 0)
 
 my_hsc = HoneywellHSC(i2c, 0x28)
 
+# Save the current time for future calculations
 last_Time_Millis = int(time.monotonic_ns() / 1000000)
 last_pressure_time_millis = last_Time_Millis
+last_vsi_time_millis = last_Time_Millis
 
 # -----------------------------------------------------------------------------
 # --- Create a CAN bus message mask for the QNH message and create a        ---
@@ -93,7 +103,9 @@ qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 # -----------------------------------------------------------------------------
 #try:
 
-# --- Read the initial presser from the transducer                      ---
+# -----------------------------------------------------------------------------
+# --- Read the initial pressure from the transducer                         ---
+# -----------------------------------------------------------------------------
 my_hsc.read_transducer()
 
 static_pressure = my_hsc.pressure
@@ -103,9 +115,18 @@ altitude = int(145442.0 * (
     pow(float(qnh / 2992), 0.1902632)
     - pow(float(static_pressure / 101325), 0.1902632)))
 
+vsi_altitude = float(145442.0 * (
+    1.0 - pow(float(static_pressure / 101325.0), 0.1902632)
+    ))
+
+vsi = vsi_filter.filter(0)
+
+temperature = my_hsc.temperature
+
 # --- Set the previous values to 0 to trigger future operations         ---
 previous_static_pressure = 0
 previous_altitude = 0
+previous_vsi_altitude = vsi_altitude
 
 # ----------------------------------------------------------------------
 # --- Main Loop                                                      ---
@@ -129,9 +150,11 @@ while True:
 
     current_time_millis = int(time.monotonic_ns() / 1000000)
 
-#       --- Read the pressure transducer after every 100 ms           ---
+    # -------------------------------------------------------------------------
+    # --- Read the pressure transducer after every 50 ms                    ---
+    # -------------------------------------------------------------------------
 
-    if current_time_millis - last_Time_Millis > 100:
+    if current_time_millis - last_Time_Millis > 50:
         # read the pressure transducer
         my_hsc.read_transducer()
         
@@ -140,7 +163,40 @@ while True:
         static_pressure = pressure_filter.filter(static_pressure)
         
         last_Time_Millis = current_time_millis
+        
+        # ---------------------------------------------------------------------
+        # --- Check if we chould calculate the VSI                          ---
+        # --- Only check for this when we read the pressure so that we have ---
+        # --- the most current data                                         ---
+        # ---------------------------------------------------------------------
+        
+        if current_time_millis - last_vsi_time_millis > 200:
+            
+            # calculate the new vsi altitude 
+            vsi_altitude = float(145442.0 * (
+                1.0 - pow(float(static_pressure / 101325.0), 0.1902632)
+                ))
+            
+            # calculate the vsi 
+            vsi = (( vsi_altitude - previous_vsi_altitude ) / 
+                (current_time_millis - last_vsi_time_millis) * 1000.0 * 60.0 )
+            vsi = vsi_filter.filter(vsi)
+            if DEBUG:
+                print(vsi_altitude, previous_vsi_altitude, current_time_millis, last_vsi_time_millis, vsi)
+            # save the current data for the next calculation
 
+            last_vsi_time_millis = current_time_millis
+            previous_vsi_altitude = vsi_altitude
+            
+        # ---------------------------------------------------------------------
+        # --- Read the transducer temperature for transmission over CAN bus ---
+        # ---------------------------------------------------------------------
+
+        my_hsc.read_transducer()
+        temperature = my_hsc.temperature
+
+
+    
     # ---------------------------------------------------------------------
     # --- Check for a QNH message on the CAN bus                        ---
     # ---------------------------------------------------------------------
@@ -162,7 +218,6 @@ while True:
 
             qnh = qnhx4 / 4.0
 
-
     # ---------------------------------------------------------------------
     # --- Calculate the altitued only if the pressure or QNH            ---
     # --- changed                                                       ---
@@ -172,18 +227,11 @@ while True:
         previous_qnh != qnh):
 
         previous_altitude = altitude
-        altitude = int(145442.0 * (
+        altitude = int(145442 * (
             pow(float(qnh / 2992), 0.1902632)
             - pow(float(static_pressure / 101325), 0.1902632)
         ))
         
-        time_between_altitude_calculations = current_time_millis - last_pressure_time_millis
-        vsi = (altitude - previous_altitude) / time_between_altitude_calculations * 60000
-        
-
-    my_hsc.read_transducer()
-    temperature = my_hsc.temperature
-
     # ---------------------------------------------------------------------
     # --- Send CAN data                                                 ---
     # ---------------------------------------------------------------------
@@ -194,9 +242,9 @@ while True:
         
         Air_data = struct.pack("<hBBBhB",
                                 0,
-                                altitude & 0x0ff,
-                                (altitude >> 8) & 0xff,
-                                (altitude >> 16) & 0xff,
+                                int(altitude) & 0x0ff,
+                                (int(altitude) >> 8) & 0xff,
+                                (int(altitude) >> 16) & 0xff,
                                 int(vsi),
                                 0)
         message = canio.Message(CAN_Air_Msg_id, Air_data)
