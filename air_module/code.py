@@ -12,8 +12,11 @@ from digitalio import DigitalInOut, Direction, Pull
 from honeywellHSC import HoneywellHSC 
 from kalman_filter import KalmanFilter
 
+import adafruit_ADS1x15.ads1115 as ADS
+from adafruit_ads1x15.analog_in import AnalogIn
 # Constants
-DEBUG = True
+DEBUG = False
+DEBUG_ADS = True
 
 
 OUTPUT_MIN = 1638
@@ -66,6 +69,18 @@ can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
                 baudrate=250_000, auto_restart=True)
 
 # ----------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# --- i2c - Analog to Digital ADS1115 reading pressure transducer           ---
+# -----------------------------------------------------------------------------
+
+ads = ADS.ADS1115(i2c)
+ads.gain = 2/3
+#ads.mode = ADS.Mode.CONTINUOUS
+ads.mode = ADS.Mode.SINGLE
+chan = AnalogIn(ads, ADS.P0)
+chanVin = AnalogIn(ads, ADS.P1)
+
 
 # q is process noise, r is measurement uncertainty
 #pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325)
@@ -195,7 +210,9 @@ while True:
         my_hsc.read_transducer()
         temperature = my_hsc.temperature
 
-
+        if DEBUG_ADS:
+            print(chan.value, chan.voltage, chanVin.value, chanVin.voltage)
+            
     
     # ---------------------------------------------------------------------
     # --- Check for a QNH message on the CAN bus                        ---
