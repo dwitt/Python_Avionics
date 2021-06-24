@@ -11,9 +11,15 @@ from digitalio import DigitalInOut, Direction, Pull
 
 from honeywellHSC import HoneywellHSC 
 from kalman_filter import KalmanFilter
+from NPXAnalogPressureSensor import NPXPressureSensor
 
 import adafruit_ADS1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
+
+from micropython import const # type: ignore
+
+import math
+
 # Constants
 DEBUG = False
 DEBUG_ADS = True
@@ -26,6 +32,18 @@ PRESSURE_MAX = 103421
 
 qnh = 2992
 previous_qnh = qnh
+
+# -----------------------------------------------------------------------------
+# --- Constants for airspeed calculations                                   ---
+# -----------------------------------------------------------------------------
+# ratio of specific heats of air
+GAMMA = 1.401
+SEA_LEVEL_PRESSURE_ISA = 101325     # Pa
+SEA_LEVEL_DENSITY_ISA = 1.225       # Kg / ( m * s^2 )
+MULTIPLIER = ((2 * GAMMA) / (GAMMA - 1) *
+              (float(SEA_LEVEL_PRESSURE_ISA) / SEA_LEVEL_DENSITY_ISA))
+EXPONENT = ( GAMMA - 1 ) / GAMMA
+
 
 # ----------------------------------------------------------------------
 # --- CAN Message Numbers                                            ---
@@ -74,12 +92,18 @@ can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
 # --- i2c - Analog to Digital ADS1115 reading pressure transducer           ---
 # -----------------------------------------------------------------------------
 
-ads = ADS.ADS1115(i2c)
-ads.gain = 2/3
-#ads.mode = ADS.Mode.CONTINUOUS
-ads.mode = ADS.Mode.SINGLE
-chan = AnalogIn(ads, ADS.P0)
-chanVin = AnalogIn(ads, ADS.P1)
+# ads = ADS.ADS1115(i2c)
+# ads.gain = 2/3
+# #ads.mode = ADS.Mode.CONTINUOUS
+# ads.mode = ADS.Mode.SINGLE
+# chan = AnalogIn(ads, ADS.P0)
+# chanVin = AnalogIn(ads, ADS.P1)
+
+# -----------------------------------------------------------------------------
+# --- Create instance of Differential Pressure Transducer                   ---
+# -----------------------------------------------------------------------------
+
+my_ads = NPXPressureSensor(i2c)   
 
 
 # q is process noise, r is measurement uncertainty
@@ -119,7 +143,7 @@ qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 #try:
 
 # -----------------------------------------------------------------------------
-# --- Read the initial pressure from the transducer                         ---
+# --- Read the initial static pressure from the transducer                  ---
 # -----------------------------------------------------------------------------
 my_hsc.read_transducer()
 
@@ -137,6 +161,21 @@ vsi_altitude = float(145442.0 * (
 vsi = vsi_filter.filter(0)
 
 temperature = my_hsc.temperature
+
+# -----------------------------------------------------------------------------
+# --- Read the initial differential pressure from the transducer            ---
+# -----------------------------------------------------------------------------
+
+differential_pressure = my_ads.pressure
+
+print(EXPONENT)
+print(abs(differential_pressure)/SEA_LEVEL_PRESSURE_ISA - 1)
+print(pow(((abs(differential_pressure)/SEA_LEVEL_PRESSURE_ISA) + 1),EXPONENT))
+
+
+speed_meters_per_second = math.sqrt(MULTIPLIER * (
+    pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
+                      EXPONENT) - 1))
 
 # --- Set the previous values to 0 to trigger future operations         ---
 previous_static_pressure = 0
@@ -170,7 +209,7 @@ while True:
     # -------------------------------------------------------------------------
 
     if current_time_millis - last_Time_Millis > 50:
-        # read the pressure transducer
+        # read the pressure transducers
         my_hsc.read_transducer()
         
         previous_static_pressure = static_pressure
@@ -178,6 +217,11 @@ while True:
         static_pressure = pressure_filter.filter(static_pressure)
         
         last_Time_Millis = current_time_millis
+        
+        previous_differential_pressure = differential_pressure
+        differential_pressure = my_ads.pressure
+        #TODO: Add filter here
+        
         
         # ---------------------------------------------------------------------
         # --- Check if we chould calculate the VSI                          ---
@@ -210,9 +254,28 @@ while True:
         my_hsc.read_transducer()
         temperature = my_hsc.temperature
 
+        speed_meters_per_second = math.sqrt(MULTIPLIER * (
+            pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
+                      EXPONENT) - 1))
+
         if DEBUG_ADS:
-            print(chan.value, chan.voltage, chanVin.value, chanVin.voltage)
+            print(int(speed_meters_per_second*19.43844)/10,
+                  int(2*math.sqrt(2*abs(differential_pressure)/SEA_LEVEL_DENSITY_ISA)))
+            #print(my_adsint().voltage_and_count())
+            # print(my_ads.read_pressure_channel_voltage(), 
+            #       my_ads.read_pressure_channel_count(),
+            #       my_ads.count)
+            # print(chan.value, chan.voltage, chanVin.value, chanVin.voltage)
             
+    #my_ads.read_pressure_channel_and_sum()
+    
+    # -------------------------------------------------------------------------
+    # --- Calculate Air Speed                                               ---
+    # -------------------------------------------------------------------------
+    
+    #if (previous_differential_pressure != differential_pressure):
+        # calculate airspeed if pressure has changed
+        
     
     # ---------------------------------------------------------------------
     # --- Check for a QNH message on the CAN bus                        ---
