@@ -45,9 +45,9 @@ MULTIPLIER = ((2 * GAMMA) / (GAMMA - 1) *
 EXPONENT = ( GAMMA - 1 ) / GAMMA
 
 
-# ----------------------------------------------------------------------
-# --- CAN Message Numbers                                            ---
-# ----------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# --- CAN Message Numbers                                                   ---
+# -----------------------------------------------------------------------------
 
 CAN_Air_Msg_id = 0x028
 CAN_Raw_Msg_id = 0x02B
@@ -61,9 +61,9 @@ CAN_Air_Timestamp = 0
 CAN_RAW_Timestamp = 0
 CAN_QNH_Timestamp = 0
 
-# --------------------------------------------------------------------
-# --- Setup communication buses for various peripherals            ---
-# --------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# --- Setup communication buses for various peripherals                     ---
+# -----------------------------------------------------------------------------
 
 # i2c - Honeywell Static Pressure Transducer
 
@@ -86,18 +86,8 @@ if hasattr(board, 'BOOST_ENABLE'):
 can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
                 baudrate=250_000, auto_restart=True)
 
-# ----------------------------------------------------------------------
-
-# -----------------------------------------------------------------------------
-# --- i2c - Analog to Digital ADS1115 reading pressure transducer           ---
 # -----------------------------------------------------------------------------
 
-# ads = ADS.ADS1115(i2c)
-# ads.gain = 2/3
-# #ads.mode = ADS.Mode.CONTINUOUS
-# ads.mode = ADS.Mode.SINGLE
-# chan = AnalogIn(ads, ADS.P0)
-# chanVin = AnalogIn(ads, ADS.P1)
 
 # -----------------------------------------------------------------------------
 # --- Create instance of Differential Pressure Transducer                   ---
@@ -105,9 +95,11 @@ can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
 
 my_ads = NPXPressureSensor(i2c)   
 
+# -----------------------------------------------------------------------------
+#
 
 # q is process noise, r is measurement uncertainty
-#pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325)
+# pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325)
 pressure_filter = KalmanFilter(q = .1, r = 100, x = 101325)
 vsi_filter = KalmanFilter(q=10, r = 1000, x = 0)
 
