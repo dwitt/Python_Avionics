@@ -24,7 +24,7 @@ class NPXPressureSensor:
         
         # --- setup the A to D                                              ---
         self._ads.gain = 2/3
-        # TODO: consider switching to CONTINUOUS as this should provide faster results
+        # Use SINGLE mode to get good initial samples
         self._ads.mode = ADS.Mode.SINGLE   
         self._voltage_measured_channel = AnalogIn(self._ads, ADS.P0)
         self._voltage_supply_channel = AnalogIn(self._ads, ADS.P1)
@@ -32,18 +32,23 @@ class NPXPressureSensor:
         # --- on initialization assume that the pressure is zero            ---
         # --- read the current pressure and use it to zero the sensor       ---
         # --- perform a sanity check in case things go crazy                ---
+       
+    
+        while (True):   
+            vo_count = self._voltage_measured_channel.value
+            vs_count = self._voltage_supply_channel.value
         
-        vo_count = self._voltage_measured_channel.value
-        vs_count = self._voltage_supply_channel.value
-        
-        if (vo_count < 3242):
+            if (vo_count < 3242):
             # --- voltage is low enough to accept it as representing zero   ---
             # --- diferential pressure
             # --- use count for 0.378 volts + 5% Vfss or .230 volts
             # --- equals 0.608 volts
             # --- Actual could be higher if Vs is greater than 5.0 volts
             # TODO: Caclulate an assumed speed later just to know what it is---
-            self._zero_pressure = _M * (vo_count / vs_count) + _B
+                self._zero_pressure = _M * (vo_count / vs_count) + _B
+                break
+            else:
+                print("Count is",vo_count)
 
         self._ads.mode = ADS.Mode.CONTINUOUS
 

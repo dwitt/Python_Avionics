@@ -22,7 +22,8 @@ import math
 
 # Constants
 DEBUG = False
-DEBUG_ADS = True
+DEBUG_ADS = False
+
 
 
 OUTPUT_MIN = 1638
@@ -43,7 +44,7 @@ SEA_LEVEL_DENSITY_ISA = 1.225       # Kg / ( m * s^2 )
 MULTIPLIER = ((2 * GAMMA) / (GAMMA - 1) *
               (float(SEA_LEVEL_PRESSURE_ISA) / SEA_LEVEL_DENSITY_ISA))
 EXPONENT = ( GAMMA - 1 ) / GAMMA
-
+CONVERT_MPS_TO_KNOTS = 1.943844
 
 # -----------------------------------------------------------------------------
 # --- CAN Message Numbers                                                   ---
@@ -65,12 +66,12 @@ CAN_QNH_Timestamp = 0
 # --- Setup communication buses for various peripherals                     ---
 # -----------------------------------------------------------------------------
 
-# i2c - Honeywell Static Pressure Transducer
+# i2c - Honeywell Static Pressure Transducer ----------------------------------
 
 i2c = board.I2C()
 #i2c = busio.I2C(board.SCL, board.SDA)
 
-# ----------------------------------------------------------------------
+# CAN module (built in) -------------------------------------------------------
 if hasattr(board, 'CAN_STANDBY'):
     standby = digitalio.DigitalInOut(board.CAN_STANDBY)
     standby.switch_to_output(False)
@@ -86,22 +87,22 @@ if hasattr(board, 'BOOST_ENABLE'):
 can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
                 baudrate=250_000, auto_restart=True)
 
-# -----------------------------------------------------------------------------
-
-
-# -----------------------------------------------------------------------------
-# --- Create instance of Differential Pressure Transducer                   ---
-# -----------------------------------------------------------------------------
+# i2C - NPX Pressure Sensor via I2C ADS1115 -----------------------------------
 
 my_ads = NPXPressureSensor(i2c)   
 
 # -----------------------------------------------------------------------------
-#
+# --- Setup Filters                                                         ---
+# -----------------------------------------------------------------------------
 
 # q is process noise, r is measurement uncertainty
-# pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325)
-pressure_filter = KalmanFilter(q = .1, r = 100, x = 101325)
+
+# pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325) - Original
+# pressure_filter is for static pressure
+
+static_pressure_filter = KalmanFilter(q = .1, r = 100, x = 101325)
 vsi_filter = KalmanFilter(q=10, r = 1000, x = 0)
+differential_pressure_filter = KalmanFilter(q = 10, r = 500, x = 0)
 
 my_hsc = HoneywellHSC(i2c, 0x28)
 
@@ -118,9 +119,9 @@ last_vsi_time_millis = last_Time_Millis
 qnh_match = canio.Match(id=CAN_QNH_Msg_id)
 qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Wait here until we can lock the i2C to allow us to scan it
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 
 # while not i2c.try_lock():
@@ -140,7 +141,7 @@ qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 my_hsc.read_transducer()
 
 static_pressure = my_hsc.pressure
-static_pressure = pressure_filter.filter(static_pressure)
+static_pressure = static_pressure_filter.filter(static_pressure)
 
 altitude = int(145442.0 * (
     pow(float(qnh / 2992), 0.1902632)
@@ -159,20 +160,29 @@ temperature = my_hsc.temperature
 # -----------------------------------------------------------------------------
 
 differential_pressure = my_ads.pressure
+differential_pressure = differential_pressure_filter.filter(
+    differential_pressure)
 
-print(EXPONENT)
-print(abs(differential_pressure)/SEA_LEVEL_PRESSURE_ISA - 1)
-print(pow(((abs(differential_pressure)/SEA_LEVEL_PRESSURE_ISA) + 1),EXPONENT))
+if (DEBUG_ADS):
+    print(EXPONENT)
+    print(abs(differential_pressure)/SEA_LEVEL_PRESSURE_ISA - 1)
+    print(pow(((abs(differential_pressure)/SEA_LEVEL_PRESSURE_ISA) + 1),
+              EXPONENT))
 
 
-speed_meters_per_second = math.sqrt(MULTIPLIER * (
+airspeed = CONVERT_MPS_TO_KNOTS * math.sqrt(MULTIPLIER * (
     pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
-                      EXPONENT) - 1))
+    EXPONENT) - 1))
 
-# --- Set the previous values to 0 to trigger future operations         ---
+# -----------------------------------------------------------------------------
+# --- Set the previous values to 0 to trigger future operations which check ---
+# --- if there was any change in the values                                 ---
+# -----------------------------------------------------------------------------
+
 previous_static_pressure = 0
 previous_altitude = 0
 previous_vsi_altitude = vsi_altitude
+previous_differential_pressure = 0
 
 # ----------------------------------------------------------------------
 # --- Main Loop                                                      ---
@@ -197,7 +207,7 @@ while True:
     current_time_millis = int(time.monotonic_ns() / 1000000)
 
     # -------------------------------------------------------------------------
-    # --- Read the pressure transducer after every 50 ms                    ---
+    # --- Read the pressure transducers after every 50 ms                   ---
     # -------------------------------------------------------------------------
 
     if current_time_millis - last_Time_Millis > 50:
@@ -206,16 +216,17 @@ while True:
         
         previous_static_pressure = static_pressure
         static_pressure = my_hsc.pressure
-        static_pressure = pressure_filter.filter(static_pressure)
+        static_pressure = static_pressure_filter.filter(static_pressure)
         
         last_Time_Millis = current_time_millis
         
         previous_differential_pressure = differential_pressure
         differential_pressure = my_ads.pressure
-        #TODO: Add filter here
+        differential_pressure = differential_pressure_filter.filter(
+            differential_pressure)
         
         
-        # ---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         # --- Check if we chould calculate the VSI                          ---
         # --- Only check for this when we read the pressure so that we have ---
         # --- the most current data                                         ---
@@ -232,8 +243,11 @@ while True:
             vsi = (( vsi_altitude - previous_vsi_altitude ) / 
                 (current_time_millis - last_vsi_time_millis) * 1000.0 * 60.0 )
             vsi = vsi_filter.filter(vsi)
+            
             if DEBUG:
-                print(vsi_altitude, previous_vsi_altitude, current_time_millis, last_vsi_time_millis, vsi)
+                print(vsi_altitude, previous_vsi_altitude, current_time_millis,
+                      last_vsi_time_millis, vsi)
+            
             # save the current data for the next calculation
 
             last_vsi_time_millis = current_time_millis
@@ -243,35 +257,30 @@ while True:
         # --- Read the transducer temperature for transmission over CAN bus ---
         # ---------------------------------------------------------------------
 
-        my_hsc.read_transducer()
+        #my_hsc.read_transducer()
         temperature = my_hsc.temperature
 
-        speed_meters_per_second = math.sqrt(MULTIPLIER * (
-            pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
-                      EXPONENT) - 1))
 
-        if DEBUG_ADS:
-            print(int(speed_meters_per_second*19.43844)/10,
-                  int(2*math.sqrt(2*abs(differential_pressure)/SEA_LEVEL_DENSITY_ISA)))
-            #print(my_adsint().voltage_and_count())
-            # print(my_ads.read_pressure_channel_voltage(), 
-            #       my_ads.read_pressure_channel_count(),
-            #       my_ads.count)
-            # print(chan.value, chan.voltage, chanVin.value, chanVin.voltage)
-            
-    #my_ads.read_pressure_channel_and_sum()
+
     
     # -------------------------------------------------------------------------
-    # --- Calculate Air Speed                                               ---
+    # --- Calculate Air Speed if we have a new differential pressure        ---
     # -------------------------------------------------------------------------
     
-    #if (previous_differential_pressure != differential_pressure):
+    if (previous_differential_pressure != differential_pressure):
         # calculate airspeed if pressure has changed
-        
+        airspeed= CONVERT_MPS_TO_KNOTS * math.sqrt(MULTIPLIER * (
+            pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
+            EXPONENT) - 1))
+
     
-    # ---------------------------------------------------------------------
-    # --- Check for a QNH message on the CAN bus                        ---
-    # ---------------------------------------------------------------------
+    if DEBUG_ADS:
+        print(airspeed,
+            int(2*math.sqrt(2*abs(differential_pressure)/SEA_LEVEL_DENSITY_ISA)))
+    
+    # -------------------------------------------------------------------------
+    # --- Check for a QNH message on the CAN bus                            ---
+    # -------------------------------------------------------------------------
     
     if (qnh_listener.in_waiting()):
         message = qnh_listener.receive()
@@ -291,7 +300,7 @@ while True:
             qnh = qnhx4 / 4.0
 
     # ---------------------------------------------------------------------
-    # --- Calculate the altitued only if the pressure or QNH            ---
+    # --- Calculate the altitue only if the pressure or QNH             ---
     # --- changed                                                       ---
     # ---------------------------------------------------------------------
 
@@ -313,7 +322,7 @@ while True:
         random.randint(0,50)):
         
         Air_data = struct.pack("<hBBBhB",
-                                0,
+                                int(airspeed),
                                 int(altitude) & 0x0ff,
                                 (int(altitude) >> 8) & 0xff,
                                 (int(altitude) >> 16) & 0xff,
