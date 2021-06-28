@@ -135,6 +135,7 @@ function DisplayUpdateLoop(delta) {
     qnhDisplay.value = dataObject.qnh;
     altimeter_ribbon.value = dataObject._altitude;
     vsiDisplay.value = dataObject.vsi;
+    testAirspeedDisplay.value = dataObject.airspeed;
 
 
 }
@@ -527,13 +528,17 @@ function ASDisplay(app){
     this.ASRectangle.endFill();
 
     app.stage.addChild(this.ASRectangle);
-    app.stage.addChild(this.ASText)
+    app.stage.addChild(this.ASText);
+
+    this.testfunction = function TestFunction() {
+    
+    }
 }
 
 Object.defineProperties(ASDisplay.prototype,{
     value: {
         set: function(new_value) {
-            this.ASText.text = this.ASFormat.format(Math.floor(new_value)/100);
+            this.ASText.text = this.ASFormat.format(new_value);
         }
     }
 })
