@@ -113,6 +113,9 @@ class WebSocketResponseHandler:
         return ws
 
 # -----------------------------------------------------------------------------
+# --- Asyncronous process to get a message from the CAN bus buffer and      ---
+# --- process it.                                                           ---
+# -----------------------------------------------------------------------------
 
 async def process_can_messages(reader, data):
     while True:
@@ -129,7 +132,7 @@ async def process_can_messages(reader, data):
             (data.airspeed, null2, null3, null4, data.vsi, null7) = (
                 struct.unpack("<hBBBhB", msg.data))
             
-            print(data.vsi)
+            print(data.vsi, data.airspeed)
             
         elif (msg.arbitration_id == 0x2E):
             (qnh_hpa, qnhx4, null3, null4, null5, null6) = (

@@ -88,7 +88,8 @@ document.fonts.ready.then(function() {
 });
 
 // ****************************************************************************
-// --- End of Script - We should be event based from this point onward      ---
+// ****************************************************************************
+// --- END OF SCRIPT - We should be event based from this point onward      ---
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
@@ -115,6 +116,7 @@ function setup() {
     altitudeWheel = new AltitudeWheel(app, 750, 240);
     qnhDisplay = new QNHDisplay(app);
     vsiDisplay = new VSIDisplay(app);
+    testAirspeedDisplay = new ASDisplay(app);
 
     //app.stage.addChild(qnhDisplay.QNHText);
     //app.stage.addChild(qnhDisplay.QNHRectangle);
@@ -483,6 +485,55 @@ Object.defineProperties(QNHDisplay.prototype,{
     value: {
         set: function(new_value) {
             this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100);
+        }
+    }
+})
+
+// ----------------------------------------------------------------------------
+// --- TEMP AirSpeed display                                                ---
+// ----------------------------------------------------------------------------
+
+// Constructor
+
+function ASDisplay(app){
+
+    this.screen_width = app.screen.width;
+    this.screen_height = app.screen.height;
+
+    // Create a style to be used for the AS characters
+    this.style = new PIXI.TextStyle({
+        fontFamily: 'Tahoma',
+        fontSize: '20px',
+        fill: "white",
+        fontWeight: "normal"
+    });
+
+    this.ASFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
+    text = this.ASFormat.format(29.92);
+
+    //TODO: Move Position of box
+    this.ASText = new PIXI.Text(text, this.style);
+    this.ASText.anchor.set(0,1);
+    this.ASText.position.set(0 + 4,this.screen_height - 4);
+
+    this.display_box_width = 60;
+    this.display_box_height = 26;
+
+    this.ASRectangle = new PIXI.Graphics();
+    this.ASRectangle.beginFill(0x000000); 
+    this.ASRectangle.lineStyle(2,0xFFFFFF);
+    //TODO: move positoin of box
+    this.ASRectangle.drawRect(1,this.screen_height-(this.display_box_height+2),this.display_box_width,this.display_box_height);
+    this.ASRectangle.endFill();
+
+    app.stage.addChild(this.ASRectangle);
+    app.stage.addChild(this.ASText)
+}
+
+Object.defineProperties(ASDisplay.prototype,{
+    value: {
+        set: function(new_value) {
+            this.ASText.text = this.ASFormat.format(Math.floor(new_value)/100);
         }
     }
 })
