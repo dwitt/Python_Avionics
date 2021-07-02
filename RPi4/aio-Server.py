@@ -3,7 +3,7 @@ from aiohttp import web
 import aiohttp
 import json
 import can
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO
 import json
 import struct
 
@@ -80,7 +80,7 @@ class AvionicsData:
 # -----------------------------------------------------------------------------
 # --- Web Socket Response Handler class
 # --- Created so that the web socket response object can be exposed for 
-# --- later use sending data to the socket 
+# --- later use sending data to the socket javascript create object with initializer and functions
 # -----------------------------------------------------------------------------
 
 class WebSocketResponseHandler:
@@ -161,17 +161,6 @@ async def send_json(handler, data):
 
 async def main():
 
-    # enc = Encoder.Encoder(4, 17)
-    # GPIO.setup(4, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
-    # GPIO.setup(17, GPIO.IN, pull_up_down = GPIO.PUD_UP)
-
-    # last_pos = 0
-    # while True:
-    #     pos = enc.read()
-    #     if (last_pos != pos):
-    #         print(pos)
-    #         last_pos = pos
-
     avionics_data = AvionicsData()
 
     # --- Create an instance of the web socket response handler
@@ -181,7 +170,10 @@ async def main():
     # --- handler
     await create_servers(web_socket_handler.real_time_data)
     
-    # create can bus interface
+    # -------------------------------------------------------------------------
+    # --- create can bus interface
+    # -------------------------------------------------------------------------
+
     bus = can.Bus(bustype='socketcan', channel='can0', bitrate=250000)
     # create a buffered reader
     reader = can.AsyncBufferedReader()
@@ -192,6 +184,8 @@ async def main():
     # create a notifier to let us know when messages arrive
     notifier = can.Notifier(bus=bus, listeners=listeners, timeout=0.01,
         loop=loop)
+
+    # -------------------------------------------------------------------------
 
     # We should now be able to use the reader to get messages
 
