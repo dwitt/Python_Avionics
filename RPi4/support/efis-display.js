@@ -524,7 +524,7 @@ function ASDisplay(app){
     this.ASRectangle.beginFill(0x000000); 
     this.ASRectangle.lineStyle(2,0xFFFFFF);
     //TODO: move positoin of box
-    this.ASRectangle.drawRect(1,this.screen_height-(this.display_box_height+2),this.display_box_width,this.display_box_height);
+    this.ASRectangle.drawRect(1,this.screen_height-(this.display_box_height+1),this.display_box_width,this.display_box_height);
     this.ASRectangle.endFill();
 
     app.stage.addChild(this.ASRectangle);
@@ -552,26 +552,21 @@ function AltitudeWheel(app, x, y){
     this.y = y;
     this.app = app;
 
+    // Testing change font base line 33->20 and 39->28
 
-    tensWheel = new NumericWheel("Tahoma", "28px", 33, 30, 1 ,false, 20, true, this.x, y);
-    //this.app.stage.addChild(tensWheel.digit_container);
-    width1 = tensWheel.digit_width
+    tensWheel = new NumericWheel("Tahoma", "28px", 20.48, 30, 1 ,false, 20, true, this.x, this.y);
 
+    hundredsWheelX = this.x - tensWheel.digit_width;
+    hundredsWheel = new NumericWheel("Tahoma", "28px", 20.48, 30, 2, false, 1, true, hundredsWheelX, this.y);
 
-    hundredsWheel = new NumericWheel("Tahoma", "28px", 33, 30, 2, false, 1, true, this.x - width1, this.y);
-    //this.app.stage.addChild(hundredsWheel.digit_container);
-    width2 = width1 + hundredsWheel.digit_width
+    thousandsWheelX = hundredsWheelX - hundredsWheel.digit_width;
+    thousandsWheel = new NumericWheel("Tahoma", "37px", 28, 30, 3, false, 1, true, thousandsWheelX, this.y);
 
+    tenThousandsWheelX = thousandsWheelX - thousandsWheel.digit_width;
+    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 28, 30, 4, true, 1, true, tenThousandsWheelX, this.y);
 
-    thousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 3, false, 1, true, this.x - width2, this.y);
-    //this.app.stage.addChild(thousandsWheel.digit_container);
-    width3 = width2 + thousandsWheel.digit_width
-
-    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 39, 30, 4, true, 1, true, this.x - width3, this.y);
-    //this.app.stage.addChild(tenThousandsWheel.digit_container);
-    width = width3 + tenThousandsWheel.digit_width
-
-
+    width = tensWheel.digit_width + hundredsWheel.digit_width + thousandsWheel.digit_width + tenThousandsWheel.digit_width;
+    width1 = tensWheel.digit_width;
 
     AltitudeWheelOutline(app,x,y, true, width, 30/2 , width1, (30/2 + 20) );
 
@@ -614,23 +609,54 @@ Object.defineProperties( AltitudeWheel.prototype, {
     }
 })
 
-// ----------------------------------------------------------------------------
-// --- NumericWheel object                                                  ---
+
+
+/** \brief NumbericWheel object displays a rotating wheel style object similar
+ *         to an odometer.
+ * 
+ * 
+ * 
+ * 
+ * @param {*} font_name a string that contains the name of the font
+ * @param {*} font_size 
+ * @param {*} font_base_line 
+ * @param {*} digit_height 
+ * @param {*} digit_position_in_wheel 
+ * @param {*} display_negative_symbol 
+ * @param {*} window_height 
+ * @param {*} resolution_tens 
+ * @param {*} x 
+ * @param {*} y 
+ */
+// --- NumericWheel object
+// --- font_name            The name of the font to use - string            
+// --- font_size            The size of the font including units - string
+// --- digit_capital_height       The number of pixels down from from the top of
+// ---                      the digit to the baseline - integer
+// --- digit_height         The height of the digit in pixels. Generally
+// ---                      the height from the baseline to the cap height
+// ---                      - integer
+// --- digit_position_in_wheel  An integer that indicates the place value for this digit in the numeric wheel display as a power of 10.
+// --- display_negative_symbol  A boolean that if true means display the negative symbol
+// --- window_height            An integer that is the additional number of pixels to be added both above and below the digit height when displaying the digit
+// --- resolution_tens          A boolean that if true means the minimum resolution is Tens and that the ones digit is to be zero (0)
+// --- x                        An integer that is the pixel position of the left side of the digit
+// --- y                        An integer that is the pixel position of the vertical centre of the digit
+
 // ----------------------------------------------------------------------------
 // Constructor
 
-function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_position_in_wheel, display_negative_symbol, window_height, resolution_tens, x ,y){
+function NumericWheel(font_name, font_size, digit_capital_height, digit_height, digit_position_in_wheel, display_negative_symbol, window_height, resolution_tens, x ,y){
     this.digit_position_in_wheel = digit_position_in_wheel;
     this.display_negative_symbol = display_negative_symbol;
-    this.font_name = font_name;             // text 
-    this.font_size = font_size;             // pixels
+    this.font_name = font_name;             // string 
+    this.font_size = font_size;             // string
     this.digit_height = digit_height;       // pixels
     this.resolution_tens = resolution_tens; // boolean
     this.window_height = window_height;     // pixels greater than height
-    this.font_base_line = font_base_line;   // pixels down to baseline
+    this.digit_capital_height = digit_capital_height;   // pixels down to baseline
     this.x = x;                             // pixels
     this.y = y;                             // pixels
-    //this.value = 0;
 
     // Create a style to be used for the wheel characters
     this.style = new PIXI.TextStyle({
@@ -641,27 +667,39 @@ function NumericWheel(font_name, font_size, font_base_line, digit_height, digit_
     });
 
     // Calculate the font ratio (digit_height/10)
+    // This is used to move the digit up and down when scrolling
     this.font_ratio = this.digit_height / 10;
 
-    // Create sample text to measure
+    // Create sample text to measure using the typical digits to be displayed
     this.sample_message = new PIXI.Text("0123456789", this.style);
     this.sample_metrics = PIXI.TextMetrics.measureText("0123456789", this.style);
 
     // measure the text -- SOME VALUES NOT USED
-    this.lineHeight = this.sample_metrics.lineHeight;
+    //this.lineHeight = this.sample_metrics.lineHeight;
+    //console.log(this.lineHeight);
     this.leading = this.sample_metrics.leading;
     this.ascent = this.sample_metrics.fontProperties.ascent;
+    console.log(this.ascent);
     this.descent = this.sample_metrics.fontProperties.descent;
+    console.log(this.descent);
+    console.log(this.sample_metrics)
     
     // measured values being used
-    this.message_height = this.sample_metrics.height;                   // currently used
+    this.max_height = this.sample_metrics.height;                   // currently used
+    //console.log(this.max_height);
+    //console.log(this.sample_metrics.height);
+    //console.log(this.sample_metrics.fontProperties.fontSize);
     this.digit_width = Math.ceil(this.sample_message.width / 10);
     if (this.resolution_tens == true && this.digit_position_in_wheel == 1) {
         this.digit_width = this.digit_width * 2;
     }
 
     // Calculate where the center of the character is vertically
-    this.character_centre = ( this.font_base_line - ( this.digit_height / 2)) / this.message_height;
+    // as a ratio of the height of the sample message. (value between 0 and 1)
+    // This is used for the anchor command.
+    //this.character_centre = ( this.digit_capital_height - ( this.digit_height / 2)) / this.max_height;
+    console.log(this.character_centre);
+    this.character_centre = ( this.ascent - (this.digit_capital_height/2)) / (this.max_height);
 
     // Create NumericWheelDigit objects for each digit to be displayed
     for (let i=0; i < 10; i++) {
