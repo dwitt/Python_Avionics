@@ -554,16 +554,16 @@ function AltitudeWheel(app, x, y){
 
     // Testing change font base line 33->20 and 39->28
 
-    tensWheel = new NumericWheel("Tahoma", "28px", 20.48, 30, 1 ,false, 20, true, this.x, this.y);
+    tensWheel = new NumericWheel("Tahoma", 28, 20.48, 30, 1 ,false, 20, true, this.x, this.y);
 
     hundredsWheelX = this.x - tensWheel.digit_width;
-    hundredsWheel = new NumericWheel("Tahoma", "28px", 20.48, 30, 2, false, 1, true, hundredsWheelX, this.y);
+    hundredsWheel = new NumericWheel("Tahoma", 28, 20.48, 30, 2, false, 1, true, hundredsWheelX, this.y);
 
     thousandsWheelX = hundredsWheelX - hundredsWheel.digit_width;
-    thousandsWheel = new NumericWheel("Tahoma", "37px", 28, 30, 3, false, 1, true, thousandsWheelX, this.y);
+    thousandsWheel = new NumericWheel("Tahoma", 37, 28, 30, 3, false, 1, true, thousandsWheelX, this.y);
 
     tenThousandsWheelX = thousandsWheelX - thousandsWheel.digit_width;
-    tenThousandsWheel = new NumericWheel("Tahoma", "37px", 28, 30, 4, true, 1, true, tenThousandsWheelX, this.y);
+    tenThousandsWheel = new NumericWheel("Tahoma", 37, 28, 30, 4, true, 1, true, tenThousandsWheelX, this.y);
 
     width = tensWheel.digit_width + hundredsWheel.digit_width + thousandsWheel.digit_width + tenThousandsWheel.digit_width;
     width1 = tensWheel.digit_width;
@@ -620,7 +620,7 @@ Object.defineProperties( AltitudeWheel.prototype, {
  * @param {*} font_name a string that contains the name of the font
  * @param {*} font_size 
  * @param {*} font_base_line 
- * @param {*} digit_height 
+ * @param {*} digit_display_area_height 
  * @param {*} digit_position_in_wheel 
  * @param {*} display_negative_symbol 
  * @param {*} window_height 
@@ -633,7 +633,7 @@ Object.defineProperties( AltitudeWheel.prototype, {
 // --- font_size            The size of the font including units - string
 // --- digit_capital_height       The number of pixels down from from the top of
 // ---                      the digit to the baseline - integer
-// --- digit_height         The height of the digit in pixels. Generally
+// --- digit_display_area_height         The height of the digit in pixels. Generally
 // ---                      the height from the baseline to the cap height
 // ---                      - integer
 // --- digit_position_in_wheel  An integer that indicates the place value for this digit in the numeric wheel display as a power of 10.
@@ -646,12 +646,12 @@ Object.defineProperties( AltitudeWheel.prototype, {
 // ----------------------------------------------------------------------------
 // Constructor
 
-function NumericWheel(font_name, font_size, digit_capital_height, digit_height, digit_position_in_wheel, display_negative_symbol, window_height, resolution_tens, x ,y){
+function NumericWheel(font_name, font_size, digit_capital_height, digit_display_area_height, digit_position_in_wheel, display_negative_symbol, window_height, resolution_tens, x ,y){
     this.digit_position_in_wheel = digit_position_in_wheel;
     this.display_negative_symbol = display_negative_symbol;
     this.font_name = font_name;             // string 
-    this.font_size = font_size;             // string
-    this.digit_height = digit_height;       // pixels
+    this.font_size = String(font_size) + "px";             // string
+    this.digit_display_area_height = digit_display_area_height;       // pixels
     this.resolution_tens = resolution_tens; // boolean
     this.window_height = window_height;     // pixels greater than height
     this.digit_capital_height = digit_capital_height;   // pixels down to baseline
@@ -666,9 +666,9 @@ function NumericWheel(font_name, font_size, digit_capital_height, digit_height, 
         fontWeight: "bold"
     });
 
-    // Calculate the font ratio (digit_height/10)
+    // Calculate the font ratio (digit_display_area_height/10)
     // This is used to move the digit up and down when scrolling
-    this.font_ratio = this.digit_height / 10;
+    this.font_ratio = this.digit_display_area_height / 10;
 
     // Create sample text to measure using the typical digits to be displayed
     this.sample_message = new PIXI.Text("0123456789", this.style);
@@ -697,7 +697,7 @@ function NumericWheel(font_name, font_size, digit_capital_height, digit_height, 
     // Calculate where the center of the character is vertically
     // as a ratio of the height of the sample message. (value between 0 and 1)
     // This is used for the anchor command.
-    //this.character_centre = ( this.digit_capital_height - ( this.digit_height / 2)) / this.max_height;
+    //this.character_centre = ( this.digit_capital_height - ( this.digit_display_area_height / 2)) / this.max_height;
     console.log(this.character_centre);
     this.character_centre = ( this.ascent - (this.digit_capital_height/2)) / (this.max_height);
 
@@ -709,9 +709,9 @@ function NumericWheel(font_name, font_size, digit_capital_height, digit_height, 
             } else {
                 digits = String(i * 10);
             }
-            this['digit' + String(i)] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, digits);
+            this['digit' + String(i)] = new NumericWheelDigit(this.digit_display_area_height, this.font_name, this.font_size, digits);
         } else {
-            this['digit' + String(i)] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, String(i));
+            this['digit' + String(i)] = new NumericWheelDigit(this.digit_display_area_height, this.font_name, this.font_size, String(i));
         }
         // set the anchor
         this['digit' + String(i)].text.anchor.set(0, this.character_centre);
@@ -719,14 +719,14 @@ function NumericWheel(font_name, font_size, digit_capital_height, digit_height, 
     }
     // Create a blank digit
     if (this.resolution_tens && this.digit_position_in_wheel == 1) {
-        this['blank'] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, "  ");
+        this['blank'] = new NumericWheelDigit(this.digit_display_area_height, this.font_name, this.font_size, "  ");
     } else {
-        this['blank'] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, "  ");
+        this['blank'] = new NumericWheelDigit(this.digit_display_area_height, this.font_name, this.font_size, "  ");
     }
 
     // Create a negative digit
     if (this.display_negative_symbol) {
-        this['negative'] = new NumericWheelDigit(this.digit_height, this.font_name, this.font_size, "-");
+        this['negative'] = new NumericWheelDigit(this.digit_display_area_height, this.font_name, this.font_size, "-");
         this['negative'].text.anchor.set(0, this.character_centre);
     }
 
@@ -746,9 +746,9 @@ function NumericWheel(font_name, font_size, digit_capital_height, digit_height, 
     //   Position the mask with the upper left corner at x, y
     this.mask_rectangle = new PIXI.Graphics();
     this.mask_rectangle.beginFill(0xFF0000);    // Red Mask
-    //console.debug(this.digit_width, this.digit_height, this.window_height);
-    this.mask_rectangle.drawRect(x - this.digit_width, y - (this.digit_height / 2 + this.window_height) ,this.digit_width, this.digit_height + (2 * this.window_height));
-    //console.debug((this.digit_height / 2 + this.window_height));
+    //console.debug(this.digit_width, this.digit_display_area_height, this.window_height);
+    this.mask_rectangle.drawRect(x - this.digit_width, y - (this.digit_display_area_height / 2 + this.window_height) ,this.digit_width, this.digit_display_area_height + (2 * this.window_height));
+    //console.debug((this.digit_display_area_height / 2 + this.window_height));
 
 
     this.mask_rectangle.endFill();
@@ -868,17 +868,17 @@ Object.defineProperties(NumericWheel.prototype, {
                 
                 if (_digit == 0 && i == 0 && _hide_zero) {
                     // Display a blank digit by pushing the digit out of the screen???
-                    this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_height * 6 + rotation * this.font_ratio);
+                    this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_display_area_height * 6 + rotation * this.font_ratio);
                     if (this.display_negative_symbol) {
                         if (negative) {
                             this['negative'].text.position.set(0,0);
                         } else  {
-                            this['negative'].text.position.set(0,-this.digit_height * 7 + rotation * this.font_ratio)
+                            this['negative'].text.position.set(0,-this.digit_display_area_height * 7 + rotation * this.font_ratio)
                         }
                     }
                 } else {
-                    this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_height * i + rotation * this.font_ratio);
-                    //this['negative'].text.position.set(0,-this.digit_height * 7 + rotation * this.font_ratio)
+                    this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_display_area_height * i + rotation * this.font_ratio);
+                    //this['negative'].text.position.set(0,-this.digit_display_area_height * 7 + rotation * this.font_ratio)
                 }
             }
 
