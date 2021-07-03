@@ -56,7 +56,9 @@ document.body.appendChild(app.view);
 // --- objects.                                                             ---
 // ----------------------------------------------------------------------------
 
-var myWebSocket = new WebSocket("ws://localhost:8080/ws");
+//console.log(location)
+var webSocketURL = "ws://" + location.host + "/ws";
+var myWebSocket = new WebSocket(webSocketURL);
 
 // listen for the 'open' event and respond with "ready"
 myWebSocket.addEventListener('open', function(event){
@@ -112,7 +114,7 @@ function setup() {
 
     background = new BackgroundDisplay(app);            
     bank_arc = new Bank_Arc(app);
-    altimeter_ribbon = new Ribbon(app);
+    altimeter_ribbon = new Ribbon(app, 760, 240, 300, 100, true);
     altitudeWheel = new AltitudeWheel(app, 750, 240);
     qnhDisplay = new QNHDisplay(app);
     vsiDisplay = new VSIDisplay(app);
@@ -180,17 +182,21 @@ function BackgroundDisplay(app){
 
 // Constructor
 
-function Ribbon(app, height, width, right) {
+function Ribbon(app, x, y, height, width, right_side_marks) {
 
     // --- set Parameters -----------------------------------------------------
 
-    this.ribbon_height = 400;           // height in pixels
-    this.ribbon_width = 100;            // width in pixels
-    this.ribbon_position_right = true;  // position the ribbon relative to it's right edge
+    this.ribbon_height = height;           // height in pixels
+    this.ribbon_width = width;            // width in pixels
+    this.ribbon_position_right = right_side_marks;  // position the ribbon relative to it's right edge
 
-    this.ribbon_interval_power = 2;     // Scaling is not working
-    this.ribbon_interval = Math.pow(10, this.ribbon_interval_power);
+    this.ribbon_major_interval_size = 100;
+    this.ribbon_major_intervals = 4
     this.ribbon_minor_intervals = 4;
+
+    this.ribbon_interval = Math.round(this.ribbon_height / this.ribbon_major_intervals);
+    this.ribbon_minor_interval = Math.round(this.ribbon_interval / this.ribbon_minor_intervals);
+    this.ribbon_interval_ratio = this.ribbon_interval / this.ribbon_major_interval_size;
 
     // --- create a container to hold the entire ribbon including text --------
     this.ribbon_container = new Container();
@@ -198,6 +204,7 @@ function Ribbon(app, height, width, right) {
     // --- create the semi-transparent background -----------------------------
     this.ribbon_background = new Graphics();
 
+    // Setup for the ribbon to be to either right aligned or left aligned
     this.ribbon_background.beginFill(0x000000, 0.15);  // black, 25%
     if (this.ribbon_position_right) {
         ribbon_position = -1;
@@ -208,6 +215,7 @@ function Ribbon(app, height, width, right) {
     this.ribbon_background.endFill();
 
     // --- create the ruler tick marks ----------------------------------------
+    //TODO: Ruler - change tick marks to be 0 based.
     this.ruler = new Graphics()
     this.ruler.lineStyle(2,0xFFFFFF);
     if (this.ribbon_position_right) {
@@ -215,25 +223,43 @@ function Ribbon(app, height, width, right) {
     } else {
         multiplier = 1;
     }
-    for(i = -this.ribbon_interval; i <= (5 * this.ribbon_interval); i = i + this.ribbon_interval/this.ribbon_minor_intervals){
-        this.ruler.moveTo(0,i);
-        if ((i % 100) == 0) {
-            this.ruler.lineTo(multiplier * 20,i);
-        } else {
-            this.ruler.lineTo(multiplier * 10,i);
-        }
-    }
+
+    for ( i = -1 * this.ribbon_minor_intervals;
+          i <= ((this.ribbon_major_intervals + 1) * this.ribbon_minor_intervals);
+          i = i + 1){
+            //console.log(this.ribbon_minor_interval);
+            this.ruler.moveTo(0,i * this.ribbon_minor_interval );
+            //console.log(i);
+            if ((i % this.ribbon_minor_intervals) == 0) {
+                //console.log("Major");
+                this.ruler.lineTo(multiplier * 20, i * this.ribbon_minor_interval );
+            } else {
+                //console.log("Minor");
+                this.ruler.lineTo(multiplier * 10, i * this.ribbon_minor_interval );
+            }
+            
+          } 
 
     // --- create the ribbon mask ---------------------------------------------
     // Masks must be positioned absolutely
+
+    if (this.ribbon_position_right == true) {
+        mask_x = x - this.ribbon_width;
+    } else {
+        mask_X = x;
+    }
+
+    mask_y = y - (this.ribbon_height / 2);
+
     this.ribbon_mask = new Graphics();
     this.ribbon_mask.beginFill(0xFF0000);
-    this.ribbon_mask.drawRect(660,40,100,400);
+    this.ribbon_mask.drawRect(mask_x,mask_y,this.ribbon_width,this.ribbon_height);
     this.ribbon_mask.endFill();
 
     // --- set the position of the container ----------------------------------
-
-    this.ribbon_container.position.set(760, 40);
+    
+    // TODO: Ruler - change to middle vertically
+    this.ribbon_container.position.set(x, y - (this.ribbon_height / 2));
 
 
     this.ribbon_container.addChild(this.ribbon_background);
@@ -253,12 +279,14 @@ function Ribbon(app, height, width, right) {
         
     });
 
+    // TODO: Handle Left/right
     this.text_stack = [];
-    // Create 5 text objects 
-    for (i = 0; i < 5; i = i + 1) {
-        this.text_stack[i] = new Text(String(i*100), text_style);
+    // Create text objects 
+    for (i = 0; i < (this.ribbon_major_intervals + 1); i = i + 1) {
+        this.text_stack[i] = new Text(String(i*this.ribbon_major_interval_size), text_style);
         this.text_stack[i].anchor.set(1,.5);
-        this.text_stack[i].position.set(-30, 200 - i*100);
+        // TODO: I think the position is just a place holder
+        this.text_stack[i].position.set(-30, 200 - i*this.ribbon_major_interval_size);
         this.ribbon_container.addChild(this.text_stack[i]);
     }
 
@@ -279,31 +307,45 @@ Object.defineProperties(Ribbon.prototype, {
             }
 
             this._value = new_value;
-            interval = Math.pow(10, this.ribbon_interval_power);
+            //interval = Math.pow(10, this.ribbon_interval_power);
+            interval = this.ribbon_major_interval_size;
 
             // if the numbers in 100 are evenly spaced we should have
             //   no more than 5 displayed at any one time
 
             if (new_value >= 0 ) {
+                // positive altitude, round down
                 value_interval = (Math.floor(new_value / interval) * interval) ;
             } else {
+                // negative altitude, round up
                 value_interval = (Math.ceil(new_value / interval) * interval) ;
             }
             remainder = new_value % interval;
 
-            this.ruler.position.set(0, remainder);
+            //console.log(value_interval);
+            //console.log(remainder);
 
-            for (i = 0; i < 5; i = i + 1) {
+
+            // Position the tickmarks
+            this.ruler.position.set(0, remainder * this.ribbon_interval_ratio);
+
+            // Display the values on the ribbon
+
+            for (i = 0; i < (this.ribbon_major_intervals + 1); i = i + 1) {
                 // show values based on the remainder
-                // This is not fully scalable
+                //  console.log(i);
                 if (remainder < interval / 2) {
-                    // extra digits to the bottom
-                    this.text_stack[i].position.set(-30,this.ribbon_height - ((i * interval) - remainder));
-                    this.text_stack[i].text = String(i * interval + value_interval - (this.ribbon_height / 2));
+                    // extra number goes to the bottom so that it can scorll up as we get to 0
+
+
+                    this.text_stack[i].position.set(-30, (this.ribbon_height - (((i-1) * interval ) - remainder)) * this.ribbon_interval_ratio)
+
+                    this.text_stack[i].text = String(i * interval + value_interval - ((interval * this.ribbon_major_intervals) / 2));
                 } else {
-                    // extra digits to the top
-                    this.text_stack[i].position.set(-30,(this.ribbon_height - interval) - ((i * interval) - remainder));
-                    this.text_stack[i].text = String(i * interval + value_interval - (this.ribbon_height / 2 - interval));
+                    // extra number goes to the top so that it can scroll down as we get to the interval
+                    this.text_stack[i].position.set(-30,((this.ribbon_height - interval) - (((i-1) * interval) - remainder)) * this.ribbon_interval_ratio);
+
+                    this.text_stack[i].text = String(i * interval + value_interval - (interval * this.ribbon_major_intervals / 2 - interval));
                 }
                  
             }

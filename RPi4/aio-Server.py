@@ -38,7 +38,8 @@ async def create_servers(handler):
     await runner.setup()
 
     # create the site
-    site = web.TCPSite(runner, 'localhost', 8080)
+    site = web.TCPSite(runner)  # Try this so we listen on all addresses
+    #site = web.TCPSite(runner, 'localhost', 8080)
 
     # Start the Site
     await site.start()
