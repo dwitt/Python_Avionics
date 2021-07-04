@@ -1,11 +1,13 @@
+import { Ribbon1 } from './ribbon.mjs';
+'use strict';
 // ----------------------------------------------------------------------------
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
-let Application = PIXI.Application,
+var Application = PIXI.Application,
     loader = PIXI.Loader.shared,
     resources = PIXI.Loader.shared.resources,
-    TextureCache = PIXI.utils.TextureCache
+    TextureCache = PIXI.utils.TextureCache,
     Sprite = PIXI.Sprite,
     Rectangle = PIXI.Rectangle,
     Graphics = PIXI.Graphics,
@@ -48,8 +50,9 @@ document.body.appendChild(app.view);
 // ----------------------------------------------------------------------------
 
 //TODO: Not sure if this can be deleted. Need to add a pause and see what happens
-//var dataObject = new Object();
-//dataObject._altitude = 0;
+var dataObject = new Object();
+dataObject._altitude = 0;
+dataObject.airspeed = 0;
 
 // ----------------------------------------------------------------------------
 // --- Connect to the websocket to recieve the data from the can bus as     ---
@@ -85,6 +88,8 @@ tahoma_bold_font.load().then(function(loaded_face){
 // --- Wait for the document to report the fonts are loaded then call setup ---
 // ----------------------------------------------------------------------------
 
+var altitudeWheel, qnhDisplay, vsiDisplay, altimeter_ribbon, testAirspeedDisplay, airspeedWheel;
+
 document.fonts.ready.then(function() {
     setup();
 });
@@ -112,9 +117,9 @@ myWebSocket.onmessage = function (event) {
 // ----------------------------------------------------------------------------
 function setup() {
 
-    background = new BackgroundDisplay(app);            
-    bank_arc = new Bank_Arc(app);
-    altimeter_ribbon = new Ribbon(app, 760, 240, 300, 100, true);
+    var background = new BackgroundDisplay(app);            
+    var bank_arc = new Bank_Arc(app);
+    altimeter_ribbon = new Ribbon1(app, 760, 240, 300, 100, true);
     altitudeWheel = new AltitudeWheel(app, 750, 240);
     qnhDisplay = new QNHDisplay(app);
     vsiDisplay = new VSIDisplay(app);
@@ -134,6 +139,7 @@ function setup() {
 
 function DisplayUpdateLoop(delta) {
 
+    //console.log(dataObject);
     altitudeWheel.value = dataObject._altitude;
     qnhDisplay.value = dataObject.qnh;
     altimeter_ribbon.value = dataObject._altitude;
@@ -182,179 +188,179 @@ function BackgroundDisplay(app){
 
 // Constructor
 
-function Ribbon(app, x, y, height, width, right_side_marks) {
+// function Ribbon(app, x, y, height, width, right_side_marks) {
 
-    // --- set Parameters -----------------------------------------------------
+//     // --- set Parameters -----------------------------------------------------
 
-    this.ribbon_height = height;           // height in pixels
-    this.ribbon_width = width;            // width in pixels
-    this.ribbon_position_right = right_side_marks;  // position the ribbon relative to it's right edge
+//     this.ribbon_height = height;           // height in pixels
+//     this.ribbon_width = width;            // width in pixels
+//     this.ribbon_position_right = right_side_marks;  // position the ribbon relative to it's right edge
 
-    this.ribbon_major_interval_size = 100;
-    this.ribbon_major_intervals = 4
-    this.ribbon_minor_intervals = 4;
+//     this.ribbon_major_interval_size = 100;
+//     this.ribbon_major_intervals = 4
+//     this.ribbon_minor_intervals = 4;
 
-    this.ribbon_interval = Math.round(this.ribbon_height / this.ribbon_major_intervals);
-    this.ribbon_minor_interval = Math.round(this.ribbon_interval / this.ribbon_minor_intervals);
-    this.ribbon_interval_ratio = this.ribbon_interval / this.ribbon_major_interval_size;
+//     this.ribbon_interval = /*Math.round*/(this.ribbon_height / this.ribbon_major_intervals);
+//     this.ribbon_minor_interval = /*Math.round*/(this.ribbon_interval / this.ribbon_minor_intervals);
+//     this.ribbon_interval_ratio = this.ribbon_interval / this.ribbon_major_interval_size;
 
-    // --- create a container to hold the entire ribbon including text --------
-    this.ribbon_container = new Container();
+//     let ribbon_position, multiplier, mask_x, mask_y, i;
 
-    // --- create the semi-transparent background -----------------------------
-    this.ribbon_background = new Graphics();
+//     // --- create a container to hold the entire ribbon including text --------
+//     this.ribbon_container = new Container();
 
-    // Setup for the ribbon to be to either right aligned or left aligned
-    this.ribbon_background.beginFill(0x000000, 0.15);  // black, 25%
-    if (this.ribbon_position_right) {
-        ribbon_position = -1;
-    } else {
-        ribbon_position = 1;
-    }
-    this.ribbon_background.drawRect(0, 0 ,ribbon_position * this.ribbon_width, this.ribbon_height);
-    this.ribbon_background.endFill();
+//     // --- create the semi-transparent background -----------------------------
+//     this.ribbon_background = new Graphics();
 
-    // --- create the ruler tick marks ----------------------------------------
-    //TODO: Ruler - change tick marks to be 0 based.
-    this.ruler = new Graphics()
-    this.ruler.lineStyle(2,0xFFFFFF);
-    if (this.ribbon_position_right) {
-        multiplier = -1;
-    } else {
-        multiplier = 1;
-    }
+//     // Setup for the ribbon to be to either right aligned or left aligned
+//     this.ribbon_background.beginFill(0x000000, 0.15);  // black, 25%
+//     if (this.ribbon_position_right) {
+//         ribbon_position = -1;
+//     } else {
+//         ribbon_position = 1;
+//     }
+//     this.ribbon_background.drawRect(0, 0 ,ribbon_position * this.ribbon_width, this.ribbon_height);
+//     this.ribbon_background.endFill();
 
-    for ( i = -1 * this.ribbon_minor_intervals;
-          i <= ((this.ribbon_major_intervals + 1) * this.ribbon_minor_intervals);
-          i = i + 1){
-            //console.log(this.ribbon_minor_interval);
-            this.ruler.moveTo(0,i * this.ribbon_minor_interval );
-            //console.log(i);
-            if ((i % this.ribbon_minor_intervals) == 0) {
-                //console.log("Major");
-                this.ruler.lineTo(multiplier * 20, i * this.ribbon_minor_interval );
-            } else {
-                //console.log("Minor");
-                this.ruler.lineTo(multiplier * 10, i * this.ribbon_minor_interval );
-            }
-            
-          } 
+//     // --- create the ruler tick marks ----------------------------------------
+//     this.ruler = new Graphics()
+//     this.ruler.lineStyle(2,0xFFFFFF);
 
-    // --- create the ribbon mask ---------------------------------------------
-    // Masks must be positioned absolutely
-
-    if (this.ribbon_position_right == true) {
-        mask_x = x - this.ribbon_width;
-    } else {
-        mask_X = x;
-    }
-
-    mask_y = y - (this.ribbon_height / 2);
-
-    this.ribbon_mask = new Graphics();
-    this.ribbon_mask.beginFill(0xFF0000);
-    this.ribbon_mask.drawRect(mask_x,mask_y,this.ribbon_width,this.ribbon_height);
-    this.ribbon_mask.endFill();
-
-    // --- set the position of the container ----------------------------------
+//     if (this.ribbon_position_right) {
+//         multiplier = -1;
+//     } else {
+//         multiplier = 1;
+//     }
+//     // calculate total number of tick marks required allowing for a full range 
+//     // at both the top and bottom of the ruller
+//     let totalIntervals = this.ribbon_minor_intervals * (this.ribbon_major_intervals + 2);
     
-    // TODO: Ruler - change to middle vertically
-    this.ribbon_container.position.set(x, y - (this.ribbon_height / 2));
+//     // assume that the number of major intervals is evenly divisble by two
+//     if (this.ribbon_major_intervals % 2 != 0 ) {
+//         throw new Error("The number of major intervals must be divisible by two.");
+//     }
 
+//     let halfIntervals = totalIntervals / 2;
 
-    this.ribbon_container.addChild(this.ribbon_background);
-    this.ribbon_container.addChild(this.ruler);
+//     for (i = -halfIntervals; i < halfIntervals; i = i + 1){
+//         this.ruler.moveTo(0, i * this.ribbon_minor_interval);
+//         if ((i % this.ribbon_minor_intervals) == 0) {
+//             this.ruler.lineTo(multiplier * 20, i * this.ribbon_minor_interval );
+//         } else {
+//             this.ruler.lineTo(multiplier * 10, i * this.ribbon_minor_interval );
+//         }
+//     }
 
-    this.ribbon_container.mask = this.ribbon_mask;
+//     // --- create the ribbon mask ---------------------------------------------
+//     // Masks must be positioned absolutely
 
-    app.stage.addChild(this.ribbon_container);
+//     if (this.ribbon_position_right == true) {
+//         mask_x = x - this.ribbon_width;
+//     } else {
+//         mask_x = x;
+//     }
 
-    // --- create the text elements for the ribbon ----------------------------
+//     mask_y = y - (this.ribbon_height / 2);
 
-    text_style = new PIXI.TextStyle({
-        fontFamily: "Tahoma",
-        fontSize: 22,
-        fill: "white",
-        fontWeight: "normal"
+//     this.ribbon_mask = new Graphics();
+//     this.ribbon_mask.beginFill(0xFF0000);
+//     this.ribbon_mask.drawRect(mask_x,mask_y,this.ribbon_width,this.ribbon_height);
+//     this.ribbon_mask.endFill();
+
+//     // --- set the position of the container ----------------------------------
+//     // --- ruler container has 0 at the y value provided
+//     this.ribbon_container.position.set(x, y);
+
+//     this.ribbon_container.addChild(this.ribbon_background);
+//     this.ribbon_container.addChild(this.ruler);
+
+//     this.ribbon_container.mask = this.ribbon_mask;
+
+//     app.stage.addChild(this.ribbon_container);
+
+//     // --- create the text elements for the ribbon ----------------------------
+
+//     let text_style = new PIXI.TextStyle({
+//         fontFamily: "Tahoma",
+//         fontSize: 22,
+//         fill: "white",
+//         fontWeight: "normal"
         
-    });
+//     });
 
-    // TODO: Handle Left/right
-    this.text_stack = [];
-    // Create text objects 
-    for (i = 0; i < (this.ribbon_major_intervals + 1); i = i + 1) {
-        this.text_stack[i] = new Text(String(i*this.ribbon_major_interval_size), text_style);
-        this.text_stack[i].anchor.set(1,.5);
-        // TODO: I think the position is just a place holder
-        this.text_stack[i].position.set(-30, 200 - i*this.ribbon_major_interval_size);
-        this.ribbon_container.addChild(this.text_stack[i]);
-    }
+//     // TODO: Handle Left/right
+//     // create an array to hold the Text objects for the ribbon
+//     this.text_stack = [];
 
+//     let halfMajorIntervals = this.ribbon_major_intervals / 2;
 
-    this._value = 0;
-    this.value = 0;
+//     // Create text objects 
+//     for (i = 0; i < (this.ribbon_major_intervals + 1); i = i + 1) {
+//         this.text_stack[i] = new Text(String(i*this.ribbon_major_interval_size), text_style);
+//         this.text_stack[i].anchor.set(1,.5);
+//         // This is a temporary place holder for position
+//         this.text_stack[i].position.set(-30, (i - halfMajorIntervals) * this.ribbon_major_interval_size);
+//         this.ribbon_container.addChild(this.text_stack[i]);
+//     }
+    
+//     this._value = 0;
+//     this.value = 0;
 
-}
+// }
 
-// Value setter for Altimeter_Ribbon Object
+// // Value setter for Altimeter_Ribbon Object
 
-Object.defineProperties(Ribbon.prototype, {
-    value: { 
-        set: function(new_value) {
+// Object.defineProperties(Ribbon.prototype, {
+//     value: { 
+//         set: function(new_value) {
+//             var value_interval, remainder, i;
 
-            if (new_value == this._value) {
-                return;
-            }
+//             if (new_value == this._value) {
+//                 return;
+//             }
 
-            this._value = new_value;
-            //interval = Math.pow(10, this.ribbon_interval_power);
-            interval = this.ribbon_major_interval_size;
+//             this._value = new_value;
+//             let interval = this.ribbon_major_interval_size;
 
-            // if the numbers in 100 are evenly spaced we should have
-            //   no more than 5 displayed at any one time
+//             // if the numbers in 100 are evenly spaced we should have
+//             //   no more than 5 displayed at any one time
 
-            if (new_value >= 0 ) {
-                // positive altitude, round down
-                value_interval = (Math.floor(new_value / interval) * interval) ;
-            } else {
-                // negative altitude, round up
-                value_interval = (Math.ceil(new_value / interval) * interval) ;
-            }
-            remainder = new_value % interval;
+//             if (new_value >= 0 ) {
+//                 // positive altitude, round down
+//                 value_interval = (Math.floor(new_value / interval) * interval) ;
+//             } else {
+//                 // negative altitude, round up
+//                 value_interval = (Math.ceil(new_value / interval) * interval) ;
+//             }
+//             remainder = new_value % interval;
 
-            //console.log(value_interval);
-            //console.log(remainder);
+//             // Position the tickmarks
+//             this.ruler.position.set(0, remainder * this.ribbon_interval_ratio);
 
+//             // Display the values on the ribbon
+//             let halfMajorIntervals = this.ribbon_major_intervals / 2;
 
-            // Position the tickmarks
-            this.ruler.position.set(0, remainder * this.ribbon_interval_ratio);
-
-            // Display the values on the ribbon
-
-            for (i = 0; i < (this.ribbon_major_intervals + 1); i = i + 1) {
-                // show values based on the remainder
-                //  console.log(i);
-                if (remainder < interval / 2) {
-                    // extra number goes to the bottom so that it can scorll up as we get to 0
-
-
-                    this.text_stack[i].position.set(-30, (this.ribbon_height - (((i-1) * interval ) - remainder)) * this.ribbon_interval_ratio)
-
-                    this.text_stack[i].text = String(i * interval + value_interval - ((interval * this.ribbon_major_intervals) / 2));
-                } else {
-                    // extra number goes to the top so that it can scroll down as we get to the interval
-                    this.text_stack[i].position.set(-30,((this.ribbon_height - interval) - (((i-1) * interval) - remainder)) * this.ribbon_interval_ratio);
-
-                    this.text_stack[i].text = String(i * interval + value_interval - (interval * this.ribbon_major_intervals / 2 - interval));
-                }
+//             for (i = 0; i < (this.ribbon_major_intervals + 1); i = i + 1) {
+//                 // show values based on the remainder
+//                 if (remainder < interval / 2) {
+//                     let j = (i - halfMajorIntervals) ;
+//                     // extra number goes to the bottom so that it can scroll up as we get to 0
+//                     this.text_stack[i].position.set(-30, (-j * interval + remainder) * this.ribbon_interval_ratio);
+//                     this.text_stack[i].text = String(j * interval + value_interval);
+//                 } else {
+//                     let j = i - halfMajorIntervals+1;
+//                     // extra number goes to the top so that it can scroll down as we get to the interval
+//                     this.text_stack[i].position.set(-30, (-j * interval + remainder) * this.ribbon_interval_ratio);
+//                     this.text_stack[i].text = String(j * interval + value_interval );
+//                 }
                  
-            }
+//             }
 
 
 
-        }
-    }
-})
+//         }
+//     }
+// })
 
 // ----------------------------------------------------------------------------
 // --- Bank Angle Arc                                                       ---
@@ -382,6 +388,8 @@ function Bank_Arc(app) {
 
     // Create the container to hold the arc
     this.arc_container = new Container();
+
+    let x, y, angle, unit_x, unit_y, x1, y1;
 
     // Create the arc
     this.arc = new Graphics();
@@ -460,7 +468,7 @@ function VSIDisplay(app){
     });
 
     this.VSIFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 0});
-    text = this.VSIFormat.format(0);
+    let text = this.VSIFormat.format(0);
 
     this.VSIText = new PIXI.Text(text, this.style);
     this.VSIText.anchor.set(1,0);
@@ -507,7 +515,7 @@ function QNHDisplay(app){
     });
 
     this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
-    text = this.QNHFormat.format(29.92);
+    let text = this.QNHFormat.format(29.92);
 
     this.QNHText = new PIXI.Text(text, this.style);
     this.QNHText.anchor.set(1,0);
@@ -554,7 +562,7 @@ function ASDisplay(app){
     });
 
     this.ASFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
-    text = this.ASFormat.format(29.92);
+    let text = this.ASFormat.format(29.92);
 
     //TODO: Move Position of box
     this.ASText = new PIXI.Text(text, this.style);
@@ -599,30 +607,31 @@ function AirspeedWheel(app, x ,y){
 
     // Create wheel elements for the digits in the airspeed
 
-    airspeedHundredsWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 2, false, 1, false, false, x, y);
+    this.airspeedHundredsWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 2, false, 1, false, false, x, y);
 
-    airspeedTensWheelX = x + airspeedHundredsWheel.digit_width;
-    airspeedTensWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 1, false, 1, false, false, airspeedTensWheelX, y);
+    let airspeedTensWheelX = x + this.airspeedHundredsWheel.digit_width;
+    
+    this.airspeedTensWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 1, false, 1, false, false, airspeedTensWheelX, y);
 
-    airspeedOnesWheelX = airspeedTensWheelX + airspeedTensWheel.digit_width;
-    airspeedOnesWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 0, false, 1, false, false, airspeedOnesWheelX, y);
+    let airspeedOnesWheelX = airspeedTensWheelX + this.airspeedTensWheel.digit_width;
+    this.airspeedOnesWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 0, false, 1, false, false, airspeedOnesWheelX, y);
 
-    airspeedWidth = airspeedOnesWheel.digit_width + airspeedTensWheel.digit_width + airspeedHundredsWheel.digit_width;
+    let airspeedWidth = this.airspeedOnesWheel.digit_width + this.airspeedTensWheel.digit_width + this.airspeedHundredsWheel.digit_width;
 
     airspeedWheelOutline(app, x ,y , airspeedWidth, 15);
 
-    app.stage.addChild(airspeedOnesWheel.digit_container);
-    app.stage.addChild(airspeedTensWheel.digit_container);
-    app.stage.addChild(airspeedHundredsWheel.digit_container);
+    app.stage.addChild(this.airspeedOnesWheel.digit_container);
+    app.stage.addChild(this.airspeedTensWheel.digit_container);
+    app.stage.addChild(this.airspeedHundredsWheel.digit_container);
 
 }
 
 Object.defineProperties( AirspeedWheel.prototype, {
     value: { 
         set: function(value) {
-            airspeedOnesWheel.value = value;
-            airspeedTensWheel.value = value;
-            airspeedHundredsWheel.value = value;
+            this.airspeedOnesWheel.value = value;
+            this.airspeedTensWheel.value = value;
+            this.airspeedHundredsWheel.value = value;
         }
     }
 })
@@ -657,26 +666,27 @@ function AltitudeWheel(app, x, y){
     this.y = y;
     this.app = app;
 
-    tensWheel = new NumericWheel("Tahoma", 28, 1489/2048, 30, 1 ,false, 20, true, true, this.x, this.y);
+    //console.log("construct alt tens");
+    this.tensWheel = new NumericWheel("Tahoma", 28, 1489/2048, 30, 1 ,false, 20, true, true, this.x, this.y);
 
-    hundredsWheelX = this.x - tensWheel.digit_width;
-    hundredsWheel = new NumericWheel("Tahoma", 28, 1489/2048, 30, 2, false, 1, true, true, hundredsWheelX, this.y);
+    let hundredsWheelX = this.x - this.tensWheel.digit_width;
+    this.hundredsWheel = new NumericWheel("Tahoma", 28, 1489/2048, 30, 2, false, 1, true, true, hundredsWheelX, this.y);
 
-    thousandsWheelX = hundredsWheelX - hundredsWheel.digit_width;
-    thousandsWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 3, false, 1, true, true, thousandsWheelX, this.y);
+    let thousandsWheelX = hundredsWheelX - this.hundredsWheel.digit_width;
+    this.thousandsWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 3, false, 1, true, true, thousandsWheelX, this.y);
 
-    tenThousandsWheelX = thousandsWheelX - thousandsWheel.digit_width;
-    tenThousandsWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 4, true, 1, true, true, tenThousandsWheelX, this.y);
+    let tenThousandsWheelX = thousandsWheelX - this.thousandsWheel.digit_width;
+    this.tenThousandsWheel = new NumericWheel("Tahoma", 37, 1489/2048, 30, 4, true, 1, true, true, tenThousandsWheelX, this.y);
 
-    width = tensWheel.digit_width + hundredsWheel.digit_width + thousandsWheel.digit_width + tenThousandsWheel.digit_width;
-    width1 = tensWheel.digit_width;
+    let width = this.tensWheel.digit_width + this.hundredsWheel.digit_width + this.thousandsWheel.digit_width + this.tenThousandsWheel.digit_width;
+    let width1 = this.tensWheel.digit_width;
 
     AltitudeWheelOutline(app,x,y, true, width, 30/2 , width1, (30/2 + 20) );
 
-    this.app.stage.addChild(tensWheel.digit_container);
-    this.app.stage.addChild(hundredsWheel.digit_container);
-    this.app.stage.addChild(thousandsWheel.digit_container);
-    this.app.stage.addChild(tenThousandsWheel.digit_container);
+    this.app.stage.addChild(this.tensWheel.digit_container);
+    this.app.stage.addChild(this.hundredsWheel.digit_container);
+    this.app.stage.addChild(this.thousandsWheel.digit_container);
+    this.app.stage.addChild(this.tenThousandsWheel.digit_container);
 }
 
 function AltitudeWheelOutline(app,x,y,right,width,height,left_width,left_height){
@@ -709,10 +719,14 @@ function AltitudeWheelOutline(app,x,y,right,width,height,left_width,left_height)
 Object.defineProperties( AltitudeWheel.prototype, {
     value: { 
         set: function(value) {
-            tensWheel.value = value;
-            hundredsWheel.value = value;
-            thousandsWheel.value = value;
-            tenThousandsWheel.value = value;
+            //console.log("alt tens");
+            this.tensWheel.value = value;
+            //console.log("alt hundreds");
+            this.hundredsWheel.value = value;
+            //console.log("alt thousands");
+            this.thousandsWheel.value = value;
+            //console.log("alt tenthousands");
+            this.tenThousandsWheel.value = value;
         }
     }
 })
@@ -748,6 +762,8 @@ function NumericWheel(font_name, font_size, capital_height_ratio, digit_display_
     this.digit_capital_height = capital_height_ratio * font_size;   // pixels down to baseline
     this.x = x;                             // pixels
     this.y = y;                             // pixels
+
+    let digits;
 
     // Create a style to be used for the wheel characters
     this.style = new PIXI.TextStyle({
@@ -832,12 +848,13 @@ function NumericWheel(font_name, font_size, capital_height_ratio, digit_display_
     this.mask_rectangle = new PIXI.Graphics();
     this.mask_rectangle.beginFill(0xFF0000);    // Red Mask
 
+    let mask_rectangle_x;
     if (align_right) {
         mask_rectangle_x = x - this.digit_width;
     } else {
         mask_rectangle_x = x;
     }
-    mask_rectangle_y = y - (this.digit_display_area_height / 2 + this.window_height);
+    let mask_rectangle_y = y - (this.digit_display_area_height / 2 + this.window_height);
 
     this.mask_rectangle.drawRect(mask_rectangle_x, mask_rectangle_y,
         this.digit_width, this.digit_display_area_height + (2 * this.window_height));
@@ -848,6 +865,7 @@ function NumericWheel(font_name, font_size, capital_height_ratio, digit_display_
     // Position the container in the parent
     this.digit_container.position.set(x,y);
     
+    let i;
     for (i = 0; i <= 9; i++) {
         this.digit_container.addChild(this['digit' + String(i)].text);
     }
@@ -859,12 +877,15 @@ function NumericWheel(font_name, font_size, capital_height_ratio, digit_display_
     
     this.digit_container.mask = this.mask_rectangle;
 
+    //console.log("constructor");
     this.value = 0;
 }
 
 Object.defineProperties(NumericWheel.prototype, {
     value: {
         set: function(value) {
+            let negative;
+
             if (value < 0 ) {
                 value = Math.abs(value);
                 negative = true
@@ -872,6 +893,7 @@ Object.defineProperties(NumericWheel.prototype, {
                 negative = false
             }
 
+            //console.log("value = " + value);
 
             //console.debug(value);
             // Calculate the smallest base 10 number that is represented when
@@ -949,9 +971,11 @@ Object.defineProperties(NumericWheel.prototype, {
 
             // Display the wheel
 
-            let wheel_digit = [];
+            var wheel_digit = [];
+            var i;
             for (i = 0; i <= 9 ; i++) {
-                wheel_digit[i] = (_digit + (i + 6)) % 10 
+                wheel_digit[i] = (_digit + (i + 6)) % 10; 
+                //console.log(wheel_digit[i]);
             }
 
             
@@ -968,6 +992,10 @@ Object.defineProperties(NumericWheel.prototype, {
                         }
                     }
                 } else {
+                    //console.log(i);
+                    //console.log(i+4);
+                    //console.log(wheel_digit[i+4]);
+                    //console.log(String(wheel_digit[i+4]));
                     this['digit' + String(wheel_digit[i+4])].text.position.set(0,-this.digit_display_area_height * i + rotation * this.font_ratio);
                     //this['negative'].text.position.set(0,-this.digit_display_area_height * 7 + rotation * this.font_ratio)
                 }
