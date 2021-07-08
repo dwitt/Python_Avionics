@@ -53,7 +53,7 @@ class NPXPressureSensor:
                 _pressure = _M * (vo_count / vs_count) + _B
                 _pressure_total = _pressure_total + _pressure
                 _sample_counter = _sample_counter + 1
-                if (_sample_counter > 9):
+                if (_sample_counter > 19):
                     self._zero_pressure = _pressure_total / _sample_counter
                     break
             else:
