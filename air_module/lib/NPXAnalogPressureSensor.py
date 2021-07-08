@@ -34,8 +34,8 @@ class NPXPressureSensor:
         # --- perform a sanity check in case things go crazy                ---
        
         
-        sample_counter = 0
-        pressure_total = 0
+        _sample_counter = 0
+        _pressure_total = 0
         while (True): 
             
             # --- TODO: Add loop here to get 10 readings and average them   ---
@@ -50,10 +50,11 @@ class NPXPressureSensor:
             # --- equals 0.608 volts
             # --- Actual could be higher if Vs is greater than 5.0 volts
             # TODO: Caclulate an assumed speed later just to know what it is---
-                pressure = _M * (vo_count / vs_count) + _B
-                pressure_total = pressure_total + pressure
-                sample_counter = sample_counter + 1
-                if (sample_counter > 9):
+                _pressure = _M * (vo_count / vs_count) + _B
+                _pressure_total = _pressure_total + _pressure
+                _sample_counter = _sample_counter + 1
+                if (_sample_counter > 9):
+                    self._zero_pressure = _pressure_total / _sample_counter
                     break
             else:
                 print("Count is",vo_count)
