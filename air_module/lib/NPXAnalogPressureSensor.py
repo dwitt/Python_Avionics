@@ -1,5 +1,6 @@
 import board
 import busio
+import time
 
 import adafruit_ADS1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
@@ -33,7 +34,7 @@ class NPXPressureSensor:
         # --- read the current pressure and use it to zero the sensor       ---
         # --- perform a sanity check in case things go crazy                ---
        
-        
+        time.sleep(2.0)
         _sample_counter = 0
         _pressure_total = 0
         while (True): 
@@ -53,7 +54,7 @@ class NPXPressureSensor:
                 _pressure = _M * (vo_count / vs_count) + _B
                 _pressure_total = _pressure_total + _pressure
                 _sample_counter = _sample_counter + 1
-                if (_sample_counter > 19):
+                if (_sample_counter > 99):
                     self._zero_pressure = _pressure_total / _sample_counter
                     break
             else:
