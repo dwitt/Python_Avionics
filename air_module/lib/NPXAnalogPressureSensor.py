@@ -33,8 +33,13 @@ class NPXPressureSensor:
         # --- read the current pressure and use it to zero the sensor       ---
         # --- perform a sanity check in case things go crazy                ---
        
-    
-        while (True):   
+        
+        sample_counter = 0
+        pressure_total = 0
+        while (True): 
+            
+            # --- TODO: Add loop here to get 10 readings and average them   ---
+              
             vo_count = self._voltage_measured_channel.value
             vs_count = self._voltage_supply_channel.value
         
@@ -45,12 +50,15 @@ class NPXPressureSensor:
             # --- equals 0.608 volts
             # --- Actual could be higher if Vs is greater than 5.0 volts
             # TODO: Caclulate an assumed speed later just to know what it is---
-                self._zero_pressure = _M * (vo_count / vs_count) + _B
-                break
+                pressure = _M * (vo_count / vs_count) + _B
+                pressure_total = pressure_total + pressure
+                sample_counter = sample_counter + 1
+                if (sample_counter > 9):
+                    break
             else:
                 print("Count is",vo_count)
 
-        self._ads.mode = ADS.Mode.CONTINUOUS
+        #self._ads.mode = ADS.Mode.CONTINUOUS
 
 
         # --- read the supply voltage. needed for the pressure conversion

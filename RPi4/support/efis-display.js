@@ -1,4 +1,6 @@
-import { Ribbon1 } from './ribbon.mjs';
+import { Ribbon } from './ribbon.mjs';
+import { AirspeedRibbon } from './airspeedRibbon.mjs';
+
 'use strict';
 // ----------------------------------------------------------------------------
 // Aliases - Allows for changes in PIXI.JS
@@ -88,7 +90,13 @@ tahoma_bold_font.load().then(function(loaded_face){
 // --- Wait for the document to report the fonts are loaded then call setup ---
 // ----------------------------------------------------------------------------
 
-var altitudeWheel, qnhDisplay, vsiDisplay, altimeter_ribbon, testAirspeedDisplay, airspeedWheel;
+var altitudeWheel, 
+    qnhDisplay, 
+    vsiDisplay, 
+    altimeter_ribbon, 
+    testAirspeedDisplay, 
+    airspeedWheel,
+    airspeedRibbon;
 
 document.fonts.ready.then(function() {
     setup();
@@ -119,15 +127,15 @@ function setup() {
 
     var background = new BackgroundDisplay(app);            
     var bank_arc = new Bank_Arc(app);
-    altimeter_ribbon = new Ribbon1(app, 760, 240, 300, 100, true);
+    altimeter_ribbon = new Ribbon(app, 760, 240, 400, 100, true);
     altitudeWheel = new AltitudeWheel(app, 750, 240);
     qnhDisplay = new QNHDisplay(app);
     vsiDisplay = new VSIDisplay(app);
     testAirspeedDisplay = new ASDisplay(app);
+ 
+    airspeedRibbon = new AirspeedRibbon(app, 40, 240, 400, 100, false, 10, 8, 2);
     airspeedWheel = new AirspeedWheel(app, 50, 240);
 
-    //app.stage.addChild(qnhDisplay.QNHText);
-    //app.stage.addChild(qnhDisplay.QNHRectangle);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -146,6 +154,7 @@ function DisplayUpdateLoop(delta) {
     vsiDisplay.value = dataObject.vsi;
     testAirspeedDisplay.value = dataObject.airspeed;
     airspeedWheel.value = dataObject.airspeed;
+    airspeedRibbon.value = dataObject.airspeed;
 
 
 }
