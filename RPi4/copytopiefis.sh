@@ -16,4 +16,5 @@ rsync aio-Server.py pi@"$destination_server":"$piefis_main_dir"aio-Server.py
 rsync support/efis-display.js pi@"$destination_server":"$piefis_support_dir"efis-display.js
 rsync support/ribbon.mjs pi@"$destination_server":"$piefis_support_dir"ribbon.mjs
 rsync support/airspeedRibbon.mjs pi@"$destination_server":"$piefis_support_dir"airspeedRibbon.mjs
+rsync support/vsi-indicator.mjs pi@"$destination_server":"$piefis_support_dir"vsi-indicator.mjs
 echo 'Done'

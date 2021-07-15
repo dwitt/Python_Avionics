@@ -1,5 +1,6 @@
 import { Ribbon } from './ribbon.mjs';
 import { AirspeedRibbon } from './airspeedRibbon.mjs';
+import { VsiIndicator } from './vsi-indicator.mjs';
 
 'use strict';
 // ----------------------------------------------------------------------------
@@ -96,7 +97,8 @@ var altitudeWheel,
     altimeter_ribbon, 
     testAirspeedDisplay, 
     airspeedWheel,
-    airspeedRibbon;
+    airspeedRibbon,
+    vsiIndicator;
 
 document.fonts.ready.then(function() {
     setup();
@@ -136,6 +138,7 @@ function setup() {
     airspeedRibbon = new AirspeedRibbon(app, 40, 240, 400, 100, false, 10, 8, 2);
     airspeedWheel = new AirspeedWheel(app, 50, 240);
 
+    vsiIndicator = new VsiIndicator(app, 765, 240, 400, 40);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -175,7 +178,7 @@ function BackgroundDisplay(app){
 
     // Create the sky rectangle
     this.sky_rectangle = new Graphics();
-    this.sky_rectangle.beginFill(0x000088);
+    this.sky_rectangle.beginFill(0x0000C0);
     this.sky_rectangle.drawRect(0,0,799,239);
     this.sky_rectangle.endFill();
 
