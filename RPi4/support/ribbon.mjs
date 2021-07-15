@@ -20,7 +20,8 @@ var Application = PIXI.Application,
 export class Ribbon {
 
     constructor(app, x, y, height, width, rightSideMarks,
-        majorIntervalSize = 100, majorIntervals = 4, minorIntervals = 4) {
+        majorIntervalSize = 100, majorIntervals = 4, minorIntervals = 4,
+        colour_bar1, colour_bar2 ) {
 
         // --- set Parameters -----------------------------------------------------
 
@@ -36,9 +37,12 @@ export class Ribbon {
         this.ribbon_minor_interval = this.ribbon_interval / this.ribbon_minor_intervals ;
         this.ribbon_interval_ratio = this.ribbon_interval / this.ribbon_major_interval_size;
 
+        this.colour_bar1 = colour_bar1;
+        this.colour_bar2 = colour_bar2;
+
         let mask_x, mask_y, i;
 
-        // --- create a container to hold the entire ribbon including text --------
+        // --- create a Container to hold the entire ribbon including text --------
         this.ribbon_container = new Container();
 
         // Setup for the ribbon to be to either right aligned or left aligned
@@ -48,13 +52,15 @@ export class Ribbon {
             this.ribbonSideRight = 1;
         }
 
-        // --- create the semi-transparent background -----------------------------
+        // BACKGROUND
+        // --- create the semi-transparent background as a new GRAPHICS -------
         this.ribbon_background = new Graphics();
-        this.ribbon_background.beginFill(0x000000, 0.15);  // black, 25%
-        this.ribbon_background.drawRect(0, 0 ,this.ribbonSideRight * this.ribbonWidth, this.ribbonHeight);
+        this.ribbon_background.beginFill(0x000000, 0.25);  // black, 25%
+        this.ribbon_background.drawRect(0, -this.ribbonHeight/2 ,this.ribbonSideRight * this.ribbonWidth, this.ribbonHeight);
         this.ribbon_background.endFill();
 
-        // --- create the ruler tick marks ----------------------------------------
+        // TICK MARKS
+        // --- create the ruler tick marks as a new GRAPHICS-------------------
         this.ruler = new Graphics()
         this.ruler.lineStyle(2,0xFFFFFF);
 
@@ -68,7 +74,7 @@ export class Ribbon {
         }
 
         let halfIntervals = totalIntervals / 2;
-
+        //console.log(this.ribbonSideRight)
         for (i = -halfIntervals; i < halfIntervals; i = i + 1){
             this.ruler.moveTo(0, i * this.ribbon_minor_interval);
             if ((i % this.ribbon_minor_intervals) == 0) {
@@ -78,7 +84,8 @@ export class Ribbon {
             }
         }
 
-        // --- create the ribbon mask ---------------------------------------------
+        // MASK
+        // --- create the ribbon mask as a new GRAPHICS------------------------
         // Masks must be positioned absolutely
 
         if (this.ribbonPositionRight == true) {
@@ -87,25 +94,36 @@ export class Ribbon {
             mask_x = x;
         }
 
-        mask_y = y - (this.ribbonHeight / 2);
+        mask_y = y - (this.ribbonHeight/2 );
 
         this.ribbon_mask = new Graphics();
         this.ribbon_mask.beginFill(0xFF0000);
         this.ribbon_mask.drawRect(mask_x,mask_y,this.ribbonWidth,this.ribbonHeight);
         this.ribbon_mask.endFill();
 
+ 
+
+        // Position container and add Children and Mask
         // --- set the position of the container ----------------------------------
-        // --- ruler container has 0 at the y value provided
+        // --- ruler container has 0 at the x,y value provided
+
         this.ribbon_container.position.set(x, y);
 
         this.ribbon_container.addChild(this.ribbon_background);
+        if (this.colour_bar1 !== undefined) {
+            this.ribbon_container.addChild(this.colour_bar1.graphics);
+        }
+        if (this.colour_bar2 !== undefined) {
+            this.ribbon_container.addChild(this.colour_bar2.graphics);
+        }
         this.ribbon_container.addChild(this.ruler);
 
         this.ribbon_container.mask = this.ribbon_mask;
-
+        //console.log(this.ribbon_container);
         app.stage.addChild(this.ribbon_container);
 
-        // --- create the text elements for the ribbon ----------------------------
+        // --- create the text elements for the ribbon as TEXT-----------------
+        // --- and add them to container
 
         let text_style = new PIXI.TextStyle({
             fontFamily: "Tahoma",
@@ -135,12 +153,10 @@ export class Ribbon {
         
         this._value = 0;
         this.value = 0;
-
     }
 
+
 // Value setter for Altimeter_Ribbon Object
-
-
     set value(new_value) { 
         var value_interval, remainder, i;
         // Only update the display if the value changed
@@ -185,6 +201,67 @@ export class Ribbon {
                 
         }
 
+        // Position the colour bar
+        if (this.colour_bar1 !== undefined) {
+            this.colour_bar1.value = new_value;
+        }
+        if (this.colour_bar2 !== undefined) {
+            this.colour_bar2.value = new_value;
+        }
+
 
     }
+
+}
+
+/**
+ * 
+ * @param colours 
+ * @param width 
+ * @param y_max 
+ * @param scale 
+ * @param right_aligned 
+ */
+
+export class Colour_Bar {
+    constructor(colours = [], x_pos = 0, width = 5, y_max = 300, scale = 1, right_aligned = false) {
+        this.colours = colours;
+        this.x_pos = x_pos;
+        //console.log(this.x);
+        this.bar_y_max = y_max;
+        this.bar_scale = scale;
+        if (right_aligned == true) {
+            this.bar_width = width * -1;
+        } else {
+            this.bar_width = width;
+        }
+        console.log(this.bar_scale);
+
+        
+
+        // Create a new graphics object to hold the colour bar
+        this.graphics = new Graphics();
+        
+        this.matrix = new PIXI.Matrix(1,0,0,-1 * this.bar_scale,0,0);
+        this.graphics.setMatrix(this.matrix);
+        
+        let i;
+        let length = colours.length;
+
+        for (i = 0; i < length; i++ ){
+            this.graphics.beginFill(colours[i].colour);
+            if (i+1 < length) {
+                this.graphics.drawRect(0, colours[i].position, this.bar_width, colours[i+1].position - colours[i].position);
+            } else {
+                this.graphics.drawRect(0, colours[i].position, this.bar_width, this.bar_y_max - colours[i].position); 
+            }
+        }
+
+    }
+
+    set value(new_value){
+
+        this.graphics.position.set(this.x_pos,new_value * this.bar_scale);
+    }
+
 }
