@@ -235,7 +235,7 @@ export class Colour_Bar {
         } else {
             this.bar_width = width;
         }
-        console.log(this.bar_scale);
+        //console.log(this.bar_scale);
 
         
 
