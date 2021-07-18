@@ -55,12 +55,14 @@ export class VsiIndicator {
         var fillColour = 0x000000;
         var fillAlpha = 0.25;
         var outlineWidth = 1;
-        var outlineAlpha = 0.75;
+        var outlineAlpha = 0.25;
 
         this.vsiBackground.beginFill(fillColour, fillAlpha);
-        this.vsiBackground.lineStyle(outlineWidth, fillColour, outlineAlpha);
+        this.vsiBackground.lineStyle(outlineWidth, fillColour, outlineAlpha, 0);
         
         this.vsiBackground.drawRect(0, -height/2, width, height);
+        console.log(height);
+        this.vsiBackground.endFill
 
         // add the Background to the container
         this.container.addChild(this.vsiBackground);
@@ -83,8 +85,8 @@ export class VsiIndicator {
         this.vsiTickMarks.lineStyle(majorLineWidth,lineColour);
         this.tickMarkOffsetFromLeft = 10;
         this.tickMarkLength = 7.5;
-        this.tickMarkLargeOffsetFromLeft = 5;
-        this.tickMarkLargeLength = 15;
+        this.tickMarkLargeOffsetFromLeft = 10;
+        this.tickMarkLargeLength = 10;
 
         var tickMarkAreaHeight = height/2 - verticalCharacterSpace/2;
 
