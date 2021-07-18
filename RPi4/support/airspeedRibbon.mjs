@@ -16,8 +16,9 @@ var Application = PIXI.Application,
     Text = PIXI.Text;
 
 export class AirspeedRibbon extends Ribbon {
-    constructor(app, x, y, height, width, rightSideMarks,
-        majorIntervalSize = 100, majorIntervals = 4, minorIntervals = 4) {
+    constructor(app, x, y, height, width, rightSideMarks, 
+        majorIntervalSize = 100, majorIntervals = 4, minorIntervals = 4,
+        allowNegative) {
         
         let scale = (height / majorIntervals) / majorIntervalSize ;
 
@@ -48,7 +49,8 @@ export class AirspeedRibbon extends Ribbon {
         // 
 
         super(app, x, y, height, width, rightSideMarks,
-        majorIntervalSize, majorIntervals, minorIntervals, flaps_bar, speeds_bar);
+        majorIntervalSize, majorIntervals, minorIntervals, allowNegative, 
+        flaps_bar, speeds_bar);
         
         
             

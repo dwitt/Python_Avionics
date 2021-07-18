@@ -20,14 +20,14 @@ var Application = PIXI.Application,
 export class Ribbon {
 
     constructor(app, x, y, height, width, rightSideMarks,
-        majorIntervalSize = 100, majorIntervals = 4, minorIntervals = 4,
-        colour_bar1, colour_bar2 ) {
+        majorIntervalSize = 100, majorIntervals = 4, minorIntervals = 4, 
+        allowNegative, colour_bar1, colour_bar2 ) {
 
         // --- set Parameters -----------------------------------------------------
 
         this.ribbonHeight = height;                        // height in pixels
         this.ribbonWidth = width;                          // width in pixels
-        this.ribbonPositionRight = rightSideMarks;      // position the ribbon relative to it's right edge
+        this.isRightAligned = rightSideMarks;               // position the ribbon relative to it's right edge
 
         this.ribbon_major_interval_size = majorIntervalSize;
         this.ribbon_major_intervals = majorIntervals;
@@ -36,6 +36,8 @@ export class Ribbon {
         this.ribbon_interval = this.ribbonHeight / this.ribbon_major_intervals;
         this.ribbon_minor_interval = this.ribbon_interval / this.ribbon_minor_intervals ;
         this.ribbon_interval_ratio = this.ribbon_interval / this.ribbon_major_interval_size;
+
+        this.allowNegative = allowNegative;
 
         this.colour_bar1 = colour_bar1;
         this.colour_bar2 = colour_bar2;
@@ -46,7 +48,7 @@ export class Ribbon {
         this.ribbon_container = new Container();
 
         // Setup for the ribbon to be to either right aligned or left aligned
-        if (this.ribbonPositionRight) {
+        if (this.isRightAligned) {
             this.ribbonSideRight = -1;
         } else {
             this.ribbonSideRight = 1;
@@ -55,27 +57,53 @@ export class Ribbon {
         // BACKGROUND
         // --- create the semi-transparent background as a new GRAPHICS -------
         this.ribbon_background = new Graphics();
-        this.ribbon_background.beginFill(0x000000, 0.25);  // black, 25%
-        this.ribbon_background.drawRect(0, -this.ribbonHeight/2 ,this.ribbonSideRight * this.ribbonWidth, this.ribbonHeight);
+
+        let backgroundColour = 0x000000;
+        let backgroundAlpha = 0.25;
+        let backgroundOutlineWidth = 1;
+        let backgroundOutlineAlpha = .25;
+
+
+        this.ribbon_background.lineStyle(backgroundOutlineWidth,backgroundColour,backgroundOutlineAlpha,0);
+        this.ribbon_background.beginFill(backgroundColour, backgroundAlpha);
+        if (this.isRightAligned) {
+            this.ribbon_background.drawRect(-width,-height/2, width, height);
+        } else {
+            this.ribbon_background.drawRect(0, -height/2, width, height);
+        }
+
+        console.log(height);
+        
         this.ribbon_background.endFill();
+
+
+
 
         // TICK MARKS
         // --- create the ruler tick marks as a new GRAPHICS-------------------
         this.ruler = new Graphics()
-        this.ruler.lineStyle(2,0xFFFFFF);
+
+        let rulerLineWidth = 2;
+        let rulerColour = 0xffffff;
+
+        this.ruler.lineStyle(rulerLineWidth, rulerColour);
 
         // calculate total number of tick marks required allowing for an 
         // additional major division at both the top and bottom of the ruler
+
         let totalIntervals = this.ribbon_minor_intervals * (this.ribbon_major_intervals + 2);
         
+        this.rulerZeroIntervalOffset = totalIntervals/2 * this.ribbon_minor_interval;
+        this.rulerZeroOffset = this.rulerZeroIntervalOffset / this.ribbon_interval_ratio;
+
         // check that the number of major intervals is evenly divisble by two
         if (this.ribbon_major_intervals % 2 != 0 ) {
             throw new Error("The number of major intervals must be divisible by two.");
         }
 
         let halfIntervals = totalIntervals / 2;
-        //console.log(this.ribbonSideRight)
-        for (i = -halfIntervals; i < halfIntervals; i = i + 1){
+
+        for (i = -halfIntervals; i <= halfIntervals; i = i + 1){
             this.ruler.moveTo(0, i * this.ribbon_minor_interval);
             if ((i % this.ribbon_minor_intervals) == 0) {
                 this.ruler.lineTo(this.ribbonSideRight * 20, i * this.ribbon_minor_interval );
@@ -84,11 +112,16 @@ export class Ribbon {
             }
         }
 
+        // Draw vertical ruler line.
+        //let rulerHeight = totalIntervals * this.ribbon_minor_interval;
+        //this.ruler.moveTo(this.ribbonSideRight,rulerHeight);
+        //this.ruler.lineTo(this.ribbonSideRight,-rulerHeight/2);
+
         // MASK
         // --- create the ribbon mask as a new GRAPHICS------------------------
         // Masks must be positioned absolutely
 
-        if (this.ribbonPositionRight == true) {
+        if (this.isRightAligned == true) {
             mask_x = x - this.ribbonWidth;
         } else {
             mask_x = x;
@@ -141,7 +174,7 @@ export class Ribbon {
         // Create text objects 
         for (i = 0; i < (this.ribbon_major_intervals + 1); i = i + 1) {
             this.text_stack[i] = new Text(String(i*this.ribbon_major_interval_size), text_style);
-            if (this.ribbonPositionRight) {
+            if (this.isRightAligned) {
                 this.text_stack[i].anchor.set(1,.5);
             } else {
                 this.text_stack[i].anchor.set(0,.5);
@@ -159,6 +192,7 @@ export class Ribbon {
 // Value setter for Altimeter_Ribbon Object
     set value(new_value) { 
         var value_interval, remainder, i;
+
         // Only update the display if the value changed
         if (new_value == this._value) {
             return;
@@ -180,7 +214,22 @@ export class Ribbon {
         remainder = new_value % interval;
 
         // Position the tickmarks
-        this.ruler.position.set(0, remainder * this.ribbon_interval_ratio);
+        /**
+         * The ruler needs to be positioned at the bottom until it fills the 
+         * display then we can begin just postioning it to based on the 
+         * remainder
+         */
+
+        if (this.allowNegative == false ) {
+            if (new_value < this.rulerZeroOffset) {
+                console.log(this.rulerZeroOffset);
+
+                this.ruler.position.set(0,(-this.rulerZeroOffset + new_value) * this.ribbon_interval_ratio);
+            }
+        } else {
+
+            this.ruler.position.set(0, remainder * this.ribbon_interval_ratio);
+        }
 
         // Display the values on the ribbon
         let halfMajorIntervals = this.ribbon_major_intervals / 2;
@@ -191,12 +240,27 @@ export class Ribbon {
                 let j = (i - halfMajorIntervals) ;
                 // extra number goes to the bottom so that it can scroll up as we get to 0
                 this.text_stack[i].position.set(this.ribbonSideRight * 30, (-j * interval + remainder) * this.ribbon_interval_ratio);
-                this.text_stack[i].text = String(j * interval + value_interval);
+                let ribbonText;
+                let ribbonNumber = j * interval + value_interval;
+                if (ribbonNumber < 0 && this.allowNegative == false) {
+                    ribbonText = "";
+                } else {
+                    ribbonText = String(ribbonNumber);
+                }
+                this.text_stack[i].text = ribbonText;
             } else {
                 let j = i - halfMajorIntervals+1;
                 // extra number goes to the top so that it can scroll down as we get to the interval
                 this.text_stack[i].position.set(this.ribbonSideRight * 30, (-j * interval + remainder) * this.ribbon_interval_ratio);
-                this.text_stack[i].text = String(j * interval + value_interval );
+                
+                let ribbonText;
+                let ribbonNumber = j * interval + value_interval;
+                if (ribbonNumber < 0 && this.allowNegative == false) {
+                    ribbonText = "";
+                } else {
+                    ribbonText = String(ribbonNumber);
+                }
+                this.text_stack[i].text = ribbonText;
             }
                 
         }

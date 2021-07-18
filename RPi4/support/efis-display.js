@@ -129,14 +129,14 @@ function setup() {
 
     var background = new BackgroundDisplay(app);            
     var bank_arc = new Bank_Arc(app);
-    altimeter_ribbon = new Ribbon(app, 765, 240, 400, 100, true);
+    altimeter_ribbon = new Ribbon(app, 765, 240, 400, 100, true, 100, 4, 4, true);
     altitudeWheel = new AltitudeWheel(app, 755, 240);
     qnhDisplay = new QNHDisplay(app);
     vsiDisplay = new VSIDisplay(app);
     testAirspeedDisplay = new ASDisplay(app);
  
-    airspeedRibbon = new AirspeedRibbon(app, 45, 240, 400, 100, false, 10, 8, 2);
-    airspeedWheel = new AirspeedWheel(app, 55, 240);
+    airspeedRibbon = new AirspeedRibbon(app, 35, 240, 400, 100, false, 10, 8, 2, false);
+    airspeedWheel = new AirspeedWheel(app, 45, 240);
 
     vsiIndicator = new VsiIndicator(app, 765, 240, 400, 35);
 
@@ -177,13 +177,20 @@ function BackgroundDisplay(app){
 
     this.background_container = new Container();
 
+    let lineWidth = .5;
+    let lineColour = 0xffffff;
+
+
     // Create the sky rectangle
     this.sky_rectangle = new Graphics();
+    this.sky_rectangle.lineStyle(lineWidth, lineColour);
     this.sky_rectangle.beginFill(0x0000C0);
     this.sky_rectangle.drawRect(0,0,799,239);
     this.sky_rectangle.endFill();
 
+
     this.ground_rectangle = new Graphics();
+    this.ground_rectangle.lineStyle(lineWidth,lineColour);
     this.ground_rectangle.beginFill(0x884400);
     this.ground_rectangle.drawRect(0,240,799,479);
     this.ground_rectangle.endFill();
@@ -429,12 +436,13 @@ Object.defineProperties(ASDisplay.prototype,{
     }
 })
 
-/**
+/** ---------------------------------------------------------------------------
  * @brief AirspeedWheel Constructor function.
  * 
  * @param app The application in which to display the AirspeedWheel
  * @param x   The x location for the left side of the AirspeedWheel 
  * @param y   The y location for the centre of the AirSpeedWheel
+ * ----------------------------------------------------------------------------
  */
 
 function AirspeedWheel(app, x ,y){
