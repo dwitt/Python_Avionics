@@ -16,10 +16,14 @@ Implementation Notes
 
 """
 import time
+import random
+import struct
+
 import board
 import busio
 import canio
 import digitalio
+
 
 import math
 
@@ -31,7 +35,10 @@ from adafruit_bno08x import (
     BNO_REPORT_ROTATION_VECTOR,
 )
 
-from quaternion import euler_from_quaternion
+from quaternion import (
+    euler_from_quaternion,
+    radians_to_degrees,
+)
 
 from micropython import const # type: ignore
 
@@ -40,15 +47,18 @@ DEBUG = const(True)
 
 # --- CAN Message Constants ---
 
-CAN_Euler_Msg_id = const(0x48)
-CAN_Acc_Msg_id = const(0x49)
+CAN_EULER_MSG_ID = const(0x48)
+CAN_ACC_MSG_ID = const(0x49)
 CAN_Calib_Msg_id = const(0x23)
 
-CAN_Euler_Period = const(100)
-CAN_Acc_Period = const(100)
+CAN_EULER_PERIOD = const(100)
+CAN_ACC_PERIOD = const(100)
 
-CAN_Euler_Timestamp = 0
-CAN_Acc_TimeStamp = 0
+can_euler_timestamp = 0
+can_acc_timestamp = 0
+
+# --- conversion constants
+radians_to_degrees = 180 / math.pi
 
 # --- Setup Communication buses for various peripherals
 
@@ -79,11 +89,76 @@ bno.enable_feature(BNO_REPORT_GYROSCOPE)
 bno.enable_feature(BNO_REPORT_MAGNETOMETER)
 bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
+# initialize data
+roll = 0
+pitch = 0
+yaw = 0
+turn_rate = 0
+accel_x = 0
+accel_y = 0
+accel_z = 0
+
 # --- Create a CAN bus message mask for the Calibration message
 # --- and create a listener
 
 calib_match = canio.Match(id=CAN_Calib_Msg_id)
 calib_listener = can.listen(matches=[calib_match], timeout = 0.01)
+
+last_time_millis = int(time.monotonic_ns() / 1000000)
+
+# -----------------------------------------------------------------------------
+# --- Main Loop                                                             ---
+# -----------------------------------------------------------------------------
+# --- Tasks                                                                 ---
+# --- 1. read the rotation vector quaternion                                ---
+# --- 2. convert the rotation vector from quaternion to euler               ---
+# --- 3. read the acceleration                                              ---
+# --- 4. calculate the slip                                                 ---
+# --- 5. calculate the turn rate                                            ---
+# --- 6. transmit CAN data periodiclly                                      ---
+# -----------------------------------------------------------------------------
+
+
+while True:
+    current_time_millis = int(time.monotonic_ns() / 1000000)
+    # sample data every 50ms
+    if (current_time_millis - last_time_millis > 50):
+        quat_i, quat_j, quat_k, quat_real = bno.quaternion
+        accel_x, accel_y, accel_z = bno.acceleration
+        gyro_x, gyro_y, gyro_z = bno.gyro
+        roll, pitch, yaw = radians_to_degrees(euler_from_quaternion(
+            quat_real, quat_i, quat_j, quat_k
+            ))
+        
+        turn_rate = gyro_z * radians_to_degrees # degress/second
+        
+    # -------------------------------------------------------------------------
+    # --- send CAN data                                                     ---
+    # -------------------------------------------------------------------------
+    
+    # send euler angles and turn rate
+    if (current_time_millis > can_euler_timestamp + CAN_EULER_PERIOD +
+        random.randint(0,50)):
+        euler_data = struct.pack("<hhhh", # little endian
+                                 int(yaw),
+                                 int(pitch),
+                                 int(roll),
+                                 int(turn_rate))
+        message = canio.Message(CAN_EULER_MSG_ID, euler_data)
+        can.send(message)
+        can_euler_timestamp = current_time_millis
+    
+    # send accelerations and calibration information
+    if (current_time_millis > can_acc_timestamp + CAN_ACC_PERIOD + 
+        random.randint(0, 50)):
+        acc_data = struct.pack("<hhhh", 
+                               int(accel_x * 100),
+                               int(accel_y * 100),
+                               int(accel_z * 100),
+                               )
+        
+
+
 
 
 while True:

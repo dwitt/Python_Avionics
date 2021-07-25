@@ -1,5 +1,7 @@
 import math
 
+radians_to_degrees = 180 / math.pi
+
 def euler_from_quaternion(w, x, y, z):
     """
     Convert a quaternion into euler angles (roll, pitch, yaw).
@@ -53,3 +55,12 @@ def euler_from_quaternion(w, x, y, z):
     yaw_z = math.atan2(t3, t4)
     
     return roll_x, pitch_y, yaw_z # in radians
+
+def radians_to_degrees(x, y, z): 
+    """
+    Convert angles from radians to degrees
+    """
+    x = x * radians_to_degrees
+    y = y * radians_to_degrees
+    z = z * radians_to_degrees
+    return(x, y, z)
