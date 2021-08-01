@@ -43,7 +43,7 @@ from quaternion import (
 from micropython import const # type: ignore
 
 # -- Debugging Constants
-DEBUG = const(True)
+DEBUG = True
 
 # --- CAN Message Constants ---
 
@@ -119,7 +119,7 @@ last_time_millis = int(time.monotonic_ns() / 1000000)
 # -----------------------------------------------------------------------------
 
 
-while True:
+while False:
     current_time_millis = int(time.monotonic_ns() / 1000000)
     # sample data every 50ms
     if (current_time_millis - last_time_millis > 50):
@@ -129,6 +129,7 @@ while True:
         roll, pitch, yaw = radians_to_degrees(euler_from_quaternion(
             quat_real, quat_i, quat_j, quat_k
             ))
+        accuracy = bno.calibration_status
         
         turn_rate = gyro_z * radians_to_degrees # degress/second
         
@@ -148,22 +149,49 @@ while True:
         can.send(message)
         can_euler_timestamp = current_time_millis
     
-    # send accelerations and calibration information
+    # send accelerations and calibration accuracy status
     if (current_time_millis > can_acc_timestamp + CAN_ACC_PERIOD + 
         random.randint(0, 50)):
         acc_data = struct.pack("<hhhh", 
                                int(accel_x * 100),
                                int(accel_y * 100),
                                int(accel_z * 100),
-                               )
+                               int(accuracy))
+        message = canio.Message(CAN_ACC_MSG_ID, acc_data)
+        can.send(messge)
+        can_acc_timestamp = current_time_millis
         
-
+    # -------------------------------------------------------------------------
+    # --- check for calibration message on the CAN bus                      ---
+    # -------------------------------------------------------------------------
+    
+    if (calib_listener.in_waiting()):
+        message = calib_listener.receive()
+        if (isinstance(message, canio.RemoteTransmissionRequest)):
+            #TODO: look this up and see how to handle it correctly
+            pass
+        if (isinstance(message, canio.Message)):
+            data = message.data
+            if len(data) != 8:
+                if (DEBUG):
+                    print(f'Unusual message length {len(data)}')
+                continue # jump out to the while loop
+            (calibration_command, _, _, _, _, _, _, _) = struct.unpack(
+                "<BBBBBBBB", data
+            )
+            
+            # bit 0 = true -> save calibration data
+            # bit 1 = true -> pause calibration efforts
+            
+            
+                
+            
 
 
 
 while True:
 
-    time.sleep(0.5)
+    time.sleep(0.25)
     print("Acceleration:")
     accel_x, accel_y, accel_z = bno.acceleration  # pylint:disable=no-member
     print("X: %0.6f  Y: %0.6f Z: %0.6f  m/s^2" % (accel_x, accel_y, accel_z))
@@ -192,6 +220,14 @@ while True:
         "Roll: %0.2f  Pitch: %0.2f  Yaw: %0.2f" % (r / math.pi * 180 , p / math.pi * 180, y / math.pi * 180)
     )
     print("")
+    
+    print("Calibration Status:")
+    calibration = bno.calibration_status
+    print(
+        "Calibration: %1.0d" % (calibration)
+    )
+    
+    
     
 
  

@@ -101,8 +101,8 @@ BNO_REPORT_GYRO_INTEGRATED_ROTATION_VECTOR = const(0x2A)
 # CALIBRATION
 # RAW ACCEL, MAG, GYRO # Sfe says each needs the non-raw enabled to work
 
-_DEFAULT_REPORT_INTERVAL = const(50000)  # in microseconds = 50ms
-_CALIBRATION_REPORT_INTERVAL = const(20000) # in microsections = 20 ms = 50 Hz
+_DEFAULT_REPORT_INTERVAL = const(50000)  # in microseconds = 50ms = 20 Hz
+CALIBRATION_REPORT_INTERVAL = const(20000) # in microseconds = 20 ms = 50 Hz
 _QUAT_READ_TIMEOUT = 0.500  # timeout in seconds
 _PACKET_READ_TIMEOUT = 2.000  # timeout in seconds
 _FEATURE_ENABLE_TIMEOUT = 2.0
@@ -138,6 +138,11 @@ _RAW_REPORTS = {
     BNO_REPORT_RAW_GYROSCOPE: BNO_REPORT_GYROSCOPE,
     BNO_REPORT_RAW_MAGNETOMETER: BNO_REPORT_MAGNETOMETER,
 }
+
+# Store the scalar, count, report length
+#   where   scalar is the mutiplier to set the correct deimal point
+#           count is the count of the data points being returned
+#           report length is the total words in the report
 _AVAIL_SENSOR_REPORTS = {
     BNO_REPORT_ACCELEROMETER: (_Q_POINT_8_SCALAR, 3, 10),
     BNO_REPORT_GYROSCOPE: (_Q_POINT_9_SCALAR, 3, 10),
@@ -215,11 +220,11 @@ def _parse_sensor_report_data(report_bytes):
     scalar, count, _report_length = _AVAIL_SENSOR_REPORTS[report_id]
     if report_id in _RAW_REPORTS:
         # raw reports are unsigned
-        format_str = "<H"
+        format_str = "<H" # unsigned short int
     else:
-        format_str = "<h"
+        format_str = "<h" # signed short int
     results = []
-    accuracy = unpack_from("<B", report_bytes, offset=2)[0]
+    accuracy = unpack_from("<B", report_bytes, offset=2)[0] # first item of tuple
     accuracy &= 0b11
 
     for _offset_idx in range(count):
@@ -355,18 +360,20 @@ def _separate_batch(packet, report_slices):
     # read that many bytes, parse them
     next_byte_index = 0
     while next_byte_index < packet.header.data_length:
-        report_id = packet.data[next_byte_index]
-        required_bytes = _report_length(report_id)
+        report_id = packet.data[next_byte_index] # get the report id from the packet
+        required_bytes = _report_length(report_id) # get the report length
 
-        unprocessed_byte_count = packet.header.data_length - next_byte_index
+        # figure out the number of bytes left to process
+        unprocessed_byte_count = packet.header.data_length - next_byte_index 
 
-        # handle incomplete remainder
+        # handle incomplete remainder ie. byte remaining is less than required
         if unprocessed_byte_count < required_bytes:
             raise RuntimeError("Unprocessable Batch bytes", unprocessed_byte_count)
         # we have enough bytes to read
         # add a slice to the list that was passed in
         report_slice = packet.data[next_byte_index : next_byte_index + required_bytes]
 
+        # append the report_slice to the slices as a tuple with the report id
         report_slices.append([report_slice[0], report_slice])
         next_byte_index = next_byte_index + required_bytes
 
@@ -379,6 +386,10 @@ def _separate_batch(packet, report_slices):
 #     def get_report(cls)
 #         return cls._report_obj
 
+
+# -----------------------------------------------------------------------------
+# --- Packet - SHTP                                                         ---
+# -----------------------------------------------------------------------------
 
 class Packet:
     """A class representing a Hillcrest LaboratorySensor Hub Transport packet"""
@@ -480,7 +491,9 @@ class Packet:
             return True
         return False
 
-
+# -----------------------------------------------------------------------------
+# --- BNO08X                                                                ---
+# -----------------------------------------------------------------------------
 class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-methods
     """Library for the BNO08x IMUs from Hillcrest Laboratories
 
@@ -525,6 +538,10 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
                 time.sleep(0.5)
         else:
             raise RuntimeError("Could not read ID")
+
+    # -------------------------------------------------------------------------
+    # --- Poperties to return sensor data                                   ---
+    # -------------------------------------------------------------------------
 
     @property
     def magnetic(self):
@@ -705,9 +722,18 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         except KeyError:
             raise RuntimeError("No raw magnetic report found, is it enabled?") from None
 
+    # -------------------------------------------------------------------------
+    # --- End of properties                                                 ---
+    # -------------------------------------------------------------------------
+    
+    # -------------------------------------------------------------------------
+    # --- Begining of commands / functions for calibration                  ---
+    # -------------------------------------------------------------------------
+
     def begin_calibration(self):
         """Begin the sensor's self-calibration routine"""
         # start calibration for accel, gyro, and mag
+        # TODO: report frequency should be higher on magnetometer for calibration
         self._send_me_command(
             [
                 1,  # calibrate accel
@@ -740,6 +766,8 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
             ]
         )
         return self._magnetometer_accuracy
+    
+    # --- Private function used by calibration --------------------------------
 
     def _send_me_command(self, subcommand_params):
 
@@ -776,16 +804,25 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
                 return
         raise RuntimeError("Could not save calibration data")
 
+    # -------------------------------------------------------------------------
+    # --- Private functions                                                 ---
+    # -------------------------------------------------------------------------
+    
     ############### private/helper methods ###############
     # # decorator?
     def _process_available_packets(self, max_packets=None):
+        """
+        Called each time any information is requested from the BNO08X class
+        such as when using the properties. Also called when sending commands 
+        for calibration and when enabling features.
+        """
         processed_count = 0
-        while self._data_ready:
+        while self._data_ready: # implemented in i2c.py
             if max_packets and processed_count > max_packets:
                 return
             # print("reading a packet")
             try:
-                new_packet = self._read_packet()
+                new_packet = self._read_packet() # implemented in i2c.py
             except PacketError:
                 continue
             self._handle_packet(new_packet)
@@ -841,6 +878,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
     def _handle_packet(self, packet):
         # split out reports first
         try:
+            # separate the packet into slices for each report
             _separate_batch(packet, self._packet_slices)
             while len(self._packet_slices) > 0:
                 self._process_report(*self._packet_slices.pop())
@@ -938,7 +976,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
             self._magnetometer_accuracy = accuracy
         # TODO: FIXME; Sensor reports are batched in a LIFO which means that multiple reports
         # for the same type will end with the oldest/last being kept and the other
-        # newer reports thrown away
+        # newer reports thrown away. This happens based on how we are called
         self._readings[report_id] = sensor_data
 
     # TODO: Make this a Packet creation
@@ -946,7 +984,13 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
     def _get_feature_enable_report(
         feature_id, report_interval=_DEFAULT_REPORT_INTERVAL, sensor_specific_config=0
     ):
-        set_feature_report = bytearray(17)
+        """
+        Creates and returns a 'Set Feature Report' byte array to send on the 
+        SH-2 control channel from the host to the hub. This causes the sensor
+        to change to comply with the settings in the report. Called from 
+        enable_feature().
+        """
+        set_feature_report = bytearray(17)  # create buffer
         set_feature_report[0] = _SET_FEATURE_COMMAND
         set_feature_report[1] = feature_id
         pack_into("<I", set_feature_report, 5, report_interval)
@@ -957,23 +1001,34 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
     # TODO: add docs for available features
     # TODO2: I think this should call an fn that imports all the bits for the given feature
     # so we're not carrying around  stuff for extra features
-    def enable_feature(self, feature_id):
-        """Used to enable a given feature of the BNO08x"""
+    def enable_feature(self, feature_id, report_interval=_DEFAULT_REPORT_INTERVAL):
+        """
+        Enable a given feature of the BNO08x by sending a 'Set Feature Command'
+        for the requested feature and any dependancies
+        """
+        #TODO: Add report_interval as an argument for enable_feature to allow
+        # setting the interval.
         self._dbg("\n********** Enabling feature id:", feature_id, "**********")
 
         if feature_id == BNO_REPORT_ACTIVITY_CLASSIFIER:
             set_feature_report = self._get_feature_enable_report(
-                feature_id, sensor_specific_config=_ENABLED_ACTIVITIES
+                feature_id, report_interval, 
+                sensor_specific_config=_ENABLED_ACTIVITIES
             )
         else:
-            set_feature_report = self._get_feature_enable_report(feature_id)
+            set_feature_report = self._get_feature_enable_report(
+                feature_id, report_interval
+            )
 
+        # check if the feature that is to be enabled has a dependancy and
+        # enable it first
         feature_dependency = _RAW_REPORTS.get(feature_id, None)
         # if the feature was enabled it will have a key in the readings dict
         if feature_dependency and feature_dependency not in self._readings:
             self._dbg("Enabling feature depencency:", feature_dependency)
-            self.enable_feature(feature_dependency)
+            self.enable_feature(feature_dependency, report_interval)
 
+        # Send the packet to enable the requested feature
         self._dbg("Enabling", feature_id)
         self._send_packet(_BNO_CHANNEL_CONTROL, set_feature_report)
 
