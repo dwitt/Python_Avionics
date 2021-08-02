@@ -1,6 +1,6 @@
 import math
 
-radians_to_degrees = 180 / math.pi
+radians_to_degrees_multiplier = 180 / math.pi
 
 def euler_from_quaternion(w, x, y, z):
     """
@@ -60,7 +60,7 @@ def radians_to_degrees(x, y, z):
     """
     Convert angles from radians to degrees
     """
-    x = x * radians_to_degrees
-    y = y * radians_to_degrees
-    z = z * radians_to_degrees
+    x = x * radians_to_degrees_multiplier
+    y = y * radians_to_degrees_multiplier
+    z = z * radians_to_degrees_multiplier
     return(x, y, z)

@@ -33,6 +33,7 @@ from adafruit_bno08x import (
     BNO_REPORT_GYROSCOPE,
     BNO_REPORT_MAGNETOMETER,
     BNO_REPORT_ROTATION_VECTOR,
+    CALIBRATION_REPORT_INTERVAL,
 )
 
 from quaternion import (
@@ -58,7 +59,7 @@ can_euler_timestamp = 0
 can_acc_timestamp = 0
 
 # --- conversion constants
-radians_to_degrees = 180 / math.pi
+radians_to_degrees_multiplier = 180 / math.pi
 
 # --- Setup Communication buses for various peripherals
 
@@ -86,7 +87,7 @@ bno = BNO08X_I2C(i2c)
 
 bno.enable_feature(BNO_REPORT_ACCELEROMETER)
 bno.enable_feature(BNO_REPORT_GYROSCOPE)
-bno.enable_feature(BNO_REPORT_MAGNETOMETER)
+bno.enable_feature(BNO_REPORT_MAGNETOMETER, CALIBRATION_REPORT_INTERVAL)
 bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
 # initialize data
@@ -97,12 +98,13 @@ turn_rate = 0
 accel_x = 0
 accel_y = 0
 accel_z = 0
+magnetometer_accuracy = 0
 
 # --- Create a CAN bus message mask for the Calibration message
 # --- and create a listener
 
-calib_match = canio.Match(id=CAN_Calib_Msg_id)
-calib_listener = can.listen(matches=[calib_match], timeout = 0.01)
+calibration_match = canio.Match(id=CAN_Calib_Msg_id)
+calibration_listener = can.listen(matches=[calibration_match], timeout = 0.01)
 
 last_time_millis = int(time.monotonic_ns() / 1000000)
 
@@ -119,19 +121,20 @@ last_time_millis = int(time.monotonic_ns() / 1000000)
 # -----------------------------------------------------------------------------
 
 
-while False:
+while True:
+    # save the current time for comparison
     current_time_millis = int(time.monotonic_ns() / 1000000)
     # sample data every 50ms
     if (current_time_millis - last_time_millis > 50):
         quat_i, quat_j, quat_k, quat_real = bno.quaternion
         accel_x, accel_y, accel_z = bno.acceleration
         gyro_x, gyro_y, gyro_z = bno.gyro
-        roll, pitch, yaw = radians_to_degrees(euler_from_quaternion(
+        roll, pitch, yaw = radians_to_degrees(*euler_from_quaternion(
             quat_real, quat_i, quat_j, quat_k
             ))
-        accuracy = bno.calibration_status
+        magnetometer_accuracy = bno.calibration_status
         
-        turn_rate = gyro_z * radians_to_degrees # degress/second
+        turn_rate = gyro_z * radians_to_degrees_multiplier # degress/second
         
     # -------------------------------------------------------------------------
     # --- send CAN data                                                     ---
@@ -149,24 +152,24 @@ while False:
         can.send(message)
         can_euler_timestamp = current_time_millis
     
-    # send accelerations and calibration accuracy status
+    # send accelerations and calibration magnatometer accuracy status
     if (current_time_millis > can_acc_timestamp + CAN_ACC_PERIOD + 
         random.randint(0, 50)):
         acc_data = struct.pack("<hhhh", 
                                int(accel_x * 100),
                                int(accel_y * 100),
                                int(accel_z * 100),
-                               int(accuracy))
+                               int(magnetometer_accuracy))
         message = canio.Message(CAN_ACC_MSG_ID, acc_data)
-        can.send(messge)
+        can.send(message)
         can_acc_timestamp = current_time_millis
         
     # -------------------------------------------------------------------------
     # --- check for calibration message on the CAN bus                      ---
     # -------------------------------------------------------------------------
     
-    if (calib_listener.in_waiting()):
-        message = calib_listener.receive()
+    if (calibration_listener.in_waiting()):
+        message = calibration_listener.receive()
         if (isinstance(message, canio.RemoteTransmissionRequest)):
             #TODO: look this up and see how to handle it correctly
             pass
@@ -182,6 +185,24 @@ while False:
             
             # bit 0 = true -> save calibration data
             # bit 1 = true -> pause calibration efforts
+            # bit 2
+            # bit 3
+            # bit 4 = true -> enter calibration mode
+
+            if ((calibration_command & 0b00010000) == 8):
+                bno.begin_calibration()
+            if ((calibration_command & 0b00000001) == 1):
+                bno.save_calibration_data()
+                
+    # -------------------------------------------------------------------------
+    # --- Debuging display                                                  ---
+    # -------------------------------------------------------------------------
+    
+    if DEBUG:
+        print(f"Roll: {roll:.1f}, Pitch: {pitch:.1f}, Yaw: {yaw:.1f}, Acc: {magnetometer_accuracy:1d}")
+        
+
+            
             
             
                 
@@ -189,7 +210,7 @@ while False:
 
 
 
-while True:
+while false:
 
     time.sleep(0.25)
     print("Acceleration:")

@@ -11,6 +11,8 @@ from pathlib import Path
 
 global webServer, webSocket
 
+DEBUG = False 
+
 # -----------------------------------------------------------------------------
 # --- Asynchronous function to create the web and websocket servers         ---
 # -----------------------------------------------------------------------------
@@ -29,7 +31,7 @@ async def create_servers(handler):
                        web.get('/ws', handler)])
     
     #server.add_routes([web.static('/', 
-    #        './')])
+    #        './')]
 
     # Create the application runner
     runner = web.AppRunner(server)
@@ -133,13 +135,27 @@ async def process_can_messages(reader, data):
             (data.airspeed, null2, null3, null4, data.vsi, null7) = (
                 struct.unpack("<hBBBhB", msg.data))
             
-            print(data.vsi, data.airspeed)
+            if DEBUG:
+                print(data.vsi, data.airspeed)
             
         elif (msg.arbitration_id == 0x2E):
             (qnh_hpa, qnhx4, null3, null4, null5, null6) = (
                 struct.unpack("<hhBBBB",msg.data))
             data.qnh = qnhx4 / 4.0
-            print(data.qnh)
+            if DEBUG:
+                print(data.qnh)
+            
+        # process heading message    
+        elif (msg.arbitration_id == 0x48):
+            (data.yaw, data.pitch, data.roll, data.turn_rate) = (
+                struct.unpack("<hhhh", msg.data)
+            )
+            
+        # process accelerometer message
+        elif (msg.arbitration_id == 0x49):
+            (data.accx, data.accy, data.accz, data.calib) = (
+                struct.unpack("<hhhh", msg.data)
+            )
 
 
         await asyncio.sleep(0.02)

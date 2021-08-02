@@ -331,6 +331,9 @@ def _parse_command_response(report_bytes):
 def _insert_command_request_report(
     command, buffer, next_sequence_number, command_params=None
 ):
+    """
+    Load the buffer with the provided command, sequence number and parameters.
+    """
     if command_params and len(command_params) > 9:
         raise AttributeError(
             "Command request reports can only have up to 9 arguments but %d were given"
@@ -754,12 +757,12 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         """Get the status of the self-calibration"""
         self._send_me_command(
             [
-                0,  # calibrate accel
-                0,  # calibrate gyro
-                0,  # calibrate mag
+                0,  # reserved
+                0,  # reserved
+                0,  # reserved
                 _ME_GET_CAL,
-                0,  # calibrate planar acceleration
-                0,  # 'on_table' calibration
+                0,  # reserved
+                0,  # reserved
                 0,  # reserved
                 0,  # reserved
                 0,  # reserved
@@ -773,13 +776,15 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
 
         start_time = time.monotonic()
         local_buffer = self._command_buffer
+        # format the command request report
         _insert_command_request_report(
             _ME_CALIBRATE,
             self._command_buffer,  # should use self._data_buffer :\ but send_packet don't
             self._get_report_seq_id(_COMMAND_REQUEST),
             subcommand_params,
         )
-        self._send_packet(_BNO_CHANNEL_CONTROL, local_buffer)
+        # send the command to the control channel
+        self._send_packet(_BNO_CHANNEL_CONTROL, local_buffer) # in i2c 
         self._increment_report_seq(_COMMAND_REQUEST)
         while _elapsed(start_time) < _DEFAULT_TIMEOUT:
             self._process_available_packets()
