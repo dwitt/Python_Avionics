@@ -1,6 +1,7 @@
 import { Ribbon } from './ribbon.mjs';
 import { AirspeedRibbon } from './airspeedRibbon.mjs';
 import { VsiIndicator } from './vsi-indicator.mjs';
+import { AttitudeIndicator } from './attitude-indicator.mjs';
 
 'use strict';
 // ----------------------------------------------------------------------------
@@ -91,7 +92,8 @@ tahoma_bold_font.load().then(function(loaded_face){
 // --- Wait for the document to report the fonts are loaded then call setup ---
 // ----------------------------------------------------------------------------
 
-var altitudeWheel, 
+var attitudeIndicator,
+    altitudeWheel, 
     qnhDisplay, 
     vsiDisplay, 
     altimeter_ribbon, 
@@ -127,7 +129,7 @@ myWebSocket.onmessage = function (event) {
 // ----------------------------------------------------------------------------
 function setup() {
 
-    var background = new BackgroundDisplay(app);            
+    attitudeIndicator = new AttitudeIndicator(app);            
     var bank_arc = new Bank_Arc(app);
     altimeter_ribbon = new Ribbon(app, 765, 240, 400, 100, true, 100, 4, 4, true);
     altitudeWheel = new AltitudeWheel(app, 755, 240);
@@ -151,6 +153,8 @@ function setup() {
 function DisplayUpdateLoop(delta) {
 
     //console.log(dataObject);
+    attitudeIndicator.pitch = dataObject.pitch;
+    attitudeIndicator.roll = dataObject.roll;
     altitudeWheel.value = dataObject._altitude;
     qnhDisplay.value = dataObject.qnh;
     altimeter_ribbon.value = dataObject._altitude;
