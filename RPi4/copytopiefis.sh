@@ -17,4 +17,5 @@ rsync support/efis-display.js pi@"$destination_server":"$piefis_support_dir"efis
 rsync support/ribbon.mjs pi@"$destination_server":"$piefis_support_dir"ribbon.mjs
 rsync support/airspeedRibbon.mjs pi@"$destination_server":"$piefis_support_dir"airspeedRibbon.mjs
 rsync support/vsi-indicator.mjs pi@"$destination_server":"$piefis_support_dir"vsi-indicator.mjs
+rsync support/attitude-indicator.mjs pi@"$destination_server":"$piefis_support_dir"attitude-indicator.mjs
 echo 'Done'
