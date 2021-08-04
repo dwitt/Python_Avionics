@@ -16,7 +16,8 @@ var Application = PIXI.Application,
     Rectangle = PIXI.Rectangle,
     Graphics = PIXI.Graphics,
     Container = PIXI.Container,
-    Text = PIXI.Text;
+    Text = PIXI.Text,
+    Polygon = PIXI.Polygon;
 
 // ----------------------------------------------------------------------------
 // ---Create a Pixi Application                                             ---
@@ -101,7 +102,7 @@ var attitudeIndicator,
     airspeedWheel,
     airspeedRibbon,
     vsiIndicator;
-
+    
 document.fonts.ready.then(function() {
     setup();
 });
@@ -130,7 +131,6 @@ myWebSocket.onmessage = function (event) {
 function setup() {
 
     attitudeIndicator = new AttitudeIndicator(app);            
-    var bank_arc = new Bank_Arc(app);
     altimeter_ribbon = new Ribbon(app, 765, 240, 400, 100, true, 100, 4, 4, true);
     altitudeWheel = new AltitudeWheel(app, 755, 240);
     qnhDisplay = new QNHDisplay(app);
@@ -141,6 +141,8 @@ function setup() {
     airspeedWheel = new AirspeedWheel(app, 45, 240);
 
     vsiIndicator = new VsiIndicator(app, 765, 240, 400, 35);
+
+    var aircraft = new AircraftIndicator(app);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -171,127 +173,68 @@ function DisplayUpdateLoop(delta) {
 // --- Temporary background display                                         ---
 // ----------------------------------------------------------------------------
 
-function BackgroundDisplay(app){
+function AircraftIndicator(app){
 
-    // get the dimensions of the app rectangle
-    this.display_width = app.screen.width;
-    this.display_height = app.screen.height;
+    let displayWidth = app.screen.width;
+    let displayHeight = app.screen.height;
 
-    // Create a container so that we can hold two different color rectangles
+    let xBy6 = displayWidth/6;
+    let xBy20 = displayWidth/20;
+    let xBy30 = displayWidth/30;
 
-    this.background_container = new Container();
+    let yBy8 = displayHeight/8;
 
-    let lineWidth = .5;
-    let lineColour = 0xffffff;
+    let lineOptions = new Object;
+    lineOptions.width = 8;
+    lineOptions.color = 0x000000;
+    lineOptions.alpha = 1;
+    lineOptions.alignment = 0.5;
+    lineOptions.cap = PIXI.LINE_CAP.ROUND;
 
+    let aircraftGraphics = new Graphics();
 
-    // Create the sky rectangle
-    this.sky_rectangle = new Graphics();
-    this.sky_rectangle.lineStyle(lineWidth, lineColour);
-    this.sky_rectangle.beginFill(0x0000C0);
-    this.sky_rectangle.drawRect(0,0,799,239);
-    this.sky_rectangle.endFill();
+    // draw black background
+    aircraftGraphics.lineStyle(lineOptions);
+    aircraftGraphics.moveTo(-xBy6 + xBy20 + 1, 0);
+    aircraftGraphics.lineTo(-xBy6 - 1, 0);
+    aircraftGraphics.moveTo(xBy6 + 1 , 0);
+    aircraftGraphics.lineTo(xBy6 - xBy20 - 1, 0);
 
+    // draw yellow foreground
+    lineOptions.width = 6;
+    lineOptions.color = 0xFFFF00;
 
-    this.ground_rectangle = new Graphics();
-    this.ground_rectangle.lineStyle(lineWidth,lineColour);
-    this.ground_rectangle.beginFill(0x884400);
-    this.ground_rectangle.drawRect(0,240,799,479);
-    this.ground_rectangle.endFill();
+    aircraftGraphics.lineStyle(lineOptions);
+    aircraftGraphics.moveTo(-xBy6 + xBy20, 0);
+    aircraftGraphics.lineTo(-xBy6, 0);
+    aircraftGraphics.moveTo(xBy6 , 0);
+    aircraftGraphics.lineTo(xBy6 - xBy20, 0);
 
-    this.background_container.addChild(this.sky_rectangle);
-    this.background_container.addChild(this.ground_rectangle);
+    // draw polygon
+    let rightSidePolygon = new Polygon(0,0,xBy6-xBy20,yBy8,xBy6-xBy20-xBy30,yBy8);
+    let leftSidePolygon = new Polygon(0,0,-xBy6+xBy20,yBy8,-xBy6+xBy20+xBy30,yBy8);
+    lineOptions.color = 0x000000;
+    lineOptions.width = 1;
+    lineOptions.alignment = 1;
+    aircraftGraphics.lineStyle(lineOptions);
+    aircraftGraphics.beginFill(0xFFFF00);
+    aircraftGraphics.drawPolygon(rightSidePolygon);
+    // reverse the alignment due to reversal of drawing sequence, clockwise vs counter-clockwise
+    // this puts the line on the correct side otherwise the shape gets too large
+    lineOptions.alignment = 0;
+    aircraftGraphics.lineStyle(lineOptions);
 
-    app.stage.addChild(this.background_container);
+    aircraftGraphics.drawPolygon(leftSidePolygon);
 
-}
+    aircraftGraphics.x = displayWidth/2;
+    aircraftGraphics.y = displayHeight/2;
 
-
-// ----------------------------------------------------------------------------
-// --- Bank Angle Arc                                                       ---
-// ----------------------------------------------------------------------------
-
-function Bank_Arc(app) {
-
-    // Parameters
-    this.radius = 180;
-    this.start_radians = 7 / 6 * Math.PI;   // 210 deg
-    this.end_radians = 11 / 6 * Math.PI;    // 330 deg
-    this.major_length = 20;
-    this.minor_length = 15;
-
-    // Tic mark locations measured in PI radians
-    this.major_marks = [7/6, 8/6, 10/6, 11/6];  
-    this.minor_marks = [5/4, 25/18, 26/18, 28/18, 29/18, 7/4];  
-
-    // get the dimensions of the app rectangle
-    this.display_width = app.screen.width;
-    this.display_height = app.screen.height;
-
-    this.centre_x = this.display_width / 2;
-    this.centre_y = this.display_height / 2
-
-    // Create the container to hold the arc
-    this.arc_container = new Container();
-
-    let x, y, angle, unit_x, unit_y, x1, y1;
-
-    // Create the arc
-    this.arc = new Graphics();
-    
-    // Draw the arc shape with a semi transparent background
-    this.arc.beginFill(0x880088, 0.5);  // background fill
-    this.arc.lineStyle(1,0x000088);     // Outline (set to background colour)
-    this.arc.arc(this.centre_x, this.centre_y,this.radius, this.start_radians, this.end_radians,false);
-    x = (this.radius + this.major_length) * Math.cos((2 * Math.PI) - this.end_radians) + this.centre_x;
-    y = -(this.radius + this.major_length) * Math.sin((2 * Math.PI) - this.end_radians) + this.centre_y;
-    this.arc.lineTo(x,y);
-    this.arc.arc(this.centre_x, this.centre_y,this.radius + this.major_length, this.end_radians, this.start_radians,true);
-    x = (this.radius) * Math.cos((2 * Math.PI) - this.start_radians) + this.centre_x;
-    y = -(this.radius) * Math.sin((2 * Math.PI) - this.start_radians) + this.centre_y;
-    this.arc.lineTo(x,y);
-    this.arc.endFill();
-
-    // Draw the are line
-    this.arc.lineStyle(1,0xFFFFFF);
-    this.arc.arc(this.centre_x, this.centre_y,this.radius, this.start_radians, this.end_radians,false);
-
-    // Draw the markings
-    
-    this.arc.lineStyle(1,0xFFFFFF);
-    for (let i = 0; i < this.major_marks.length; i = i + 1) {
-        angle = 2 * Math.PI - this.major_marks[i] * Math.PI; 
-        unit_x = Math.cos(angle);
-        unit_y = Math.sin(angle);
-
-        x = this.radius * unit_x + this.centre_x;
-        y = -this.radius * unit_y + this.centre_y;
-        x1 = (this.radius + this.major_length) * unit_x + this.centre_x;
-        y1 = -(this.radius + this.major_length) * unit_y + this.centre_y;
-
-        this.arc.moveTo(x,y);
-        this.arc.lineTo(x1,y1);
-    }
-
-    for (let i = 0; i < this.minor_marks.length; i = i + 1) {
-        angle = 2 * Math.PI - this.minor_marks[i] * Math.PI; 
-        unit_x = Math.cos(angle);
-        unit_y = Math.sin(angle);
-
-        x = this.radius * unit_x + this.centre_x;
-        y = -this.radius * unit_y + this.centre_y;
-        x1 = (this.radius + this.minor_length) * unit_x + this.centre_x;
-        y1 = -(this.radius + this.minor_length) * unit_y + this.centre_y;
-
-        this.arc.moveTo(x,y);
-        this.arc.lineTo(x1,y1);
-    }
-
-    // Save the are in the container and display it
-    this.arc_container.addChild(this.arc);
-    app.stage.addChild(this.arc_container);
+    app.stage.addChild(aircraftGraphics);
 
 }
+
+
+
 
 // ----------------------------------------------------------------------------
 // --- VSI Temporary display                                                          ---

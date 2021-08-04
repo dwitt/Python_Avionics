@@ -72,7 +72,7 @@ export class Ribbon {
             this.ribbon_background.drawRect(0, -height/2, width, height);
         }
 
-        console.log(height);
+        //console.log(height);
         
         this.ribbon_background.endFill();
 
@@ -222,7 +222,7 @@ export class Ribbon {
 
         if (this.allowNegative == false ) {
             if (new_value < this.rulerZeroOffset) {
-                console.log(this.rulerZeroOffset);
+                //console.log(this.rulerZeroOffset);
 
                 this.ruler.position.set(0,(-this.rulerZeroOffset + new_value) * this.ribbon_interval_ratio);
             }

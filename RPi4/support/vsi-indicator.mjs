@@ -61,7 +61,7 @@ export class VsiIndicator {
         this.vsiBackground.lineStyle(outlineWidth, fillColour, outlineAlpha, 0);
         
         this.vsiBackground.drawRect(0, -height/2, width, height);
-        console.log(height);
+        //console.log(height);
         this.vsiBackground.endFill
 
         // add the Background to the container
