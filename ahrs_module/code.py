@@ -44,7 +44,7 @@ from quaternion import (
 from micropython import const # type: ignore
 
 # -- Debugging Constants
-DEBUG = True
+DEBUG = False
 
 # --- CAN Message Constants ---
 
