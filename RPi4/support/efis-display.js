@@ -2,6 +2,7 @@ import { Ribbon } from './ribbon.mjs';
 import { AirspeedRibbon } from './airspeedRibbon.mjs';
 import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
+import { SlipBallIndicator } from './slipBall.mjs';
 
 'use strict';
 // ----------------------------------------------------------------------------
@@ -101,7 +102,8 @@ var attitudeIndicator,
     testAirspeedDisplay, 
     airspeedWheel,
     airspeedRibbon,
-    vsiIndicator;
+    vsiIndicator,
+    slipBallIndicator;
     
 document.fonts.ready.then(function() {
     setup();
@@ -144,6 +146,8 @@ function setup() {
 
     var aircraft = new AircraftIndicator(app);
 
+    slipBallIndicator = new SlipBallIndicator(app);
+
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
 
@@ -157,6 +161,7 @@ function DisplayUpdateLoop(delta) {
     //console.log(dataObject);
     attitudeIndicator.pitch = dataObject.pitch;
     attitudeIndicator.roll = dataObject.roll;
+    attitudeIndicator.accy = dataObject.accy;
     altitudeWheel.value = dataObject._altitude;
     qnhDisplay.value = dataObject.qnh;
     altimeter_ribbon.value = dataObject._altitude;
@@ -165,12 +170,13 @@ function DisplayUpdateLoop(delta) {
     airspeedWheel.value = dataObject.airspeed;
     airspeedRibbon.value = dataObject.airspeed;
     vsiIndicator.value = dataObject.vsi;
+    slipBallIndicator.acc = dataObject.accy
 
 
 }
 
 // ----------------------------------------------------------------------------
-// --- Temporary background display                                         ---
+// --- Aircraft Indicator                                        ---
 // ----------------------------------------------------------------------------
 
 function AircraftIndicator(app){
@@ -178,11 +184,13 @@ function AircraftIndicator(app){
     let displayWidth = app.screen.width;
     let displayHeight = app.screen.height;
 
-    let xBy6 = displayWidth/6;
-    let xBy20 = displayWidth/20;
-    let xBy30 = displayWidth/30;
+    let px1 = displayWidth/6;
+    let px2 = displayWidth/20;
+    let px3 = displayWidth/30;
+    let px4 = displayWidth/40;
 
-    let yBy8 = displayHeight/8;
+    let py1 = displayHeight/8;
+    let py2 = displayHeight/30;
 
     let lineOptions = new Object;
     lineOptions.width = 8;
@@ -190,41 +198,74 @@ function AircraftIndicator(app){
     lineOptions.alpha = 1;
     lineOptions.alignment = 0.5;
     lineOptions.cap = PIXI.LINE_CAP.ROUND;
+    lineOptions.join = PIXI.LINE_JOIN.ROUND;
 
     let aircraftGraphics = new Graphics();
 
     // draw black background
     aircraftGraphics.lineStyle(lineOptions);
-    aircraftGraphics.moveTo(-xBy6 + xBy20 + 1, 0);
-    aircraftGraphics.lineTo(-xBy6 - 1, 0);
-    aircraftGraphics.moveTo(xBy6 + 1 , 0);
-    aircraftGraphics.lineTo(xBy6 - xBy20 - 1, 0);
+    // large horizontal
+    aircraftGraphics.moveTo(-px1 + px2 , 0);
+    aircraftGraphics.lineTo(-px1 , 0);
+    // 90 on left
+    aircraftGraphics.moveTo(-2 * px4 , 0);
+    aircraftGraphics.lineTo(-1.5 * px4, 0);
+    aircraftGraphics.lineTo(-1.5 * px4, py2);
+
+    // large horizontal on right
+    aircraftGraphics.moveTo(px1, 0);
+    aircraftGraphics.lineTo(px1 - px2, 0);
+    // 90 on right
+    aircraftGraphics.moveTo(2 * px4 , 0);
+    aircraftGraphics.lineTo(1.5 * px4, 0);
+    aircraftGraphics.lineTo(1.5 * px4, py2);
+
 
     // draw yellow foreground
     lineOptions.width = 6;
     lineOptions.color = 0xFFFF00;
 
     aircraftGraphics.lineStyle(lineOptions);
-    aircraftGraphics.moveTo(-xBy6 + xBy20, 0);
-    aircraftGraphics.lineTo(-xBy6, 0);
-    aircraftGraphics.moveTo(xBy6 , 0);
-    aircraftGraphics.lineTo(xBy6 - xBy20, 0);
+
+    aircraftGraphics.moveTo(-px1 + px2, 0);
+    aircraftGraphics.lineTo(-px1, 0);
+
+    aircraftGraphics.moveTo(-2 * px4 , 0);
+    aircraftGraphics.lineTo(-1.5 * px4, 0);
+    aircraftGraphics.lineTo(-1.5 * px4, py2);
+
+    aircraftGraphics.moveTo(px1 , 0);
+    aircraftGraphics.lineTo(px1 - px2, 0);
+
+    aircraftGraphics.moveTo(2 * px4 , 0);
+    aircraftGraphics.lineTo(1.5 * px4, 0);
+    aircraftGraphics.lineTo(1.5 * px4, py2);
+
+    // draw yellow Dot
+    lineOptions.width = 1;
+    lineOptions.color = 0x000000;
+    lineOptions.alignment = 1;
+
+    aircraftGraphics.lineStyle(lineOptions);
+
+    aircraftGraphics.beginFill(0xFFFF00,1);
+    aircraftGraphics.drawCircle(0,0,6);
 
     // draw polygon
-    let rightSidePolygon = new Polygon(0,0,xBy6-xBy20,yBy8,xBy6-xBy20-xBy30,yBy8);
-    let leftSidePolygon = new Polygon(0,0,-xBy6+xBy20,yBy8,-xBy6+xBy20+xBy30,yBy8);
-    lineOptions.color = 0x000000;
-    lineOptions.width = 1;
-    lineOptions.alignment = 1;
-    aircraftGraphics.lineStyle(lineOptions);
-    aircraftGraphics.beginFill(0xFFFF00);
-    aircraftGraphics.drawPolygon(rightSidePolygon);
-    // reverse the alignment due to reversal of drawing sequence, clockwise vs counter-clockwise
-    // this puts the line on the correct side otherwise the shape gets too large
-    lineOptions.alignment = 0;
-    aircraftGraphics.lineStyle(lineOptions);
+    // let rightSidePolygon = new Polygon(0,0,px1-px2,py1,px1-px2-px3,py1);
+    // let leftSidePolygon = new Polygon(0,0,-px1+px2,py1,-px1+px2+px3,py1);
+    // lineOptions.color = 0x000000;
+    // lineOptions.width = 1;
+    // lineOptions.alignment = 1;
+    // aircraftGraphics.lineStyle(lineOptions);
+    // aircraftGraphics.beginFill(0xFFFF00);
+    // aircraftGraphics.drawPolygon(rightSidePolygon);
+    // // reverse the alignment due to reversal of drawing sequence, clockwise vs counter-clockwise
+    // // this puts the line on the correct side otherwise the shape gets too large
+    // lineOptions.alignment = 0;
+    // aircraftGraphics.lineStyle(lineOptions);
 
-    aircraftGraphics.drawPolygon(leftSidePolygon);
+    // aircraftGraphics.drawPolygon(leftSidePolygon);
 
     aircraftGraphics.x = displayWidth/2;
     aircraftGraphics.y = displayHeight/2;

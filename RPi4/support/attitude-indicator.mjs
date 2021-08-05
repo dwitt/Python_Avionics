@@ -23,13 +23,24 @@ export class AttitudeIndicator {
         this._pitch = 0;
         this._roll = 0;
 
+        // initial values for slip/skid acc and smoothing
+        this._acc100 = 0;
+        this._acc = 0;
+        this._smooth = 0;
+        this.slipSkidDegrees = 20;
+
+        // parameters for smoothing
+        this._smoothed = 0;
+        this._smoothing = 400;
+        this.lastUpdate = new Date;
+
         // get the size of the canvas used by the app
         this.displayWidth = app.screen.width;
         this.displayHeight = app.screen.height;
 
-        // the maximum number of degrees of pitch the can be seen on the diplay
+        // the maximum number of degrees of pitch the can be seen on the display
         // in on direction either up or down
-        let pitchDegrees = 35;
+        let pitchDegrees = 25;
 
         // calculated attitude sky and earth total height based on 90 degrees
         // available up or down
@@ -39,14 +50,20 @@ export class AttitudeIndicator {
         // pitchRatio equal number of pixels per degree of pitch
         this.pitchRatio = (this.displayHeight / 2) / pitchDegrees;
 
-        let skyHeight = (this.displayHeight / 2) / pitchDegrees * (90 + pitchDegrees);
-        let earthHeight = skyHeight;
-
         // calculate the width of sky and earth to ensure it fills display
         // when rolling
 
         let skyWidth = Math.sqrt(Math.pow(this.displayWidth,2) + Math.pow(this.displayHeight,2));
         let earthWidth = skyWidth;
+
+        // calculate the heightof the sky and earth to accomodate 90 degrees plus
+        // enough additional pixels to prevent us from seeing black when rolling 
+        // at a pitch angle of 90 degrees
+
+        let skyHeight = ((this.displayHeight / 2) / pitchDegrees * (90)) + skyWidth/2;
+        let earthHeight = skyHeight;
+
+
 
         // Draw the sky and earth in a container where 0,0 is the center
 
@@ -92,7 +109,7 @@ export class AttitudeIndicator {
             fill: "white",
             fontWeight: "normal",
             stroke: "black",
-            strokeThickness: 3
+            strokeThickness: 2
             
         });
 
@@ -101,13 +118,14 @@ export class AttitudeIndicator {
 
         let degreeGraphics = new Graphics();
         degreeGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
-        for (let i=-20; i <= 20; i = i + 10) {
+        for (let i=-90; i <= 90; i = i + 10) {
             let sign = Math.sign(i);
+            let deg = String(sign * -Math.abs(i));
 
             if (i != 0) {
 
-                let textLeft = new Text(String(Math.abs(i)), text_style);
-                let textRight = new Text(String(Math.abs(i)), text_style);
+                let textLeft = new Text(deg, text_style);
+                let textRight = new Text(deg, text_style);
                 
                 textLeft.anchor.set(1,0.5);
                 textRight.anchor.set(0,0.5);
@@ -142,10 +160,71 @@ export class AttitudeIndicator {
         // Create a roll container
 
         this.rollContainer = new Container();
+        
+        //
+        // Draw the Roll triangle for the Arc
+        //
+
+        let radius = 180; // duplicated in the drawing of the BankArc
+        this.triangleHeight = 25;
+
+        lineWidth = 2;
+        lineColour = 0x000000;
+        let fillColour = 0xFFFF00;
+
+        let lineOptions = new Object;
+        lineOptions.width = 1;
+        lineOptions.color = 0x000000;
+        lineOptions.alpha = 1;
+        lineOptions.alignment = 0;
+        lineOptions.cap = PIXI.LINE_CAP.ROUND;
+
+        let triangleGraphics = new Graphics();
+
+        triangleGraphics.lineStyle(lineOptions);
+        
+        triangleGraphics.beginFill(fillColour, 1);
+        triangleGraphics.drawPolygon(0,-radius, this.triangleHeight/2, this.triangleHeight-radius, -this.triangleHeight/2, this.triangleHeight-radius);
+        triangleGraphics.endFill();
+
+        /** 
+        * Draw a slip skid indicator below the roll triangle
+        */
+
+        this.slipSkidGraphics = new Graphics();
+        let topPercent = 1.05;
+        let bottomPercent = 1.3;
+
+        this.slipSkidGraphics.lineStyle(lineOptions);
+
+        this.slipSkidGraphics.beginFill(fillColour, 1);
+        this.slipSkidGraphics.drawPolygon(
+            -topPercent * this.triangleHeight/2, -radius + topPercent * this.triangleHeight,
+            topPercent * this.triangleHeight/2, -radius + topPercent * this.triangleHeight,
+            bottomPercent * this.triangleHeight/2, -radius + bottomPercent * this.triangleHeight,
+            -bottomPercent * this.triangleHeight/2, -radius + bottomPercent * this.triangleHeight 
+        );
+        this.slipSkidGraphics.endFill;
+
+
+
+        // Create a mask for the degreeGraphics of the attitude indicator
+
+        let maskGraphics = new Graphics();
+
+        fillColour = 0xFF0000;
+        maskGraphics.beginFill(fillColour);
+        maskGraphics.drawCircle(0,0,radius-10);
+
+        degreeGraphics.mask = maskGraphics;
+
 
         // Add the pitch container
 
         this.rollContainer.addChild(this.pitchContainer);
+        this.rollContainer.addChild(triangleGraphics);
+        this.rollContainer.addChild(this.slipSkidGraphics);
+        this.rollContainer.addChild(maskGraphics);
 
         // Position the pitch container in the center of the window
         this.rollContainer.x = this.displayWidth / 2;
@@ -185,6 +264,40 @@ export class AttitudeIndicator {
         this._roll = newValue;
     }
 
+    /**
+     * set a new value for acceleration in the y direction (slip / skid)
+     */
+
+    set accy(newValue) {
+        // check for NaN in order to protect the smoothing calculation
+        if (isNaN(newValue)){ // check for NaN
+            newValue = 0;
+        }
+        this._acc100 = newValue;
+        this._smooth = this.smoothedValue(newValue/100);
+
+        if (this._smooth == this._acc) {
+            return;
+        }
+        this._acc = this._smooth;
+
+        // caluclate effective angle of slip or skid
+        let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
+        let sign = Math.sign(angle);
+
+        let horizontalPosition = Math.min(Math.abs(angle),this.slipSkidDegrees) * sign * this.triangleHeight / this.slipSkidDegrees;
+        this.slipSkidGraphics.x = horizontalPosition;
+
+    }
+
+    smoothedValue(newValue){
+        let now = new Date;
+        let elapsedTime = now - this.lastUpdate;
+        this._smoothed = this._smoothed +  elapsedTime * (newValue - this._smoothed) / this._smoothing;
+        this.lastUpdate = now;
+        return this._smoothed;
+    }
+
     // ------------------------------------------------------------------------
     // --- Bank Angle Arc                                                   ---
     // ------------------------------------------------------------------------
@@ -193,6 +306,8 @@ export class AttitudeIndicator {
 
         // Parameters
         let radius = 180;
+        let triangleHeight = 20; // This is a duplicate from the main class - fix
+
         let start_radians = 7 / 6 * Math.PI;   // 210 deg
         let end_radians = 11 / 6 * Math.PI;    // 330 deg
         let major_length = 30;
@@ -254,6 +369,26 @@ export class AttitudeIndicator {
             arc.moveTo(x,y);
             arc.lineTo(x1,y1);
         }
+
+        // Draw the 0 degree roll triangle
+
+        let fillColour = 0xFFFFFF;
+
+        let lineOptions = new Object;
+        lineOptions.width = 0;
+        lineOptions.color = 0x000000;
+        lineOptions.alpha = 1;
+        lineOptions.alignment = 0;
+        lineOptions.cap = PIXI.LINE_CAP.ROUND;
+
+        let triangleGraphics = new Graphics();
+
+        arc.lineStyle(lineOptions);
+        
+        arc.beginFill(fillColour, 1);
+        arc.drawPolygon(0,-radius, triangleHeight/2, -triangleHeight-radius, -triangleHeight/2, -triangleHeight-radius);
+        arc.endFill();
+
 
         arc.x = centreX;
         arc.y = centreY;
