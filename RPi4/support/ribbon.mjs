@@ -84,7 +84,7 @@ export class Ribbon {
         this.ruler = new Graphics()
 
         let rulerLineWidth = 2;
-        let rulerColour = 0xffffff;
+        let rulerColour = 0xBBBBBB;
 
         this.ruler.lineStyle(rulerLineWidth, rulerColour);
 
@@ -161,7 +161,7 @@ export class Ribbon {
         let text_style = new PIXI.TextStyle({
             fontFamily: "Tahoma",
             fontSize: 22,
-            fill: "white",
+            fill: "#BBBBBB",
             fontWeight: "normal"
             
         });

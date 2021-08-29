@@ -19,4 +19,5 @@ rsync support/airspeedRibbon.mjs pi@"$destination_server":"$piefis_support_dir"a
 rsync support/vsi-indicator.mjs pi@"$destination_server":"$piefis_support_dir"vsi-indicator.mjs
 rsync support/attitude-indicator.mjs pi@"$destination_server":"$piefis_support_dir"attitude-indicator.mjs
 rsync support/slipBall.mjs pi@"$destination_server":"$piefis_support_dir"slipBall.mjs
+rsync support/headingIndicator.mjs pi@"$destination_server":"$piefis_support_dir"headingIndicator.mjs
 echo 'Done'

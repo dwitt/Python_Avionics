@@ -111,6 +111,7 @@ _BNO08X_CMD_RESET = const(0x01)
 _QUAT_Q_POINT = const(14)
 _BNO_HEADER_LEN = const(4)
 
+_Q_POINT_30_SCALAR = 2 ** (30 * -1)
 _Q_POINT_14_SCALAR = 2 ** (14 * -1)
 _Q_POINT_12_SCALAR = 2 ** (12 * -1)
 # _Q_POINT_10_SCALAR = 2 ** (10 * -1)
@@ -123,6 +124,40 @@ _ACCEL_SCALAR = _Q_POINT_8_SCALAR
 _QUAT_SCALAR = _Q_POINT_14_SCALAR
 _GEO_QUAT_SCALAR = _Q_POINT_12_SCALAR
 _MAG_SCALAR = _Q_POINT_4_SCALAR
+_SENSOR_ORIENTATION_SCALAR = _Q_POINT_30_SCALAR
+
+SYSTEM_ORIENTATION = 0x2D3E
+_PRIMARY_ACCELEROMETER_ORIENTATION = 0x2D41
+_SCREEN_ROTATION_ACCELEROMETER_ORIENTATION = 0x2D43
+_GYROSCOPE_ORIENTATION = 0x2D46
+MAGNETOMETER_ORIENTATION = 0x2D4C
+
+# FRS Read Status Values
+_FRS_READ_STATUS_NO_ERROR = 0
+_FRS_READ_STATUS_UNRECOGNIZED_FRS_TYPE = 1
+_FRS_READ_STATUS_BUSY = 2
+_FRS_READ_STATUS_READ_RECORD_COMPLETED = 3
+_FRS_READ_STATUS_OFFSET_OUT_OF_RANGE = 4
+_FRS_READ_STATUS_RECORD_EMPTY = 5
+_FRS_READ_STATUS_READ_BLOCK_COMPLETED = 6
+_FRS_READ_STATUS_READ_BLOCK_RECORD_COMPLETED = 7
+_FRS_READ_STATUS_DEVICE_ERROR = 8
+
+_FRS_WRITE_STATUS_WORDS_RECIEVED = 0
+_FRS_WRITE_STATUS_UNRECOGNIZED_FRS_TYPE = 1
+_FRS_WRITE_STATUS_BUSY = 2
+_FRS_WRITE_STATUS_WRITE_COMPLETED = 3
+_FRS_WRITE_STATUS_WRITE_MODE_ENTERED = 4
+_FRS_WRITE_STATUS_WRITE_FAILED = 5
+_FRS_WRITE_STATUS_DATA_RECIEVED_WHILE_NOT_IN_WRITE_MODE = 6
+_FRS_WRITE_STATUS_INVALID_LENGTH = 7
+_FRS_WRITE_STATUS_RECORD_VALID = 8
+_FRS_WRITE_STATUS_RECORD_INVALID = 9
+_FRS_WRITE_STATUS_DEVICE_ERROR = 10
+_FRS_WRITE_STATUS_RECORD_IS_READ_ONLY = 11
+_FRS_WRITE_STATUS_UNABLE_TO_WRITE = 12
+
+
 
 _REPORT_LENGTHS = {
     _SHTP_REPORT_PRODUCT_ID_RESPONSE: 16,
@@ -543,7 +578,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
             raise RuntimeError("Could not read ID")
 
     # -------------------------------------------------------------------------
-    # --- Poperties to return sensor data                                   ---
+    # --- Properties to return sensor data                                  ---
     # -------------------------------------------------------------------------
 
     @property
@@ -979,6 +1014,8 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         sensor_data, accuracy = _parse_sensor_report_data(report_bytes)
         if report_id == BNO_REPORT_MAGNETOMETER:
             self._magnetometer_accuracy = accuracy
+            
+            
         # TODO: FIXME; Sensor reports are batched in a LIFO which means that multiple reports
         # for the same type will end with the oldest/last being kept and the other
         # newer reports thrown away. This happens based on how we are called
@@ -1085,6 +1122,212 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         self._dbg("")
         # TODO: this is only one of the numbers!
         return sw_part_number
+    
+    
+    def _frs_write_request(self, record_length, frs_type):
+        """
+        Send FRS write request of type frs_type with a length in 32 bit 
+        words of record_length. Return the status of the write response.
+        """
+        self._dbg("\n********** FRS WRITE REQUEST **********")
+        data = bytearray(6)
+        pack_into("<B", data, 0, _FRS_WRITE_REQUEST)
+        pack_into("<H", data, 2, record_length)
+        pack_into("<H", data, 4, frs_type)
+        
+        self._dbg("\n** Sending FRS Request **")
+        self._send_packet(_BNO_CHANNEL_CONTROL, data)
+        
+        self._dbg("\n** Waitng for FRS Write Response packet **")
+        # _a_ packet arrived, but which one?
+        while True:
+            self._wait_for_packet_type(
+                _BNO_CHANNEL_CONTROL, _FRS_WRITE_RESPONSE
+            )
+            (status, offset) = self._parse_frs_write_response()
+            return status
+    
+    def _parse_frs_write_response(self):
+        if not self._data_buffer[4] == _FRS_WRITE_RESPONSE:
+            return()
+                
+        status = self._get_data(1, "<B")
+        offset = self._get_data(2, "<H")
+        return(status, offset)
+    
+    def _frs_write_data_request(self, offset, data0, data1):
+        """
+        Write data to the FRS record previously requested.
+        """
+        self._dbg("\n********** FRS WRITE DATA **********")
+        data = bytearray(12)
+        pack_into("<B", data, 0, _FRS_WRITE_DATA)
+        pack_into("<H", data, 2, offset)
+        pack_into("<i", data, 4, data0)
+        pack_into("<i", data, 8, data1)
+        
+        self._dbg("\n** Sending FRS Data **")
+        self._send_packet(_BNO_CHANNEL_CONTROL, data)
+        self._dbg("\n** Waitng for packet **")
+        # _a_ packet arrived, but which one?
+        while True:
+            self._wait_for_packet_type(
+                _BNO_CHANNEL_CONTROL, _FRS_WRITE_RESPONSE
+            )
+            (status, offset) = self._parse_frs_write_response()
+            return (status, offset)
+    
+    def _frs_read_request(self, frs_type):
+        """
+        Request a read from the FRS (flash record system) of type frs_type
+        """
+        self._dbg("\n********* FRS READ REQUEST **********")
+        
+        # Create FRS Read Request report
+        data = bytearray(8)
+        pack_into("<B", data, 0, _FRS_READ_REQUEST)
+        pack_into("<H", data, 4, frs_type)
+        
+        self._dbg("\n** Sending FRS Request **")
+        self._send_packet(_BNO_CHANNEL_CONTROL, data)
+        
+        # Expect a FRS Read Response
+    
+    def _frs_read_response(self):
+        self._dbg("\n** Waitng for packet **")
+        # _a_ packet arrived, but which one?
+        
+        self._wait_for_packet_type(
+            _BNO_CHANNEL_CONTROL, _FRS_READ_RESPONSE
+        )
+        
+        # unpack the data
+        _length_and_status = self._get_data(1, "<B")
+        _status = _length_and_status & 0b1111
+        _length = _length_and_status >> 4 
+        _offset = self._get_data(2, "<H")
+        _data0 = self._get_data(4, "<i")
+        _data1 = self._get_data(8, "<i")
+        _frs_type = self._get_data(12, "<H")
+        
+        return(_status, _length, _offset, _data0, _data1, _frs_type)
+        
+    def erase_frs_record(self, record):
+        _status = self._frs_write_request(0, record)
+        self._dbg(f"first status was {_status}")
+        # Check for completed status. This is not expected in the first
+        # response but maybe we missed a response?
+        if (_status == _FRS_WRITE_STATUS_WRITE_COMPLETED):
+            return _status
+        
+        while True:
+            self._wait_for_packet_type(
+                _BNO_CHANNEL_CONTROL, _FRS_WRITE_RESPONSE
+            )
+            (_status, offset) = self._parse_frs_write_response()
+            self._dbg(f"second status was {_status}")
+            return _status
+            
+        return _status
+    
+    
+    def set_sensor_orientation(self, sensor, qw, qx, qy, qz):
+        """
+        Set the sensor orientation by sending the mapping quarernion using the
+        FRS record.
+        """
+        _w = round(qw / _SENSOR_ORIENTATION_SCALAR)
+        _x = round(qx / _SENSOR_ORIENTATION_SCALAR)
+        _y = round(qy / _SENSOR_ORIENTATION_SCALAR)
+        _z = round(qz / _SENSOR_ORIENTATION_SCALAR)
+        
+        #TODO: Change this to debug
+        print("Orientation Rotation Quarternion:")
+        print(
+            "w: %0.6f  x: %0.6f  y: %0.6f  z: %0.6f" % (_w, _x, _y, _z)
+        )
+        
+        status = self._frs_write_request(4, sensor)
+        
+        self._dbg("\n** Sent FRS Write Request **")
+        self._dbg("\n** Recieved response of " + str(status))
+        
+        if (status != _FRS_WRITE_STATUS_WRITE_MODE_ENTERED):
+            return status
+        
+        (status, offset) = self._frs_write_data_request(0, _x, _y)
+        if (status != _FRS_WRITE_STATUS_WORDS_RECIEVED):
+            return status 
+        
+        self._dbg("\n** Sent FRS Write Data Request with x and y **")
+        self._dbg("\n** Recieved response of " + str(status))
+        self._dbg("\n** Recieved offset of " + str(offset))
+    
+                
+        (status, offset) = self._frs_write_data_request(2, _z, _w)
+        if (status != _FRS_WRITE_STATUS_WORDS_RECIEVED):
+            return status
+        
+        self._dbg("\n** Sent FRS Write Data Request with z and w **")
+        self._dbg("\n** Recieved response of " + str(status))
+        self._dbg("\n** Recieved offset of " + str(offset))
+        
+        self._dbg("\n** Waitng for packet NEXT PACKET **")
+        # _a_ packet arrived, but which one?
+        while True:
+            self._wait_for_packet_type(
+                _BNO_CHANNEL_CONTROL, _FRS_WRITE_RESPONSE
+            )
+            (status, offset) = self._parse_frs_write_response()
+            if (status == _FRS_WRITE_STATUS_WRITE_COMPLETED):
+                return status
+            if (status != _FRS_WRITE_STATUS_RECORD_VALID):
+                return status
+
+        
+    def get_sensor_orientation(self, sensor):
+        """
+        Get the sensor orientation by reading from the System Orientation 
+        FRS record.
+        """  
+        
+        self._frs_read_request(sensor)
+        
+        self._dbg("\n** Sent FRS Read Request **")
+        
+        (_status, _length, _offset, _data0, _data1, _frs_type) = self._frs_read_response()
+        if(_status == _FRS_READ_STATUS_RECORD_EMPTY):
+            return(_status, 0,0,0,0)
+        if(_status != _FRS_READ_STATUS_NO_ERROR or
+           _length != 2 or
+           _offset != 0 or
+           _frs_type != sensor):
+            self._dbg("\n** Error ",_status, _length, _offset, _frs_type)
+            raise RuntimeError(
+                "Error reading x and y of Sensor Orientation FRS record."
+            )
+        x = _data0
+        y = _data1
+        
+        (_status, _length, _offset, _data0, _data1, _frs_type) = self._frs_read_response()
+        if (_status != _FRS_READ_STATUS_READ_RECORD_COMPLETED or
+           _length != 2 or
+           _offset != 2 or
+           _frs_type != sensor):
+            self._dbg("\n** Error ",_status, _length, _offset, _frs_type)
+            raise RuntimeError(
+                "Error completing read of Sensor Orientation FRS Record"
+            )
+        z = _data0
+        w = _data1
+        
+        qx = x * _SENSOR_ORIENTATION_SCALAR
+        qy = y * _SENSOR_ORIENTATION_SCALAR
+        qz = z * _SENSOR_ORIENTATION_SCALAR
+        qw = w * _SENSOR_ORIENTATION_SCALAR
+        
+        return (_status, qw, qx, qy ,qz)      
+        
 
     def _dbg(self, *args, **kwargs):
         if self._debug:
