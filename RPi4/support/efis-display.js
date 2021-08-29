@@ -3,6 +3,7 @@ import { AirspeedRibbon } from './airspeedRibbon.mjs';
 import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
 import { SlipBallIndicator } from './slipBall.mjs';
+import { HeadingIndicator } from './headingIndicator.mjs'
 
 'use strict';
 // ----------------------------------------------------------------------------
@@ -103,7 +104,8 @@ var attitudeIndicator,
     airspeedWheel,
     airspeedRibbon,
     vsiIndicator,
-    slipBallIndicator;
+    slipBallIndicator,
+    headingIndicator;
     
 document.fonts.ready.then(function() {
     setup();
@@ -133,7 +135,7 @@ myWebSocket.onmessage = function (event) {
 function setup() {
 
     attitudeIndicator = new AttitudeIndicator(app);            
-    altimeter_ribbon = new Ribbon(app, 765, 240, 400, 100, true, 100, 4, 4, true);
+    altimeter_ribbon = new Ribbon(app, 765, 240, 400, 100, true, 100, 4, 5, true);
     altitudeWheel = new AltitudeWheel(app, 755, 240);
     qnhDisplay = new QNHDisplay(app);
     vsiDisplay = new VSIDisplay(app);
@@ -147,6 +149,7 @@ function setup() {
     var aircraft = new AircraftIndicator(app);
 
     slipBallIndicator = new SlipBallIndicator(app);
+    headingIndicator = new HeadingIndicator(app, 500);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -170,7 +173,8 @@ function DisplayUpdateLoop(delta) {
     airspeedWheel.value = dataObject.airspeed;
     airspeedRibbon.value = dataObject.airspeed;
     vsiIndicator.value = dataObject.vsi;
-    slipBallIndicator.acc = dataObject.accy
+    slipBallIndicator.acc = dataObject.accy;
+    headingIndicator.value = dataObject.yaw;
 
 
 }
@@ -569,7 +573,7 @@ Object.defineProperties( AltitudeWheel.prototype, {
 // --- NumericWheel object
 // --- font_name                    The name of the font to use - string            
 // --- font_size                    A number that is the size of the font in pixels
-// --- capital_height_ratio         A number that is the height of captial divided by the the em square
+// --- capital_height_ratio         A number that is the height of captial divided by the height of the em square
 // --- digit_display_area_height    A number that is the height of the area that is to display the digit in pixels. Generally
 // --- digit_position_in_wheel      An integer that indicates the place value for this digit in the numeric wheel display as a power of 10.
 // --- display_negative_symbol      A boolean that if true means display the negative symbol

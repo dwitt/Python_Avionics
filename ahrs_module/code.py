@@ -23,17 +23,20 @@ import board
 import busio
 import canio
 import digitalio
-
+import neopixel
 
 import math
 
 from adafruit_bno08x.i2c import BNO08X_I2C
 from adafruit_bno08x import (
     BNO_REPORT_ACCELEROMETER,
+    BNO_REPORT_GAME_ROTATION_VECTOR,
     BNO_REPORT_GYROSCOPE,
     BNO_REPORT_MAGNETOMETER,
     BNO_REPORT_ROTATION_VECTOR,
     CALIBRATION_REPORT_INTERVAL,
+    SYSTEM_ORIENTATION,
+    MAGNETOMETER_ORIENTATION
 )
 
 from quaternion import (
@@ -42,6 +45,8 @@ from quaternion import (
 )
 
 from micropython import const # type: ignore
+
+print("Starting AHRS module")
 
 # -- Debugging Constants
 DEBUG = False
@@ -82,13 +87,40 @@ if hasattr(board, 'BOOST_ENABLE'):
 can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
                 baudrate=250_000, auto_restart=True)
 
-# AHRS Module
-bno = BNO08X_I2C(i2c)
+# AHRS Module (BNO085)
+bno = BNO08X_I2C(i2c, debug=False)
 
 bno.enable_feature(BNO_REPORT_ACCELEROMETER)
 bno.enable_feature(BNO_REPORT_GYROSCOPE)
 bno.enable_feature(BNO_REPORT_MAGNETOMETER, CALIBRATION_REPORT_INTERVAL)
 bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
+
+#bno.begin_calibration()
+
+# On board Neopixel
+pixel_pin = board.NEOPIXEL
+num_pixels = 1
+ORDER = neopixel.GRB
+
+pixel = neopixel.NeoPixel(
+    pixel_pin, num_pixels, brightness=1.0, auto_write=False, 
+    pixel_order=ORDER
+)
+
+pixel_power = digitalio.DigitalInOut(board.NEOPIXEL_POWER)
+pixel_power.direction = digitalio.Direction.OUTPUT
+
+pixel[0]= 0x0000ff
+pixel.brightness = .01
+
+pixel_power.value = False
+
+
+# --- Create a CAN bus message mask for the Calibration message
+# --- and create a listener
+
+calibration_match = canio.Match(id=CAN_Calib_Msg_id)
+calibration_listener = can.listen(matches=[calibration_match], timeout = 0.01)
 
 # initialize data
 roll = 0
@@ -99,12 +131,6 @@ accel_x = 0
 accel_y = 0
 accel_z = 0
 magnetometer_accuracy = 0
-
-# --- Create a CAN bus message mask for the Calibration message
-# --- and create a listener
-
-calibration_match = canio.Match(id=CAN_Calib_Msg_id)
-calibration_listener = can.listen(matches=[calibration_match], timeout = 0.01)
 
 last_time_millis = int(time.monotonic_ns() / 1000000)
 
@@ -132,6 +158,7 @@ while True:
         roll, pitch, yaw = radians_to_degrees(*euler_from_quaternion(
             quat_real, quat_i, quat_j, quat_k
             ))
+        yaw = yaw - 90
         magnetometer_accuracy = bno.calibration_status
         
         turn_rate = gyro_z * radians_to_degrees_multiplier # degress/second
@@ -191,8 +218,11 @@ while True:
 
             if ((calibration_command & 0b00010000) == 8):
                 bno.begin_calibration()
+                pixel_power.value = True
+                pixel.show()
             if ((calibration_command & 0b00000001) == 1):
                 bno.save_calibration_data()
+                pixel_power.value = False
                 
     # -------------------------------------------------------------------------
     # --- Debuging display                                                  ---
@@ -206,11 +236,10 @@ while True:
             
             
                 
-            
-
-
-
-while false:
+#TODO: Delete the following
+# -----------------------------------------------------------------------------            
+# This was used for testing
+while False:
 
     time.sleep(0.25)
     print("Acceleration:")
@@ -247,8 +276,3 @@ while false:
     print(
         "Calibration: %1.0d" % (calibration)
     )
-    
-    
-    
-
- 

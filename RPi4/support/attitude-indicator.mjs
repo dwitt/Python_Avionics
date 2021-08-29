@@ -13,7 +13,7 @@ var Application = PIXI.Application,
     Container = PIXI.Container,
     Text = PIXI.Text;
 
-/**
+/******************************************************************************
  * Class representing a Attitude indicator.
  */
 export class AttitudeIndicator {
@@ -64,9 +64,9 @@ export class AttitudeIndicator {
         let earthHeight = skyHeight;
 
 
-
-        // Draw the sky and earth in a container where 0,0 is the center
-
+        /** 
+         * Draw the sky and earth in a container where 0,0 is the center
+        */
         this.pitchContainer = new Container();
 
         let skyColour = 0x0000C0;
@@ -114,9 +114,8 @@ export class AttitudeIndicator {
         });
 
 
-
-
         let degreeGraphics = new Graphics();
+
         degreeGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
         for (let i=-90; i <= 90; i = i + 10) {
             let sign = Math.sign(i);
@@ -161,11 +160,11 @@ export class AttitudeIndicator {
 
         this.rollContainer = new Container();
         
-        //
-        // Draw the Roll triangle for the Arc
-        //
+        /**
+         * Draw the Roll triangle for the Arc
+        */
 
-        let radius = 180; // duplicated in the drawing of the BankArc
+        let radius = 180;         // duplicated in the drawing of the BankArc
         this.triangleHeight = 25;
 
         lineWidth = 2;
@@ -187,6 +186,9 @@ export class AttitudeIndicator {
         triangleGraphics.drawPolygon(0,-radius, this.triangleHeight/2, this.triangleHeight-radius, -this.triangleHeight/2, this.triangleHeight-radius);
         triangleGraphics.endFill();
 
+        triangleGraphics.x = this.displayWidth/2;
+        triangleGraphics.y = this.displayHeight/2;
+
         /** 
         * Draw a slip skid indicator below the roll triangle
         */
@@ -206,7 +208,8 @@ export class AttitudeIndicator {
         );
         this.slipSkidGraphics.endFill;
 
-
+        this.slipSkidGraphics.x = this.displayWidth/2;
+        this.slipSkidGraphics.y = this.displayHeight/2;
 
         // Create a mask for the degreeGraphics of the attitude indicator
 
@@ -222,16 +225,18 @@ export class AttitudeIndicator {
         // Add the pitch container
 
         this.rollContainer.addChild(this.pitchContainer);
-        this.rollContainer.addChild(triangleGraphics);
-        this.rollContainer.addChild(this.slipSkidGraphics);
         this.rollContainer.addChild(maskGraphics);
+
+        this.rollContainer.addChild(this.bankArc());
 
         // Position the pitch container in the center of the window
         this.rollContainer.x = this.displayWidth / 2;
         this.rollContainer.y = this.displayHeight / 2;
 
         app.stage.addChild(this.rollContainer);
-        this.bankArc(app);
+
+        app.stage.addChild(triangleGraphics);
+        app.stage.addChild(this.slipSkidGraphics);
 
     }
     /**
@@ -298,11 +303,11 @@ export class AttitudeIndicator {
         return this._smoothed;
     }
 
-    // ------------------------------------------------------------------------
-    // --- Bank Angle Arc                                                   ---
-    // ------------------------------------------------------------------------
+    /**
+     * Create the Bank Arc
+     */
 
-    bankArc(app) {
+    bankArc() {
 
         // Parameters
         let radius = 180;
@@ -317,28 +322,29 @@ export class AttitudeIndicator {
         let major_marks = [7/6, 8/6, 10/6, 11/6];  
         let minor_marks = [5/4, 25/18, 26/18, 28/18, 29/18, 7/4];  
 
-        let centreX = this.displayWidth / 2;
-        let centreY = this.displayHeight / 2
+        let centreX = 0; //this.displayWidth / 2;
+        let centreY = 0; //this.displayHeight / 2
 
-        // Create the container to hold the arc
+        /** Pixi.js Container to hold the arc */
         let arcContainer = new Container();
 
         let x, y, angle, unit_x, unit_y, x1, y1;
 
-        // Create the arc
+        /** Graphics for the arc */
         let arc = new Graphics();
 
         let lineWidth = 2
         let lineColour = 0xFFFFFF
 
-        // Draw the are line
+        // Draw the Arc line
         arc.lineStyle(lineWidth,lineColour);
         arc.arc(0, 0, radius, start_radians, end_radians,false);
 
-        // Draw the markings
+        // Draw the Arc tick markings
 
         lineWidth = 3;
         
+        // Major Tick marks (-60, -30, 30 ,60)
         arc.lineStyle(lineWidth,lineColour);
         for (let i = 0; i < major_marks.length; i = i + 1) {
             angle = 2 * Math.PI - major_marks[i] * Math.PI; 
@@ -354,6 +360,7 @@ export class AttitudeIndicator {
             arc.lineTo(x1,y1);
         }
 
+        // Minor Tick marks (-45, -20, -10, 10, 20, 45)
         lineWidth = 2;
         arc.lineStyle(lineWidth,lineColour);
         for (let i = 0; i < minor_marks.length; i = i + 1) {
@@ -394,7 +401,7 @@ export class AttitudeIndicator {
         arc.y = centreY;
         // Save the are in the container and display it
         arcContainer.addChild(arc);
-        app.stage.addChild(arcContainer);
+        return arcContainer;
 
     }
 }
