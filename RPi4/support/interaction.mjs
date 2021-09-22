@@ -19,9 +19,9 @@ var Application = PIXI.Application,
  */
 
 export class Interactions{
-    constructor(app, x , y, width, height, callback) {
-        menuButtonContainer = new Container();
-        menuButtonGraphics = new Graphics();
+    constructor(app, x , y, width, height) {
+        let menuButtonContainer = new Container();
+        let menuButtonGraphics = new Graphics();
 
         let lineWidth = 2.0;
         let lineColour = 0xFFFFFF;
@@ -29,10 +29,10 @@ export class Interactions{
 
         menuButtonGraphics.lineStyle(lineWidth, lineColour, lineAlpha);
 
-        let fillColour = 0xFF0000;
-        let filaAlpha = 1.0;
+        let fillColour = 0x00A000;
+        let fillAlpha = 1.0;
 
-        menuButtonGraphics.beginFill(fileColour, fillAlpha);
+        menuButtonGraphics.beginFill(fillColour, fillAlpha);
         menuButtonGraphics.drawRect(x,y,width,height);
         menuButtonGraphics.endFill();
 
@@ -40,15 +40,19 @@ export class Interactions{
             fontFamily: "Tahoma",
             fontSize: 22,
             fill: "#FFFFFF",
-            fontWeight: "normal"  
+            fontWeight: "normal"  w
         });
     
-        menuButtonText = new Text("Menu", menuButtonTextStyle);
+        let menuButtonText = new Text("Menu", menuButtonTextStyle);
 
+        //menuButtonText.position.set(width/2, height/2);
+        //menuButtonText.anchor.set(0,0);
+
+        menuButtonGraphics.addChild(menuButtonText);
         menuButtonContainer.addChild(menuButtonGraphics);
-        menuButtonContainer.addChild(menuButtonText);
+        //menuButtonContainer.addChild(menuButtonText);
 
-        app.addChild(menuButtonContainer);
+        app.stage.addChild(menuButtonContainer);
         
     }
 }
