@@ -3,7 +3,8 @@ import { AirspeedRibbon } from './airspeedRibbon.mjs';
 import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
 import { SlipBallIndicator } from './slipBall.mjs';
-import { HeadingIndicator } from './headingIndicator.mjs'
+import { HeadingIndicator } from './headingIndicator.mjs';
+import { Interactions } from './interaction.mjs';
 
 'use strict';
 // ----------------------------------------------------------------------------
@@ -105,7 +106,8 @@ var attitudeIndicator,
     airspeedRibbon,
     vsiIndicator,
     slipBallIndicator,
-    headingIndicator;
+    headingIndicator,
+    menu;
     
 document.fonts.ready.then(function() {
     setup();
@@ -150,6 +152,7 @@ function setup() {
 
     slipBallIndicator = new SlipBallIndicator(app);
     headingIndicator = new HeadingIndicator(app, 500);
+    menu = new Interactions(app, 660, 440, 150, 40);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
