@@ -49,7 +49,7 @@ from micropython import const # type: ignore
 print("Starting AHRS module")
 
 # -- Debugging Constants
-DEBUG = False
+DEBUG = True
 
 # --- CAN Message Constants ---
 
@@ -87,7 +87,9 @@ if hasattr(board, 'BOOST_ENABLE'):
 can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
                 baudrate=250_000, auto_restart=True)
 
+# -----------------------------------------------------------------------------
 # AHRS Module (BNO085)
+# -----------------------------------------------------------------------------
 bno = BNO08X_I2C(i2c, debug=False)
 
 bno.enable_feature(BNO_REPORT_ACCELEROMETER)
