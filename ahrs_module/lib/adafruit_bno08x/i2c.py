@@ -21,10 +21,10 @@ class BNO08X_I2C(BNO08X):
     """
 
     def __init__(
-        self, i2c_bus, reset=None, address=_BNO08X_DEFAULT_ADDRESS, debug=False
+        self, i2c_bus, reset=None, address=_BNO08X_DEFAULT_ADDRESS, debug=False, debug_level=0
     ):
         self.bus_device_obj = i2c_device.I2CDevice(i2c_bus, address)
-        super().__init__(reset, debug)
+        super().__init__(reset, debug, debug_level)
 
     def _send_packet(self, channel, data):
         data_length = len(data)
@@ -36,8 +36,8 @@ class BNO08X_I2C(BNO08X):
         for idx, send_byte in enumerate(data):
             self._data_buffer[4 + idx] = send_byte
         packet = Packet(self._data_buffer)
-        self._dbg("Sending packet:")
-        self._dbg(packet)
+        #self._dbg("Sending packet:")
+        #self._dbg(packet)
         with self.bus_device_obj as i2c:
             i2c.write(self._data_buffer, end=write_length)
 
@@ -52,13 +52,13 @@ class BNO08X_I2C(BNO08X):
         with self.bus_device_obj as i2c:
             i2c.readinto(self._data_buffer, end=4)  # this is expecting a header
         packet_header = Packet.header_from_buffer(self._data_buffer)
-        self._dbg(packet_header)
+        #self._dbg(packet_header)
         return packet_header
 
     def _read_packet(self):
         with self.bus_device_obj as i2c:
             i2c.readinto(self._data_buffer, end=4)  # this is expecting a header?
-        self._dbg("")
+        #self._dbg("")
         # print("SHTP READ packet header: ", [hex(x) for x in self._data_buffer[0:4]])
 
         header = Packet.header_from_buffer(self._data_buffer)
@@ -68,22 +68,22 @@ class BNO08X_I2C(BNO08X):
 
         self._sequence_number[channel_number] = sequence_number
         if packet_byte_count == 0:
-            self._dbg("SKIPPING NO PACKETS AVAILABLE IN i2c._read_packet")
+            # self._dbg("SKIPPING NO PACKETS AVAILABLE IN i2c._read_packet")
             raise PacketError("No packet available")
         packet_byte_count -= 4
-        self._dbg(
-            "channel",
-            channel_number,
-            "has",
-            packet_byte_count,
-            "bytes available to read",
-        )
+        #self._dbg(
+        #    "channel",
+        #    channel_number,
+        #    "has",
+        #    packet_byte_count,
+        #    "bytes available to read",
+        #)
 
         self._read(packet_byte_count)
 
         new_packet = Packet(self._data_buffer)
-        if self._debug:
-            print(new_packet)
+        #if (self._debug == True and self._debug_level == 0) :
+        #    print(new_packet)
 
         self._update_sequence_number(new_packet)
 
@@ -91,14 +91,14 @@ class BNO08X_I2C(BNO08X):
 
     # returns true if all requested data was read
     def _read(self, requested_read_length):
-        self._dbg("trying to read", requested_read_length, "bytes")
+        #self._dbg("trying to read", requested_read_length, "bytes")
         # +4 for the header
         total_read_length = requested_read_length + 4
         if total_read_length > DATA_BUFFER_SIZE:
             self._data_buffer = bytearray(total_read_length)
-            self._dbg(
-                "!!!!!!!!!!!! ALLOCATION: increased _data_buffer to bytearray(%d) !!!!!!!!!!!!! "
-                % total_read_length
+            print(
+                f"!!!!!!!!!!!! ALLOCATION: increased _data_buffer to bytearray{total_read_length:d} !!!!!!!!!!!!! "
+            #    % total_read_length
             )
         with self.bus_device_obj as i2c:
             i2c.readinto(self._data_buffer, end=total_read_length)
@@ -108,7 +108,8 @@ class BNO08X_I2C(BNO08X):
         header = self._read_header()
 
         if header.channel_number > 5:
-            self._dbg("channel number out of range:", header.channel_number)
+            # self._dbg("channel number out of range:", header.channel_number)
+            pass
         if header.packet_byte_count == 0x7FFF:
             print("Byte count is 0x7FFF/0xFFFF; Error?")
             if header.sequence_number == 0xFF:
