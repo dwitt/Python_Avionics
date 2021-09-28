@@ -21,10 +21,10 @@ class BNO08X_I2C(BNO08X):
     """
 
     def __init__(
-        self, i2c_bus, reset=None, address=_BNO08X_DEFAULT_ADDRESS, debug=False, debug_level=0
+        self, i2c_bus, reset=None, address=_BNO08X_DEFAULT_ADDRESS, debug=False
     ):
         self.bus_device_obj = i2c_device.I2CDevice(i2c_bus, address)
-        super().__init__(reset, debug, debug_level)
+        super().__init__(reset, debug)
 
     def _send_packet(self, channel, data):
         data_length = len(data)

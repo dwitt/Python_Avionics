@@ -1,2 +1,7 @@
 *.DS_store
+*.vscode
+*.ipynb_checkpoints
+extensions.json
+settings.json
+Quarterions-checkpoint.ipynb
 **/electronics
