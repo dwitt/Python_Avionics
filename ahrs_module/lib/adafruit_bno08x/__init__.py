@@ -539,14 +539,13 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
 
     """
 
-    def __init__(self, reset=None, debug=False, debug_level=0):
+    def __init__(self, reset=None, debug=False):
         self._debug = debug
         # added debug level to assist with debugging of slowness
         # level zero is everything
         # otherwise on print the level that is passed
-        self._debug_level = debug_level
         self._reset = reset
-        #self._dbg("********** __init__ *************")
+        self._dbg("********** __init__ *************")
         self._data_buffer = bytearray(DATA_BUFFER_SIZE)
         self._command_buffer = bytearray(12)
         self._packet_slices = []
@@ -794,6 +793,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
     @property
     def calibration_status(self):
         """Get the status of the self-calibration"""
+        print("send calibration command")
         self._send_me_command(
             [
                 0,  # reserved
@@ -812,7 +812,6 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
     # --- Private function used by calibration --------------------------------
 
     def _send_me_command(self, subcommand_params):
-
         start_time = time.monotonic()
         local_buffer = self._command_buffer
         # format the command request report
@@ -827,7 +826,9 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         self._increment_report_seq(_COMMAND_REQUEST)
         while _elapsed(start_time) < _DEFAULT_TIMEOUT:
             self._process_available_packets()
-            if self._me_calibration_started_at > start_time:
+            if self._me_calibration_started_at >= start_time:
+                self._dbg("ME Calibration started at", self._me_calibration_started_at)
+                self._dbg("function started at", start_time)
                 break
 
     def save_calibration_data(self):
@@ -880,18 +881,18 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
             self._handle_packet(new_packet)
             processed_count += 1
             print(f"Processed {processed_count:d} packets")
-            # self._dbg("")
-            # self._dbg("Processed", processed_count, "packets",level=1)
-            # self._dbg("")
-        # self._dbg("")
-        # self._dbg(" ** DONE! **")
+            self._dbg("")
+            self._dbg("Processed", processed_count, "packets")
+            self._dbg("")
+        self._dbg("")
+        self._dbg(" ** DONE! **")
 
     def _wait_for_packet_type(self, channel_number, report_id=None, timeout=5.0):
         if report_id:
             report_id_str = " with report id %s" % hex(report_id)
         else:
             report_id_str = ""
-        #self._dbg("** Waiting for packet on channel", channel_number, report_id_str)
+        self._dbg("** Waiting for packet on channel", channel_number, report_id_str)
         start_time = time.monotonic()
         while _elapsed(start_time) < timeout:
             new_packet = self._wait_for_packet()
@@ -906,7 +907,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
                 BNO_CHANNEL_EXE,
                 BNO_CHANNEL_SHTP_COMMAND,
             ):
-                #self._dbg("passing packet to handler for de-slicing")
+                self._dbg("passing packet to handler for de-slicing")
                 self._handle_packet(new_packet)
 
         raise RuntimeError("Timed out waiting for a packet on channel", channel_number)
@@ -948,11 +949,11 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
                 sw_patch,
                 sw_build_number,
             ) = parse_sensor_id(report_bytes)
-            # self._dbg("FROM PACKET SLICE:")
-            # self._dbg("*** Part Number: %d" % sw_part_number)
-            # self._dbg("*** Software Version: %d.%d.%d" % (sw_major, sw_minor, sw_patch))
-            # self._dbg("\tBuild: %d" % (sw_build_number))
-            # self._dbg("")
+            self._dbg("FROM PACKET SLICE:")
+            self._dbg("*** Part Number: %d" % sw_part_number)
+            self._dbg("*** Software Version: %d.%d.%d" % (sw_major, sw_minor, sw_patch))
+            self._dbg("\tBuild: %d" % (sw_build_number))
+            self._dbg("")
 
         if report_id == _GET_FEATURE_RESPONSE:
             get_feature_report = _parse_get_feature_response_report(report_bytes)
@@ -976,6 +977,8 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
 
         # status, accel_en, gyro_en, mag_en, planar_en, table_en, *_reserved) = response_values
         command_status, *_rest = response_values
+        if command == _ME_CALIBRATE:
+            print(f"ME_CALIBRATE with command_status {command_status}")
 
         if command == _ME_CALIBRATE and command_status == 0:
             self._me_calibration_started_at = time.monotonic()
@@ -1068,7 +1071,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         """
         #TODO: Add report_interval as an argument for enable_feature to allow
         # setting the interval.
-        #self._dbg("\n********** Enabling feature id:", feature_id, "**********")
+        self._dbg("\n********** Enabling feature id:", feature_id, "**********")
 
         if feature_id == BNO_REPORT_ACTIVITY_CLASSIFIER:
             set_feature_report = self._get_feature_enable_report(
@@ -1085,11 +1088,11 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         feature_dependency = _RAW_REPORTS.get(feature_id, None)
         # if the feature was enabled it will have a key in the readings dict
         if feature_dependency and feature_dependency not in self._readings:
-            # self._dbg("Enabling feature depencency:", feature_dependency)
+            self._dbg("Enabling feature depencency:", feature_dependency)
             self.enable_feature(feature_dependency, report_interval)
 
         # Send the packet to enable the requested feature
-        # self._dbg("Enabling", feature_id)
+        self._dbg("Enabling", feature_id)
         self._send_packet(_BNO_CHANNEL_CONTROL, set_feature_report)
 
         start_time = time.monotonic()  # 1
@@ -1101,15 +1104,15 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         raise RuntimeError("Was not able to enable feature", feature_id)
 
     def _check_id(self):
-        # self._dbg("\n********** READ ID **********")
+        self._dbg("\n********** READ ID **********")
         if self._id_read:
             return True
         data = bytearray(2)
         data[0] = _SHTP_REPORT_PRODUCT_ID_REQUEST
         data[1] = 0  # padding
-        # self._dbg("\n** Sending ID Request Report **")
+        self._dbg("\n** Sending ID Request Report **")
         self._send_packet(_BNO_CHANNEL_CONTROL, data)
-        # self._dbg("\n** Waiting for packet **")
+        self._dbg("\n** Waiting for packet **")
         # _a_ packet arrived, but which one?
         while True:
             self._wait_for_packet_type(
@@ -1119,7 +1122,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
             if sensor_id:
                 self._id_read = True
                 return True
-            # self._dbg("Packet didn't have sensor ID report, trying again")
+            self._dbg("Packet didn't have sensor ID report, trying again")
 
         return False
 
@@ -1133,11 +1136,11 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         sw_part_number = self._get_data(4, "<I")
         sw_build_number = self._get_data(8, "<I")
 
-        # self._dbg("")
-        # self._dbg("*** Part Number: %d" % sw_part_number)
-        # self._dbg("*** Software Version: %d.%d.%d" % (sw_major, sw_minor, sw_patch))
-        # self._dbg(" Build: %d" % (sw_build_number))
-        # self._dbg("")
+        self._dbg("")
+        self._dbg("*** Part Number: %d" % sw_part_number)
+        self._dbg("*** Software Version: %d.%d.%d" % (sw_major, sw_minor, sw_patch))
+        self._dbg(" Build: %d" % (sw_build_number))
+        self._dbg("")
         # TODO: this is only one of the numbers!
         return sw_part_number
     
@@ -1147,16 +1150,16 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         Send FRS write request of type frs_type with a length in 32 bit 
         words of record_length. Return the status of the write response.
         """
-        # self._dbg("\n********** FRS WRITE REQUEST **********")
+        self._dbg("\n********** FRS WRITE REQUEST **********")
         data = bytearray(6)
         pack_into("<B", data, 0, _FRS_WRITE_REQUEST)
         pack_into("<H", data, 2, record_length)
         pack_into("<H", data, 4, frs_type)
         
-        # self._dbg("\n** Sending FRS Request **")
+        self._dbg("\n** Sending FRS Request **")
         self._send_packet(_BNO_CHANNEL_CONTROL, data)
         
-        # self._dbg("\n** Waitng for FRS Write Response packet **")
+        self._dbg("\n** Waitng for FRS Write Response packet **")
         # _a_ packet arrived, but which one?
         while True:
             self._wait_for_packet_type(
@@ -1184,9 +1187,9 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         pack_into("<i", data, 4, data0)
         pack_into("<i", data, 8, data1)
         
-        # self._dbg("\n** Sending FRS Data **")
+        self._dbg("\n** Sending FRS Data **")
         self._send_packet(_BNO_CHANNEL_CONTROL, data)
-        # self._dbg("\n** Waitng for packet **")
+        self._dbg("\n** Waitng for packet **")
         # _a_ packet arrived, but which one?
         while True:
             self._wait_for_packet_type(
@@ -1199,20 +1202,20 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         """
         Request a read from the FRS (flash record system) of type frs_type
         """
-        # self._dbg("\n********* FRS READ REQUEST **********")
+        self._dbg("\n********* FRS READ REQUEST **********")
         
         # Create FRS Read Request report
         data = bytearray(8)
         pack_into("<B", data, 0, _FRS_READ_REQUEST)
         pack_into("<H", data, 4, frs_type)
         
-        # self._dbg("\n** Sending FRS Request **")
+        self._dbg("\n** Sending FRS Request **")
         self._send_packet(_BNO_CHANNEL_CONTROL, data)
         
         # Expect a FRS Read Response
     
     def _frs_read_response(self):
-        # self._dbg("\n** Waitng for packet **")
+        self._dbg("\n** Waitng for packet **")
         # _a_ packet arrived, but which one?
         
         self._wait_for_packet_type(
@@ -1232,7 +1235,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         
     def erase_frs_record(self, record):
         _status = self._frs_write_request(0, record)
-        # self._dbg(f"first status was {_status}")
+        self._dbg(f"first status was {_status}")
         # Check for completed status. This is not expected in the first
         # response but maybe we missed a response?
         if (_status == _FRS_WRITE_STATUS_WRITE_COMPLETED):
@@ -1243,7 +1246,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
                 _BNO_CHANNEL_CONTROL, _FRS_WRITE_RESPONSE
             )
             (_status, offset) = self._parse_frs_write_response()
-            # self._dbg(f"second status was {_status}")
+            self._dbg(f"second status was {_status}")
             return _status
             
         return _status
@@ -1267,8 +1270,8 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         
         status = self._frs_write_request(4, sensor)
         
-        # self._dbg("\n** Sent FRS Write Request **")
-        # self._dbg("\n** Recieved response of " + str(status))
+        self._dbg("\n** Sent FRS Write Request **")
+        self._dbg("\n** Recieved response of " + str(status))
         
         if (status != _FRS_WRITE_STATUS_WRITE_MODE_ENTERED):
             return status
@@ -1277,20 +1280,20 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         if (status != _FRS_WRITE_STATUS_WORDS_RECIEVED):
             return status 
         
-        # self._dbg("\n** Sent FRS Write Data Request with x and y **")
-        # self._dbg("\n** Recieved response of " + str(status))
-        # self._dbg("\n** Recieved offset of " + str(offset))
+        self._dbg("\n** Sent FRS Write Data Request with x and y **")
+        self._dbg("\n** Recieved response of " + str(status))
+        self._dbg("\n** Recieved offset of " + str(offset))
     
                 
         (status, offset) = self._frs_write_data_request(2, _z, _w)
         if (status != _FRS_WRITE_STATUS_WORDS_RECIEVED):
             return status
         
-        # self._dbg("\n** Sent FRS Write Data Request with z and w **")
-        # self._dbg("\n** Recieved response of " + str(status))
-        # self._dbg("\n** Recieved offset of " + str(offset))
+        self._dbg("\n** Sent FRS Write Data Request with z and w **")
+        self._dbg("\n** Recieved response of " + str(status))
+        self._dbg("\n** Recieved offset of " + str(offset))
         
-        # self._dbg("\n** Waitng for packet NEXT PACKET **")
+        self._dbg("\n** Waitng for packet NEXT PACKET **")
         # _a_ packet arrived, but which one?
         while True:
             self._wait_for_packet_type(
@@ -1311,7 +1314,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         
         self._frs_read_request(sensor)
         
-        # self._dbg("\n** Sent FRS Read Request **")
+        self._dbg("\n** Sent FRS Read Request **")
         
         (_status, _length, _offset, _data0, _data1, _frs_type) = self._frs_read_response()
         if(_status == _FRS_READ_STATUS_RECORD_EMPTY):
@@ -1320,7 +1323,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
            _length != 2 or
            _offset != 0 or
            _frs_type != sensor):
-            # self._dbg("\n** Error ",_status, _length, _offset, _frs_type)
+            self._dbg("\n** Error ",_status, _length, _offset, _frs_type)
             raise RuntimeError(
                 "Error reading x and y of Sensor Orientation FRS record."
             )
@@ -1332,7 +1335,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
            _length != 2 or
            _offset != 2 or
            _frs_type != sensor):
-            # self._dbg("\n** Error ",_status, _length, _offset, _frs_type)
+            self._dbg("\n** Error ",_status, _length, _offset, _frs_type)
             raise RuntimeError(
                 "Error completing read of Sensor Orientation FRS Record"
             )
@@ -1349,15 +1352,8 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
 
     def _dbg(self, *args, **kwargs):
         if self._debug:
-            if (self._debug_level == 0):
-                print("DBG::\t\t", *args, **kwargs)
-            else:
-                try:
-                    if (kwargs['level'] == self._debug_level):
-                        del kwargs['level']
-                        print("DBG::\t\t", *args, **kwargs)  
-                except:
-                    pass
+            print("DBG::\t\t", *args, **kwargs)
+
                                      
 
     def _get_data(self, index, fmt_string):
@@ -1386,7 +1382,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
 
     def soft_reset(self):
         """Reset the sensor to an initial unconfigured state"""
-        # self._dbg("Soft resetting...", end="")
+        self._dbg("Soft resetting...", end="")
         data = bytearray(1)
         data[0] = 1
         _seq = self._send_packet(BNO_CHANNEL_EXE, data)
@@ -1400,7 +1396,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
             except PacketError:
                 time.sleep(0.5)
 
-        # self._dbg("OK!")
+        self._dbg("OK!")
         # all is good!
 
     def _send_packet(self, channel, data):

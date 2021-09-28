@@ -91,7 +91,7 @@ can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
 # -----------------------------------------------------------------------------
 # AHRS Module (BNO085)
 # -----------------------------------------------------------------------------
-bno = BNO08X_I2C(i2c, debug=True, debug_level=1)
+bno = BNO08X_I2C(i2c, debug=True)
 
 bno.enable_feature(BNO_REPORT_ACCELEROMETER)
 bno.enable_feature(BNO_REPORT_GYROSCOPE)
@@ -151,22 +151,17 @@ last_time_millis = int(time.monotonic_ns() / 1000000)
 
 
 while True:
-    #print("BNO")
     # save the current time for comparison
     current_time_millis = int(time.monotonic_ns() / 1000000)
     # sample data every 50ms
     if (current_time_millis - last_time_millis > 50):
-        #print("quat")
         quat_i, quat_j, quat_k, quat_real = bno.quaternion
-        #print("accel")
         accel_x, accel_y, accel_z = bno.acceleration
-        #print("gyro")
         gyro_x, gyro_y, gyro_z = bno.gyro
         roll, pitch, yaw = radians_to_degrees(*euler_from_quaternion(
             quat_real, quat_i, quat_j, quat_k
             ))
         yaw = yaw - 90
-        #print("cal")
         magnetometer_accuracy = bno.calibration_status
         
         turn_rate = gyro_z * radians_to_degrees_multiplier # degress/second
@@ -174,7 +169,6 @@ while True:
     # -------------------------------------------------------------------------
     # --- send CAN data                                                     ---
     # -------------------------------------------------------------------------
-    #print("CAN send")
     # send euler angles and turn rate
     if (current_time_millis > can_euler_timestamp + CAN_EULER_PERIOD +
         random.randint(0,50)):
@@ -202,7 +196,6 @@ while True:
     # -------------------------------------------------------------------------
     # --- check for calibration message on the CAN bus                      ---
     # -------------------------------------------------------------------------
-    #print("CAN listen")
     if (calibration_listener.in_waiting()):
         message = calibration_listener.receive()
         if (isinstance(message, canio.RemoteTransmissionRequest)):
