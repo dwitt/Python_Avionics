@@ -541,9 +541,6 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
 
     def __init__(self, reset=None, debug=False):
         self._debug = debug
-        # added debug level to assist with debugging of slowness
-        # level zero is everything
-        # otherwise on print the level that is passed
         self._reset = reset
         self._dbg("********** __init__ *************")
         self._data_buffer = bytearray(DATA_BUFFER_SIZE)
@@ -880,7 +877,6 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
             # process the new packets
             self._handle_packet(new_packet)
             processed_count += 1
-            print(f"Processed {processed_count:d} packets")
             self._dbg("")
             self._dbg("Processed", processed_count, "packets")
             self._dbg("")
@@ -978,7 +974,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         # status, accel_en, gyro_en, mag_en, planar_en, table_en, *_reserved) = response_values
         command_status, *_rest = response_values
         if command == _ME_CALIBRATE:
-            print(f"ME_CALIBRATE with command_status {command_status}")
+            self._dbg("ME_CALIBRATE with command_status: ",command_status")
 
         if command == _ME_CALIBRATE and command_status == 0:
             self._me_calibration_started_at = time.monotonic()
@@ -993,17 +989,16 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         if report_id >= 0xF0:
             self._handle_control_report(report_id, report_bytes)
             return
-        
-        #self._dbg("\tProcessing report:", reports[report_id])
-        # if self._debug:
-        #     outstr = ""
-        #     for idx, packet_byte in enumerate(report_bytes):
-        #         packet_index = idx
-        #         if (packet_index % 4) == 0:
-        #             outstr += "\nDBG::\t\t[0x{:02X}] ".format(packet_index)
-        #         outstr += "0x{:02X} ".format(packet_byte)
-        #     self._dbg(outstr)
-        #     self._dbg("")
+        self._dbg("\tProcessing report:", reports[report_id])
+        if self._debug:
+            outstr = ""
+            for idx, packet_byte in enumerate(report_bytes):
+                packet_index = idx
+                if (packet_index % 4) == 0:
+                    outstr += "\nDBG::\t\t[0x{:02X}] ".format(packet_index)
+                outstr += "0x{:02X} ".format(packet_byte)
+            self._dbg(outstr)
+            self._dbg("")
 
         if report_id == BNO_REPORT_STEP_COUNTER:
             self._readings[report_id] = _parse_step_couter_report(report_bytes)
