@@ -31,7 +31,8 @@ class HoneywellHSC:
     @property
     def pressure(self):
         self._bridge_data = (((self._input_buffer[0] & 0b00111111) << 8) | self._input_buffer[1])
-        self._pressure = float((self._bridge_data - _OUTPUT_MIN) * (_PRESSURE_MAX - _PRESSURE_MIN) / (_OUTPUT_MAX - _OUTPUT_MIN) + _PRESSURE_MIN)
+        #self._pressure = float((self._bridge_data - _OUTPUT_MIN) * (_PRESSURE_MAX - _PRESSURE_MIN) / (_OUTPUT_MAX - _OUTPUT_MIN) + _PRESSURE_MIN)
+        self._pressure = int((self._bridge_data - _OUTPUT_MIN) * (_PRESSURE_MAX - _PRESSURE_MIN) / (_OUTPUT_MAX - _OUTPUT_MIN) + _PRESSURE_MIN)
         return self._pressure
 
     @property
@@ -39,6 +40,11 @@ class HoneywellHSC:
         self._temperature_data = ((self._input_buffer[3] >> 5) | (self._input_buffer[2] << 3))
         self._temperature = (200.0 * self._temperature_data / 2047.0) - 50.0
         return self._temperature
+    
+    @property
+    def status(self):
+        self._status = ((self._input_buffer[0] & 0b11000000) >> 6)
+        return self._status
 
 
 

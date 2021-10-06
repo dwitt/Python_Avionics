@@ -37,6 +37,9 @@ class NPXPressureSensor:
         time.sleep(2.0)
         _sample_counter = 0
         _pressure_total = 0
+        
+        time.sleep(5)
+        
         while (True): 
             
             # --- TODO: Add loop here to get 10 readings and average them   ---
@@ -54,7 +57,7 @@ class NPXPressureSensor:
                 _pressure = _M * (vo_count / vs_count) + _B
                 _pressure_total = _pressure_total + _pressure
                 _sample_counter = _sample_counter + 1
-                if (_sample_counter > 99):
+                if (_sample_counter > 24):
                     self._zero_pressure = _pressure_total / _sample_counter
                     break
             else:
