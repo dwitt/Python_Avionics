@@ -12,6 +12,8 @@ from digitalio import DigitalInOut, Direction, Pull
 from honeywellHSC import HoneywellHSC 
 from kalman_filter import KalmanFilter
 from NPXAnalogPressureSensor import NPXPressureSensor
+from rolling_average import RollingAverage
+from Regression import Regression
 
 import adafruit_ADS1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
@@ -22,9 +24,11 @@ import math
 
 # Constants
 DEBUG = False
-DEBUG_ADS = False
+DEBUG_DIFFERENTIAL = False
+DEBUG_STATIC = False
+DEBUG_VSI = False
 
-
+# ---
 
 OUTPUT_MIN = 1638
 OUTPUT_MAX = 14745
@@ -37,8 +41,9 @@ previous_qnh = qnh
 # -----------------------------------------------------------------------------
 # --- Constants for airspeed calculations                                   ---
 # -----------------------------------------------------------------------------
-# ratio of specific heats of air
-GAMMA = 1.401
+
+# Used for calibrated airspeed (*** Not Used ***)
+GAMMA = 1.401                       # ratio of specific heats of air
 SEA_LEVEL_PRESSURE_ISA = 101325     # Pa
 SEA_LEVEL_DENSITY_ISA = 1.225       # Kg / ( m * s^2 )
 MULTIPLIER = ((2 * GAMMA) / (GAMMA - 1) *
@@ -66,10 +71,9 @@ CAN_QNH_Timestamp = 0
 # --- Setup communication buses for various peripherals                     ---
 # -----------------------------------------------------------------------------
 
-# i2c - Honeywell Static Pressure Transducer ----------------------------------
+# i2c -------------------------------------------------------------------------
 
 i2c = board.I2C()
-#i2c = busio.I2C(board.SCL, board.SDA)
 
 # CAN module (built in) -------------------------------------------------------
 if hasattr(board, 'CAN_STANDBY'):
@@ -91,25 +95,17 @@ can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
 
 my_ads = NPXPressureSensor(i2c)   
 
-# -----------------------------------------------------------------------------
-# --- Setup Filters                                                         ---
-# -----------------------------------------------------------------------------
-
-# q is process noise, r is measurement uncertainty
-
-# pressure_filter = KalmanFilter(q = 1, r = 1000, x = 101325) - Original
-# pressure_filter is for static pressure
-
-static_pressure_filter = KalmanFilter(q = .1, r = 100, x = 101325)
-vsi_filter = KalmanFilter(q=10, r = 1000, x = 0)
-differential_pressure_filter = KalmanFilter(q = 10, r = 500, x = 0)
+# i2c = Honeywell Pressure Sensor via i2c -------------------------------------
 
 my_hsc = HoneywellHSC(i2c, 0x28)
 
-# Save the current time for future calculations
-last_Time_Millis = int(time.monotonic_ns() / 1000000)
-last_pressure_time_millis = last_Time_Millis
-last_vsi_time_millis = last_Time_Millis
+# -----------------------------------------------------------------------------
+# --- Setup Rolling Averages and Regression                                 ---
+# -----------------------------------------------------------------------------
+
+static_pressure_roll_avg = RollingAverage(120)
+differential_pressure_roll_avg = RollingAverage(60)
+vsi_regression = Regression(120)
 
 # -----------------------------------------------------------------------------
 # --- Create a CAN bus message mask for the QNH message and create a        ---
@@ -120,81 +116,24 @@ qnh_match = canio.Match(id=CAN_QNH_Msg_id)
 qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 
 # -----------------------------------------------------------------------------
-# Wait here until we can lock the i2C to allow us to scan it
+# --- Set the initial values to force a calculation on the first pass       --- 
 # -----------------------------------------------------------------------------
 
-
-# while not i2c.try_lock():
-#     pass
-
-# try:
-
-#     print("I2C address found:", [hex(device_address) for device_address
-#                                  in i2c.scan()])
-#     i2c.unlock()
-# -----------------------------------------------------------------------------
-#try:
-
-# -----------------------------------------------------------------------------
-# --- Read the initial static pressure from the transducer                  ---
-# -----------------------------------------------------------------------------
-my_hsc.read_transducer()
-
-static_pressure = my_hsc.pressure
-static_pressure = static_pressure_filter.filter(static_pressure)
-
-altitude = int(145442.0 * (
-    pow(float(qnh / 2992), 0.1902632)
-    - pow(float(static_pressure / 101325), 0.1902632)))
-
-vsi_altitude = float(145442.0 * (
-    1.0 - pow(float(static_pressure / 101325.0), 0.1902632)
-    ))
-
-vsi = vsi_filter.filter(0)
-
-temperature = my_hsc.temperature
-
-# -----------------------------------------------------------------------------
-# --- Read the initial differential pressure from the transducer            ---
-# -----------------------------------------------------------------------------
-
-differential_pressure = my_ads.pressure
-differential_pressure = differential_pressure_filter.filter(
-    differential_pressure)
-
-if (DEBUG_ADS):
-    print(EXPONENT)
-    print(abs(differential_pressure)/SEA_LEVEL_PRESSURE_ISA - 1)
-    print(pow(((abs(differential_pressure)/SEA_LEVEL_PRESSURE_ISA) + 1),
-              EXPONENT))
-
-
-airspeed = CONVERT_MPS_TO_KNOTS * math.sqrt(MULTIPLIER * (
-    pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
-    EXPONENT) - 1))
-
-# -----------------------------------------------------------------------------
-# --- Set the previous values to 0 to trigger future operations which check ---
-# --- if there was any change in the values                                 ---
-# -----------------------------------------------------------------------------
-
-previous_static_pressure = 0
-previous_altitude = 0
-previous_vsi_altitude = vsi_altitude
-previous_differential_pressure = 0
+static_pressure_average = 0
+differential_pressure_average = 0
+airspeed = 0
+altitude = 0
+vsi = 0
 
 # ----------------------------------------------------------------------
 # --- Main Loop                                                      ---
 # ----------------------------------------------------------------------
 # --- Tasks                                                          ---
-# --- 1. Read the pressure periodically                              ---
+# --- 1. Read the pressures                                          ---
 # --- 2. Check if QNH has been transmitted                           ---
-# --- 3. Update QNH and the QNH display if received                  ---
-# --- 4. Update the altitude if either the pressure or QNH have change -
-# ---    Calculate the VSI                                           ---
-# --- 5. Update the local display only when the values change and    ---
-# ---    only if a resonable interval has elapsed. (conserve cycles) ---
+# --- 3. Update QNH if received                                      ---
+# --- 4. Update the altitude if either the pressure or QNH changed   ---
+# --- 5. Calculate the VSI if the pressure changed                   ---
 # --- 6. Transmit CAN data for AAV, STATICP and QNH periodically     ---
 # ----------------------------------------------------------------------
 # --- Units
@@ -207,76 +146,76 @@ while True:
     current_time_millis = int(time.monotonic_ns() / 1000000)
 
     # -------------------------------------------------------------------------
-    # --- Read the pressure transducers after every 50 ms                   ---
+    # --- Read the pressure transducers                                     ---
     # -------------------------------------------------------------------------
 
-    if current_time_millis - last_Time_Millis > 50:
-        # read the pressure transducers
-        my_hsc.read_transducer()
-        
-        previous_static_pressure = static_pressure
-        static_pressure = my_hsc.pressure
-        static_pressure = static_pressure_filter.filter(static_pressure)
-        
-        last_Time_Millis = current_time_millis
-        
-        previous_differential_pressure = differential_pressure
-        differential_pressure = my_ads.pressure
-        differential_pressure = differential_pressure_filter.filter(
-            differential_pressure)
-        
-        
-        # --------------------------------------------------------------------
-        # --- Check if we chould calculate the VSI                          ---
-        # --- Only check for this when we read the pressure so that we have ---
-        # --- the most current data                                         ---
-        # ---------------------------------------------------------------------
-        
-        if current_time_millis - last_vsi_time_millis > 200:
-            
-            # calculate the new vsi altitude 
-            vsi_altitude = float(145442.0 * (
-                1.0 - pow(float(static_pressure / 101325.0), 0.1902632)
-                ))
-            
-            # calculate the vsi 
-            vsi = (( vsi_altitude - previous_vsi_altitude ) / 
-                (current_time_millis - last_vsi_time_millis) * 1000.0 * 60.0 )
-            vsi = vsi_filter.filter(vsi)
-            
-            if DEBUG:
-                print(vsi_altitude, previous_vsi_altitude, current_time_millis,
-                      last_vsi_time_millis, vsi)
-            
-            # save the current data for the next calculation
-
-            last_vsi_time_millis = current_time_millis
-            previous_vsi_altitude = vsi_altitude
-            
-        # ---------------------------------------------------------------------
-        # --- Read the transducer temperature for transmission over CAN bus ---
-        # ---------------------------------------------------------------------
-
-        #my_hsc.read_transducer()
-        temperature = my_hsc.temperature
-
-
-
+    # Static Pressure
+    previous_static_pressure = static_pressure_average
     
+    my_hsc.read_transducer()
+    static_pressure = my_hsc.pressure  
+    static_pressure_average = static_pressure_roll_avg.average(
+        static_pressure)
+        
+    if DEBUG_STATIC:
+        print(f"static pressure ave: {static_pressure_average}")
+    
+    # Differential Pressure
+    previous_differential_pressure = differential_pressure_average
+    
+    differential_pressure = my_ads.pressure
+    differential_pressure_average = differential_pressure_roll_avg.average(
+        differential_pressure)
+    
+    if DEBUG_DIFFERENTIAL:
+        print(f"differential pressure ave: {differential_pressure_average}", end="")
+
+    # -------------------------------------------------------------------------
+    # --- Calculate the VSI                                                 ---
+    # -------------------------------------------------------------------------
+    
+    # Try calculating this only when the pressure changes 
+    if (static_pressure_average != previous_static_pressure):
+    
+        vsi_altitude = int(145442.0 * (
+            1.0 - 
+            pow(float(static_pressure_average / 101325.0), 0.1902632)))
+        
+        # save the altitude and time for regression
+        vsi_regression.save_point(vsi_altitude, current_time_millis)
+        
+        # calculate the vsi (slope of the line)
+        vsi = vsi_regression.slope()
+        
+        if DEBUG_VSI:
+            print(f'vsi: {vsi}')
+        
+    # ---------------------------------------------------------------------
+    # --- Read the transducer temperature for transmission over CAN bus ---
+    # ---------------------------------------------------------------------
+
+    temperature = my_hsc.temperature
+
     # -------------------------------------------------------------------------
     # --- Calculate Air Speed if we have a new differential pressure        ---
     # -------------------------------------------------------------------------
     
-    if (previous_differential_pressure != differential_pressure):
+    if (previous_differential_pressure != differential_pressure_average):
         # calculate airspeed if pressure has changed
-        airspeed= CONVERT_MPS_TO_KNOTS * math.sqrt(MULTIPLIER * (
-            pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
-            EXPONENT) - 1))
+        
+        # airspeed= CONVERT_MPS_TO_KNOTS * math.sqrt(MULTIPLIER * (
+        #     pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
+        #     EXPONENT) - 1))
+        
+        # 
+        airspeed = 2 * math.sqrt( 2 * abs(differential_pressure_average) /
+                                 SEA_LEVEL_DENSITY_ISA )
+
+        if DEBUG_DIFFERENTIAL:
+            print(f"airspeed: {airspeed}")
 
     
-    if DEBUG_ADS:
-        print(airspeed,
-            int(2*math.sqrt(2*abs(differential_pressure)/SEA_LEVEL_DENSITY_ISA)))
+
     
     # -------------------------------------------------------------------------
     # --- Check for a QNH message on the CAN bus                            ---
@@ -304,14 +243,16 @@ while True:
     # --- changed                                                       ---
     # ---------------------------------------------------------------------
 
-    if (previous_static_pressure != static_pressure or 
+    if (previous_static_pressure != static_pressure_average or 
         previous_qnh != qnh):
 
-        previous_altitude = altitude
         altitude = int(145442 * (
             pow(float(qnh / 2992), 0.1902632)
-            - pow(float(static_pressure / 101325), 0.1902632)
+            - pow(float(static_pressure_average / 101325), 0.1902632)
         ))
+        
+    if DEBUG_STATIC:
+        print(f'altitude : {altitude}')
         
     # ---------------------------------------------------------------------
     # --- Send CAN data                                                 ---
@@ -338,7 +279,7 @@ while True:
         random.randint(0,50)):
         
         Raw_data = struct.pack("<hbBBBBB",
-                            int(static_pressure / 10),
+                            int(static_pressure_average / 10),
                             int(temperature),
                             0,0,0,0,0)
         message = canio.Message(CAN_Raw_Msg_id, Raw_data)
@@ -358,10 +299,3 @@ while True:
         message = canio.Message(CAN_QNH_Msg_id, QNH_data)
         can.send(message)
         CAN_QNH_Timestamp = current_time_millis
-
-        
-# finally:
-#     print("Unlocking")
-#     i2c.unlock()
-
-
