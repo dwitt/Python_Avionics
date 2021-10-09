@@ -21,7 +21,7 @@ var Application = PIXI.Application,
 export class HeadingIndicator {
     constructor(app, width) {
         this.displayWidth = app.screen.width;
-        let height = 40;            // height of heading ribbon
+        let height = 36;            // height of heading ribbon
 
         let fontFamily = "Tahoma";  // font name for this indictor
         let fontSize = 28;          // font size for the magnifier 
@@ -55,6 +55,7 @@ export class HeadingIndicator {
         /** Calculate where the center of the character is vertically
          *  as a ratio of the height of the sample message. (value between 0 and 1)
          *  This is used for the anchor command.
+         *  Then add 2 pixels
          */
         let verticalCharacterCentre = ( digitAscentDistance - ((digitCapitalHeightRatio * fontSize)/2)) / (overallHeight);
 
@@ -118,9 +119,9 @@ export class HeadingIndicator {
         
         let lineWidth = 1;              // 1 pixel
         let lineColour = 0xFFFFFF;      // white
-        let lineHeightDegree = 4;       // 5 pixels
-        let lineHeightFiveDegree = 8;   // 10 pixels;
-        let lineHeightTenDegree = 11;   // 15 pixels;
+        let lineHeightDegree = 3;       // 5 pixels
+        let lineHeightFiveDegree = 6;   // 10 pixels;
+        let lineHeightTenDegree = 9;   // 15 pixels;
 
         let textStyle = new PIXI.TextStyle({
             fontFamily: "Tahoma",
@@ -149,7 +150,7 @@ export class HeadingIndicator {
                 }
 
                 let degreesText = new Text(degreesString,textStyle);
-                degreesText.anchor.set(0.5,0);
+                degreesText.anchor.set(0.5,.1);
                 degreesText.position.set(i,4);
                 this.headingRibbon.addChild(degreesText);
 
@@ -171,7 +172,7 @@ export class HeadingIndicator {
 
         let magnifierWidth = 60;                // 60 pixels
         let magnifierHeight = 30;               // 35 pixel
-        let magnifierOffset = 5;
+        let magnifierOffset = 5 ;
 
         lineWidth = 2;
         lineColour = 0xBBBBBB;
@@ -181,7 +182,7 @@ export class HeadingIndicator {
         let magnifierFillColour = 0x000000;     // Black
 
         magnifierGraphics.beginFill(magnifierFillColour);
-        magnifierGraphics.drawRect(-magnifierWidth/2, -magnifierHeight - magnifierOffset,
+        magnifierGraphics.drawRect(-magnifierWidth/2, -(magnifierHeight + magnifierOffset),
             magnifierWidth, magnifierHeight); 
         magnifierGraphics.endFill();
         magnifierGraphics.beginFill(magnifierFillColour);
@@ -221,7 +222,7 @@ export class HeadingIndicator {
         magnifierGraphics.addChild(this.headingText);
 
         magnifierGraphics.x = this.displayWidth/2;
-        magnifierGraphics.y = magnifierHeight + 10;
+        magnifierGraphics.y = height;
 
         /**********************************************************************
          * add the graphics to the container
