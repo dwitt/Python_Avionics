@@ -4,7 +4,7 @@ import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
 import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
-import { Interactions } from './interaction.mjs';
+//import { Interactions } from './interaction.mjs';
 
 'use strict';
 // ----------------------------------------------------------------------------
@@ -152,7 +152,7 @@ function setup() {
 
     slipBallIndicator = new SlipBallIndicator(app);
     headingIndicator = new HeadingIndicator(app, 500);
-    menu = new Interactions(app, 660, 440, 150, 40);
+    //menu = new Interactions(app, 660, 440, 150, 40);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }

@@ -64,10 +64,10 @@ export class AttitudeIndicator {
         let earthHeight = skyHeight;
 
 
-        /** 
-         * Draw the sky and earth in a container where 0,0 is the center
-        */
-        this.pitchContainer = new Container();
+        /********************************************************************* 
+         * Draw the sky and earth in a container where 0,0 is the center     *
+         *********************************************************************/
+        this.pitchContainer = new Container(); // Container for sky and earth
 
         let skyColour = 0x0000C0;
 
@@ -95,6 +95,8 @@ export class AttitudeIndicator {
         horizonGraphics.moveTo(-earthWidth/2,0);
         horizonGraphics.lineTo(earthWidth/2,0);
         
+        //********************************************************************/
+
         // --------------------------------------------------------------------
         // create 10 and 20 degree lines
         // --------------------------------------------------------------------
@@ -114,7 +116,7 @@ export class AttitudeIndicator {
         });
 
 
-        let degreeGraphics = new Graphics();
+        let degreeGraphics = new Graphics(); // Container for attidude degrees
 
         degreeGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
         for (let i=-90; i <= 90; i = i + 10) {
@@ -154,22 +156,26 @@ export class AttitudeIndicator {
         this.pitchContainer.addChild(skyGraphics);
         this.pitchContainer.addChild(earthGraphics);
         this.pitchContainer.addChild(horizonGraphics);
-        this.pitchContainer.addChild(degreeGraphics);
-         
+        this.pitchContainer.addChild(degreeGraphics); // attitude degrees
+        // TODO: move the mask for the degreeGraphics up here
+        
+        // --------------------------------------------------------------------
         // Create a roll container
+        // --------------------------------------------------------------------
 
         this.rollContainer = new Container();
         
-        /**
-         * Draw the Roll triangle for the Arc
-        */
+        /*********************************************************************
+         * Draw the Roll triangle for the Arc                                *
+         * This is the fixed triangle point up to the roll arc               *
+         *********************************************************************/
 
         let radius = 180;         // duplicated in the drawing of the BankArc
         this.triangleHeight = 25;
 
         lineWidth = 2;
         lineColour = 0x000000;
-        let fillColour = 0xFFFF00;
+        let fillColour = 0xFFFF00; // Yellow
 
         let lineOptions = new Object;
         lineOptions.width = 1;
@@ -178,7 +184,7 @@ export class AttitudeIndicator {
         lineOptions.alignment = 0;
         lineOptions.cap = PIXI.LINE_CAP.ROUND;
 
-        let triangleGraphics = new Graphics();
+        let triangleGraphics = new Graphics(); // Container for triangle
 
         triangleGraphics.lineStyle(lineOptions);
         
@@ -189,11 +195,12 @@ export class AttitudeIndicator {
         triangleGraphics.x = this.displayWidth/2;
         triangleGraphics.y = this.displayHeight/2;
 
-        /** 
-        * Draw a slip skid indicator below the roll triangle
-        */
+        /********************************************************************* 
+         * Draw a slip skid indicator below the roll triangle                *
+         * This indicator needs to move back and forth                       *
+         *********************************************************************/
 
-        this.slipSkidGraphics = new Graphics();
+        this.slipSkidGraphics = new Graphics(); // Container for indicator
         let topPercent = 1.05;
         let bottomPercent = 1.3;
 
@@ -208,10 +215,14 @@ export class AttitudeIndicator {
         );
         this.slipSkidGraphics.endFill;
 
+        // position the graphic based on the display centre
         this.slipSkidGraphics.x = this.displayWidth/2;
         this.slipSkidGraphics.y = this.displayHeight/2;
 
-        // Create a mask for the degreeGraphics of the attitude indicator
+        /*********************************************************************
+         * Create a mask for the degreeGraphics of the attitude indicator    *
+         *********************************************************************/
+ 
 
         let maskGraphics = new Graphics();
 
@@ -233,6 +244,7 @@ export class AttitudeIndicator {
         this.rollContainer.x = this.displayWidth / 2;
         this.rollContainer.y = this.displayHeight / 2;
 
+        // add the rollContainer to the stage as a child
         app.stage.addChild(this.rollContainer);
 
         app.stage.addChild(triangleGraphics);
@@ -291,7 +303,8 @@ export class AttitudeIndicator {
         let sign = Math.sign(angle);
 
         let horizontalPosition = Math.min(Math.abs(angle),this.slipSkidDegrees) * sign * this.triangleHeight / this.slipSkidDegrees;
-        this.slipSkidGraphics.x = horizontalPosition;
+        this.slipSkidGraphics.x = horizontalPosition + this.displayWidth / 2;
+
 
     }
 
