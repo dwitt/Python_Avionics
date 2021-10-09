@@ -91,7 +91,7 @@ can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
 # -----------------------------------------------------------------------------
 # AHRS Module (BNO085)
 # -----------------------------------------------------------------------------
-bno = BNO08X_I2C(i2c, debug=True)
+bno = BNO08X_I2C(i2c, debug=False)
 
 bno.enable_feature(BNO_REPORT_ACCELEROMETER)
 bno.enable_feature(BNO_REPORT_GYROSCOPE)
@@ -161,7 +161,8 @@ while True:
         roll, pitch, yaw = radians_to_degrees(*euler_from_quaternion(
             quat_real, quat_i, quat_j, quat_k
             ))
-        yaw = yaw - 90
+        # apply yaw correction
+        yaw = yaw * -1 + 90
         magnetometer_accuracy = bno.calibration_status
         
         turn_rate = gyro_z * radians_to_degrees_multiplier # degress/second
