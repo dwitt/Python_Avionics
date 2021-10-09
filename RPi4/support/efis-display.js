@@ -194,8 +194,8 @@ function AircraftIndicator(app){
     let displayWidth = app.screen.width;
     let displayHeight = app.screen.height;
 
-    let px1 = displayWidth/7;
-    let px2 = displayWidth/30;
+    let px1 = displayWidth/5.6; // outside of large mark
+    let px2 = displayWidth/25;  // offset to inside of large mark
     let px3 = displayWidth/30;
     let px4 = displayWidth/40;
 
@@ -232,7 +232,7 @@ function AircraftIndicator(app){
 
 
     // draw yellow foreground
-    lineOptions.width = 5;
+    lineOptions.width = 4;
     lineOptions.color = 0xFFFF00;
 
     aircraftGraphics.lineStyle(lineOptions);
@@ -259,7 +259,7 @@ function AircraftIndicator(app){
     aircraftGraphics.lineStyle(lineOptions);
 
     aircraftGraphics.beginFill(0xFFFF00,1);
-    aircraftGraphics.drawCircle(0,0,5);
+    aircraftGraphics.drawCircle(0,0,4);
 
     // draw polygon
     // let rightSidePolygon = new Polygon(0,0,px1-px2,py1,px1-px2-px3,py1);
