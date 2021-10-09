@@ -94,7 +94,7 @@ export class AttitudeIndicator {
 
         // Draw a horizon separator line
 
-        let lineWidth = 2.0;
+        let lineWidth = 1.0;
         let lineColour = 0xFFFFFF;
         let lineAlpha = 1
         let lineAlignment = 0.5
@@ -127,6 +127,7 @@ export class AttitudeIndicator {
 
         let degreeGraphics = new Graphics(); // Container for attidude degrees
 
+        lineWidth = 2.0;
         degreeGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
         for (let i=-90; i <= 90; i = i + 10) {
             let sign = Math.sign(i);
@@ -146,15 +147,15 @@ export class AttitudeIndicator {
                 degreeGraphics.addChild(textLeft);
                 degreeGraphics.addChild(textRight);
 
+            
+
+
+                degreeGraphics.moveTo(-halfLength,(i - sign * 5) * this.pitchRatio);
+                degreeGraphics.lineTo(halfLength,(i - sign * 5) * this.pitchRatio);
+
+                degreeGraphics.moveTo(-length,i * this.pitchRatio);    
+                degreeGraphics.lineTo(length,i * this.pitchRatio);            
             }
-
-
-            degreeGraphics.moveTo(-halfLength,(i - sign * 5) * this.pitchRatio);
-            degreeGraphics.lineTo(halfLength,(i - sign * 5) * this.pitchRatio);
-
-            degreeGraphics.moveTo(-length,i * this.pitchRatio);    
-            degreeGraphics.lineTo(length,i * this.pitchRatio);            
-
         }
 
         /*********************************************************************
