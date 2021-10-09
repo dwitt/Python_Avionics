@@ -40,7 +40,7 @@ export class Interactions{
             fontFamily: "Tahoma",
             fontSize: 22,
             fill: "#FFFFFF",
-            fontWeight: "normal"  w
+            fontWeight: "normal"  
         });
     
         let menuButtonText = new Text("Menu", menuButtonTextStyle);

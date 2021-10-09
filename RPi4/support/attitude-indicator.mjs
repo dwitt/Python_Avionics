@@ -48,6 +48,9 @@ export class AttitudeIndicator {
         // the extremes of pitch
 
         // pitchRatio equal number of pixels per degree of pitch
+        // TODO: base this on a square that is the minimum of either the
+        //          displayHeight and displayWidth
+        //          OR maybe not if the app screen is sized correctly
         this.pitchRatio = (this.displayHeight / 2) / pitchDegrees;
 
         // calculate the width of sky and earth to ensure it fills display
@@ -56,13 +59,19 @@ export class AttitudeIndicator {
         let skyWidth = Math.sqrt(Math.pow(this.displayWidth,2) + Math.pow(this.displayHeight,2));
         let earthWidth = skyWidth;
 
-        // calculate the heightof the sky and earth to accomodate 90 degrees plus
+        // calculate the height of the sky and earth to accomodate 90 degrees plus
         // enough additional pixels to prevent us from seeing black when rolling 
         // at a pitch angle of 90 degrees
 
         let skyHeight = ((this.displayHeight / 2) / pitchDegrees * (90)) + skyWidth/2;
         let earthHeight = skyHeight;
 
+        // find the smallest screen dimension and use it to determine the size 
+        // of all arcs
+
+        let minimum_screen = Math.min(app.screen.width, app.screen.height);
+
+        let radius = (minimum_screen / 2 ) - 68;         // duplicated in the drawing of the BankArc
 
         /********************************************************************* 
          * Draw the sky and earth in a container where 0,0 is the center     *
@@ -148,6 +157,21 @@ export class AttitudeIndicator {
 
         }
 
+        /*********************************************************************
+         * Create a mask for the degreeGraphics of the attitude indicator    *
+         *********************************************************************/
+ 
+
+        let maskGraphics = new Graphics();
+
+        let fillColour = 0xFF0000;
+        maskGraphics.beginFill(fillColour);
+        maskGraphics.drawCircle(0,0,radius-10);
+
+        degreeGraphics.mask = maskGraphics;
+
+
+
 
 
 
@@ -170,12 +194,12 @@ export class AttitudeIndicator {
          * This is the fixed triangle point up to the roll arc               *
          *********************************************************************/
 
-        let radius = 180;         // duplicated in the drawing of the BankArc
+
         this.triangleHeight = 25;
 
         lineWidth = 2;
         lineColour = 0x000000;
-        let fillColour = 0xFFFF00; // Yellow
+        fillColour = 0xFFFF00; // Yellow
 
         let lineOptions = new Object;
         lineOptions.width = 1;
@@ -219,26 +243,12 @@ export class AttitudeIndicator {
         this.slipSkidGraphics.x = this.displayWidth/2;
         this.slipSkidGraphics.y = this.displayHeight/2;
 
-        /*********************************************************************
-         * Create a mask for the degreeGraphics of the attitude indicator    *
-         *********************************************************************/
- 
-
-        let maskGraphics = new Graphics();
-
-        fillColour = 0xFF0000;
-        maskGraphics.beginFill(fillColour);
-        maskGraphics.drawCircle(0,0,radius-10);
-
-        degreeGraphics.mask = maskGraphics;
-
-
         // Add the pitch container
 
         this.rollContainer.addChild(this.pitchContainer);
         this.rollContainer.addChild(maskGraphics);
 
-        this.rollContainer.addChild(this.bankArc());
+        this.rollContainer.addChild(this.bankArc(radius));
 
         // Position the pitch container in the center of the window
         this.rollContainer.x = this.displayWidth / 2;
@@ -320,16 +330,16 @@ export class AttitudeIndicator {
      * Create the Bank Arc
      */
 
-    bankArc() {
+    bankArc(radius) {
 
         // Parameters
-        let radius = 180;
+        //let radius = 180;
         let triangleHeight = 20; // This is a duplicate from the main class - fix
 
         let start_radians = 7 / 6 * Math.PI;   // 210 deg
         let end_radians = 11 / 6 * Math.PI;    // 330 deg
-        let major_length = 30;
-        let minor_length = 15;
+        let major_length = radius / 6;
+        let minor_length = radius / 12;
 
         // Tic mark locations measured in PI radians
         let major_marks = [7/6, 8/6, 10/6, 11/6];  

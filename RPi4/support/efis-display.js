@@ -4,7 +4,7 @@ import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
 import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
-//import { Interactions } from './interaction.mjs';
+import { Interactions } from './interaction.mjs';
 
 'use strict';
 // ----------------------------------------------------------------------------
@@ -26,8 +26,8 @@ var Application = PIXI.Application,
 // ---Create a Pixi Application                                             ---
 // ----------------------------------------------------------------------------
 let app = new Application({
-    width: 800, 
-    height: 480,
+    width: 480, 
+    height: 400,
     antialias: true,
     transparent: false,
     resolution: 1
@@ -136,23 +136,26 @@ myWebSocket.onmessage = function (event) {
 // ----------------------------------------------------------------------------
 function setup() {
 
-    attitudeIndicator = new AttitudeIndicator(app);            
-    altimeter_ribbon = new Ribbon(app, 765, 240, 400, 100, true, 100, 4, 5, true);
-    altitudeWheel = new AltitudeWheel(app, 755, 240);
-    qnhDisplay = new QNHDisplay(app);
-    vsiDisplay = new VSIDisplay(app);
-    testAirspeedDisplay = new ASDisplay(app);
- 
-    airspeedRibbon = new AirspeedRibbon(app, 35, 240, 400, 100, false, 10, 8, 2, false);
-    airspeedWheel = new AirspeedWheel(app, 45, 240);
+    let x = app.screen.width;
+    let y = app.screen.height;
 
-    vsiIndicator = new VsiIndicator(app, 765, 240, 400, 35);
+    attitudeIndicator = new AttitudeIndicator(app);            
+    altimeter_ribbon = new Ribbon(app, x-35, y/2, y-80, 90, true, 100, 4, 5, true);
+    altitudeWheel = new AltitudeWheel(app) //, 755, 240);
+    qnhDisplay = new QNHDisplay(app);
+    //vsiDisplay = new VSIDisplay(app);
+    //testAirspeedDisplay = new ASDisplay(app);
+ 
+    airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-80, 90, false, 10, 8, 2, false);
+    airspeedWheel = new AirspeedWheel(app, 45, y/2);
+
+    vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
 
     var aircraft = new AircraftIndicator(app);
 
     slipBallIndicator = new SlipBallIndicator(app);
-    headingIndicator = new HeadingIndicator(app, 500);
-    //menu = new Interactions(app, 660, 440, 150, 40);
+    headingIndicator = new HeadingIndicator(app, x - 200);
+    menu = new Interactions(app, 660, 440, 150, 40);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -171,8 +174,8 @@ function DisplayUpdateLoop(delta) {
     altitudeWheel.value = dataObject._altitude;
     qnhDisplay.value = dataObject.qnh;
     altimeter_ribbon.value = dataObject._altitude;
-    vsiDisplay.value = dataObject.vsi;
-    testAirspeedDisplay.value = dataObject.airspeed;
+    //vsiDisplay.value = dataObject.vsi;
+    //testAirspeedDisplay.value = dataObject.airspeed;
     airspeedWheel.value = dataObject.airspeed;
     airspeedRibbon.value = dataObject.airspeed;
     vsiIndicator.value = dataObject.vsi;
@@ -191,16 +194,16 @@ function AircraftIndicator(app){
     let displayWidth = app.screen.width;
     let displayHeight = app.screen.height;
 
-    let px1 = displayWidth/6;
-    let px2 = displayWidth/20;
+    let px1 = displayWidth/7;
+    let px2 = displayWidth/30;
     let px3 = displayWidth/30;
     let px4 = displayWidth/40;
 
-    let py1 = displayHeight/8;
-    let py2 = displayHeight/30;
+    let py1 = displayHeight/8;  // Not Used
+    let py2 = displayHeight/40; // height of verticals
 
     let lineOptions = new Object;
-    lineOptions.width = 8;
+    lineOptions.width = 6;
     lineOptions.color = 0x000000;
     lineOptions.alpha = 1;
     lineOptions.alignment = 0.5;
@@ -229,7 +232,7 @@ function AircraftIndicator(app){
 
 
     // draw yellow foreground
-    lineOptions.width = 6;
+    lineOptions.width = 5;
     lineOptions.color = 0xFFFF00;
 
     aircraftGraphics.lineStyle(lineOptions);
@@ -256,7 +259,7 @@ function AircraftIndicator(app){
     aircraftGraphics.lineStyle(lineOptions);
 
     aircraftGraphics.beginFill(0xFFFF00,1);
-    aircraftGraphics.drawCircle(0,0,6);
+    aircraftGraphics.drawCircle(0,0,5);
 
     // draw polygon
     // let rightSidePolygon = new Polygon(0,0,px1-px2,py1,px1-px2-px3,py1);
@@ -345,8 +348,8 @@ function QNHDisplay(app){
     // Create a style to be used for the qnh characters
     this.style = new PIXI.TextStyle({
         fontFamily: 'Tahoma',
-        fontSize: '20px',
-        fill: "white",
+        fontSize: '18px',
+        fill: "aqua",
         fontWeight: "normal"
     });
 
@@ -366,14 +369,14 @@ function QNHDisplay(app){
     this.QNHRectangle.drawRect(this.screen_width - (this.display_box_width + 1),0,this.display_box_width,this.display_box_height);
     this.QNHRectangle.endFill();
 
-    app.stage.addChild(this.QNHRectangle);
+    //app.stage.addChild(this.QNHRectangle);
     app.stage.addChild(this.QNHText)
 }
 
 Object.defineProperties(QNHDisplay.prototype,{
     value: {
         set: function(new_value) {
-            this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100);
+            this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
         }
     }
 })
@@ -440,7 +443,10 @@ Object.defineProperties(ASDisplay.prototype,{
  * ----------------------------------------------------------------------------
  */
 
-function AirspeedWheel(app, x ,y){
+function AirspeedWheel(app, x, y){
+
+
+
 
     // Create wheel elements for the digits in the airspeed
 
@@ -498,9 +504,12 @@ function airspeedWheelOutline(app,x,y,width,height){
 // --- AltitudeWheel object                                                 ---
 // ----------------------------------------------------------------------------
 
-function AltitudeWheel(app, x, y){
-    this.x = x;
-    this.y = y;
+function AltitudeWheel(app){
+    //this.x = x;
+    //this.y = y;
+    // position based on screen size
+    this.x = app.screen.width - 45;
+    this.y = app.screen.height / 2;
     this.app = app;
 
     //console.log("construct alt tens");
@@ -518,7 +527,7 @@ function AltitudeWheel(app, x, y){
     let width = this.tensWheel.digit_width + this.hundredsWheel.digit_width + this.thousandsWheel.digit_width + this.tenThousandsWheel.digit_width;
     let width1 = this.tensWheel.digit_width;
 
-    AltitudeWheelOutline(app,x,y, true, width, 30/2 , width1, (30/2 + 20) );
+    AltitudeWheelOutline(app, this.x, this.y, true, width, 30/2 , width1, (30/2 + 20) );
 
     this.app.stage.addChild(this.tensWheel.digit_container);
     this.app.stage.addChild(this.hundredsWheel.digit_container);
