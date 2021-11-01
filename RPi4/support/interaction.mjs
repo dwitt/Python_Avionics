@@ -45,12 +45,8 @@ export class Interactions{
     
         let menuButtonText = new Text("Menu", menuButtonTextStyle);
 
-        //menuButtonText.position.set(width/2, height/2);
-        //menuButtonText.anchor.set(0,0);
-
         menuButtonGraphics.addChild(menuButtonText);
         menuButtonContainer.addChild(menuButtonGraphics);
-        //menuButtonContainer.addChild(menuButtonText);
 
         app.stage.addChild(menuButtonContainer);
         

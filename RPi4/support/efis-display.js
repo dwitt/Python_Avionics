@@ -5,6 +5,8 @@ import { AttitudeIndicator } from './attitude-indicator.mjs';
 import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
 import { Interactions } from './interaction.mjs';
+//import { DrawSpecialRectangle } from './specialRectangle.mjs';
+
 
 'use strict';
 // ----------------------------------------------------------------------------
@@ -21,6 +23,15 @@ var Application = PIXI.Application,
     Container = PIXI.Container,
     Text = PIXI.Text,
     Polygon = PIXI.Polygon;
+
+
+// ----------------------------------------------------------------------------
+
+var CAN_QNH_PERIOD = 1000;   // time in milliseconds
+var last_qnh = 29.92;
+var can_qnh_timestamp = Date.now();
+var current_time_millis = Date.now();
+
 
 // ----------------------------------------------------------------------------
 // ---Create a Pixi Application                                             ---
@@ -39,8 +50,8 @@ let app = new Application({
 // This sets up a second canvas for display. This is just a test canvas
 // TODO: Delete this section
 let app2 = new Application({
-    width: 800,
-    height: 128,
+    width: 480,
+    height: 400,
     antialias: true,
     transparent: false,
     resolution:1
@@ -52,6 +63,7 @@ let app2 = new Application({
 // --- document                                                             ---
 // ----------------------------------------------------------------------------
 document.body.appendChild(app.view);
+document.body.appendChild(app2.view);
 
 // ----------------------------------------------------------------------------
 // --- Create a new object to hold the data object coming from the websocket---
@@ -99,6 +111,7 @@ tahoma_bold_font.load().then(function(loaded_face){
 var attitudeIndicator,
     altitudeWheel, 
     qnhDisplay, 
+    tasDisplay,
     vsiDisplay, 
     altimeter_ribbon, 
     testAirspeedDisplay, 
@@ -140,22 +153,23 @@ function setup() {
     let y = app.screen.height;
 
     attitudeIndicator = new AttitudeIndicator(app);            
-    altimeter_ribbon = new Ribbon(app, x-35, y/2, y-80, 90, true, 100, 4, 5, true);
+    altimeter_ribbon = new Ribbon(app, x-35, y/2, y-130, 90, true, 100, 4, 5, true);
     altitudeWheel = new AltitudeWheel(app) //, 755, 240);
-    qnhDisplay = new QNHDisplay(app);
+    qnhDisplay = new QNHDisplay(app, x - (35 + 90), y-130/2+25, 90, 25, 8);
     //vsiDisplay = new VSIDisplay(app);
     //testAirspeedDisplay = new ASDisplay(app);
  
-    airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-80, 90, false, 10, 8, 2, false);
+    airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
     airspeedWheel = new AirspeedWheel(app, 45, y/2);
+    tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
 
     vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
 
     var aircraft = new AircraftIndicator(app);
 
     slipBallIndicator = new SlipBallIndicator(app);
-    headingIndicator = new HeadingIndicator(app, x - 200);
-    menu = new Interactions(app, 660, 440, 150, 40);
+    headingIndicator = new HeadingIndicator(app, x );//- 260);
+    //menu = new Interactions(app, x - 150, y - 40, 150, 40);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -182,8 +196,45 @@ function DisplayUpdateLoop(delta) {
     slipBallIndicator.acc = dataObject.accy;
     headingIndicator.value = dataObject.yaw;
 
+    // Send the qnh value out to python using the websocket and json
+    current_time_millis = Date.now()
+    if (dataObject.qnh != last_qnh || current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD) {
+        last_qnh = dataObject.qnh;
+        can_qnh_timestamp = current_time_millis;
+
+        var obj = {qnh: dataObject.qnh, ticker: delta, position: dataObject.position};
+        var json = JSON.stringify(obj);
+        if (myWebSocket.readyState == 1) {
+            myWebSocket.send("json" + json);}
+    }
+
+ 
+
 
 }
+
+// ----------------------------------------------------------------------------
+// --- User Input                                                           ---
+// ----------------------------------------------------------------------------
+
+class UserInput {
+
+    constructor() {
+        encoderPosition = 0;
+        encoderButton = false;
+        lastButton = encoderButton;
+        lastPosition = encoderPosition;
+    }
+
+    processState(position, button) {
+        if 
+
+    }
+
+}
+
+
+
 
 // ----------------------------------------------------------------------------
 // --- Aircraft Indicator                                        ---
@@ -194,7 +245,7 @@ function AircraftIndicator(app){
     let displayWidth = app.screen.width;
     let displayHeight = app.screen.height;
 
-    let px1 = displayWidth/5.6; // outside of large mark
+    let px1 = displayWidth/7; // outside of large mark
     let px2 = displayWidth/25;  // offset to inside of large mark
     let px3 = displayWidth/30;
     let px4 = displayWidth/40;
@@ -215,18 +266,18 @@ function AircraftIndicator(app){
     // draw black background
     aircraftGraphics.lineStyle(lineOptions);
     // large horizontal
-    aircraftGraphics.moveTo(-px1 + px2 , 0);
-    aircraftGraphics.lineTo(-px1 , 0);
+    // aircraftGraphics.moveTo(-px1 + px2 , 0);
+    // aircraftGraphics.lineTo(-px1 , 0);
     // 90 on left
-    aircraftGraphics.moveTo(-2 * px4 , 0);
+    aircraftGraphics.moveTo(-px1 , 0);
     aircraftGraphics.lineTo(-1.5 * px4, 0);
     aircraftGraphics.lineTo(-1.5 * px4, py2);
 
     // large horizontal on right
-    aircraftGraphics.moveTo(px1, 0);
-    aircraftGraphics.lineTo(px1 - px2, 0);
+    // aircraftGraphics.moveTo(px1, 0);
+    // aircraftGraphics.lineTo(px1 - px2, 0);
     // 90 on right
-    aircraftGraphics.moveTo(2 * px4 , 0);
+    aircraftGraphics.moveTo(px1,0);//2 * px4 , 0);
     aircraftGraphics.lineTo(1.5 * px4, 0);
     aircraftGraphics.lineTo(1.5 * px4, py2);
 
@@ -237,17 +288,17 @@ function AircraftIndicator(app){
 
     aircraftGraphics.lineStyle(lineOptions);
 
-    aircraftGraphics.moveTo(-px1 + px2, 0);
-    aircraftGraphics.lineTo(-px1, 0);
+    // aircraftGraphics.moveTo(-px1 + px2, 0);
+    // aircraftGraphics.lineTo(-px1, 0);
 
-    aircraftGraphics.moveTo(-2 * px4 , 0);
+    aircraftGraphics.moveTo(-px1 , 0);
     aircraftGraphics.lineTo(-1.5 * px4, 0);
     aircraftGraphics.lineTo(-1.5 * px4, py2);
 
-    aircraftGraphics.moveTo(px1 , 0);
-    aircraftGraphics.lineTo(px1 - px2, 0);
+    // aircraftGraphics.moveTo(px1 , 0);
+    // aircraftGraphics.lineTo(px1 - px2, 0);
 
-    aircraftGraphics.moveTo(2 * px4 , 0);
+    aircraftGraphics.moveTo(px1, 0);
     aircraftGraphics.lineTo(1.5 * px4, 0);
     aircraftGraphics.lineTo(1.5 * px4, py2);
 
@@ -341,9 +392,10 @@ Object.defineProperties(VSIDisplay.prototype,{
 
 // Constructor
 
-function QNHDisplay(app){
+function QNHDisplay(app, x , y, width, height, radius){
 
     this.screen_width = app.screen.width;
+    let arc_radius = radius;
 
     // Create a style to be used for the qnh characters
     this.style = new PIXI.TextStyle({
@@ -354,22 +406,22 @@ function QNHDisplay(app){
     });
 
     this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
-    let text = this.QNHFormat.format(29.92);
+    let text = this.QNHFormat.format(29.92) + " in";
 
     this.QNHText = new PIXI.Text(text, this.style);
-    this.QNHText.anchor.set(1,0);
-    this.QNHText.position.set(this.screen_width-5,0);
+    this.QNHText.anchor.set(.5,.5);
+    this.QNHText.position.set(x + width/2 , y - height/2);
 
-    this.display_box_width = 60;
-    this.display_box_height = 26;
-
+    // Draw Custom Rectangle
     this.QNHRectangle = new PIXI.Graphics();
-    this.QNHRectangle.beginFill(0x000000); 
-    this.QNHRectangle.lineStyle(2,0xFFFFFF);
-    this.QNHRectangle.drawRect(this.screen_width - (this.display_box_width + 1),0,this.display_box_width,this.display_box_height);
+    this.QNHRectangle.beginFill(0x000000, 0.25); 
+    this.QNHRectangle.lineStyle(1,0x00FFFF, 0.5);
+
+    drawSpecialRectangle(this.QNHRectangle, x, y - height, width, height, arc_radius, false, false, true, true);
+
     this.QNHRectangle.endFill();
 
-    //app.stage.addChild(this.QNHRectangle);
+    app.stage.addChild(this.QNHRectangle);
     app.stage.addChild(this.QNHText)
 }
 
@@ -377,6 +429,53 @@ Object.defineProperties(QNHDisplay.prototype,{
     value: {
         set: function(new_value) {
             this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
+        }
+    }
+})
+
+// ----------------------------------------------------------------------------
+// --- TAS display                                                          ---
+// ----------------------------------------------------------------------------
+
+// Constructor
+
+function TASDisplay(app, x , y, width, height, radius){
+
+    this.screen_width = app.screen.width;
+    let arc_radius = radius;
+
+    // Create a style to be used for the TAS characters
+    this.style = new PIXI.TextStyle({
+        fontFamily: 'Tahoma',
+        fontSize: '18px',
+        fill: "chartreuse",
+        fontWeight: "normal"
+    });
+
+    this.TASFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 0});
+    let text = this.TASFormat.format(0) + " TAS";
+
+    this.TASText = new PIXI.Text(text, this.style);
+    this.TASText.anchor.set(.5,.5);
+    this.TASText.position.set(x + width/2 , y - height/2);
+
+    // Draw Custome Rectangle
+    this.TASRectangle = new PIXI.Graphics();
+    this.TASRectangle.beginFill(0x000000, 0.25); 
+    this.TASRectangle.lineStyle(1,0x7FFF00, 0.5);
+
+    drawSpecialRectangle(this.TASRectangle, x, y - height, width, height, arc_radius, true, true, false, false);
+
+    this.TASRectangle.endFill();
+
+    app.stage.addChild(this.TASRectangle);
+    app.stage.addChild(this.TASText)
+}
+
+Object.defineProperties(TASDisplay.prototype,{
+    value: {
+        set: function(new_value) {
+            this.TASText.text = this.TASFormat.format(Math.floor(new_value)/100) + " in";
         }
     }
 })
@@ -463,6 +562,36 @@ function AirspeedWheel(app, x, y){
 
     airspeedWheelOutline(app, x ,y , airspeedWidth, 15);
 
+    // Add text for kts
+    // Create a style to be used for the units characters
+    this.style = new PIXI.TextStyle({
+        fontFamily: 'Tahoma',
+        fontSize: '18px',
+        fill: "white",
+        fontWeight: "normal",
+        stroke: "black",
+        strokeThickness: 2
+    });
+
+    this.IASunits = new PIXI.Text("kts", this.style);
+    this.IASunits.anchor.set(0,.2);
+    this.IASunits.position.set(x + airspeedWidth + 8,y);
+
+    // this.style = new PIXI.TextStyle({
+    //     fontFamily: 'Tahoma',
+    //     fontSize: '14px',
+    //     fill: "white",
+    //     fontWeight: "normal",
+    //     stroke: "black",
+    //     strokeThickness: 2
+    // });
+
+    // this.IASlegend = new PIXI.Text("IAS", this.style);
+    // this.IASlegend.anchor.set(0,.15);
+    // this.IASlegend.position.set(x + airspeedWidth + 8, y );
+
+    app.stage.addChild(this.IASunits);
+    //app.stage.addChild(this.IASlegend);
     app.stage.addChild(this.airspeedOnesWheel.digit_container);
     app.stage.addChild(this.airspeedTensWheel.digit_container);
     app.stage.addChild(this.airspeedHundredsWheel.digit_container);
@@ -560,6 +689,46 @@ function AltitudeWheelOutline(app,x,y,right,width,height,left_width,left_height)
 
     app.stage.addChild(line);
 
+}
+
+function drawSpecialRectangle(graphic, x, y, width, height, radius, 
+    topLeftRounded, topRightRounded, bottomRightRounded, bottomLeftRounded) {
+
+    if (topLeftRounded) {
+        graphic.moveTo(x, y + radius);
+        graphic.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
+    } else {
+        graphic.moveTo(x,y);
+    }
+
+    if (topRightRounded) {
+        graphic.lineTo(x + width - radius, y);
+        graphic.arc(x + width - radius, y + radius, radius, 1.5 * Math.PI, 0);
+    } else {
+        graphic.lineTo(x + width, y);
+    }
+
+    if (bottomRightRounded) {
+        graphic.lineTo(x + width, y + height - radius);
+        graphic.arc(x + width - radius, y + height - radius, radius, 0, .5 * Math.PI);
+    } else {
+        graphic.lineTo(x + width, y + height);
+    }
+
+    if (bottomLeftRounded) {
+        graphic.lineTo(x + radius, y + height);
+        graphic.arc(x + radius, y + height - radius, radius, .5 * Math.PI, Math.PI)
+    } else {
+        graphic.lineTo(x, y + height);
+    }
+
+    if (topLeftRounded) {
+        graphic.lineTo(x, y + radius);
+    } else {
+        graphic.lineTo(x,y);
+    }
+
+    
 }
 
 Object.defineProperties( AltitudeWheel.prototype, {
