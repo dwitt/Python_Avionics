@@ -53,9 +53,9 @@ export class VsiIndicator {
 
         // fill the background with 25% black with a 75% outline
         var fillColour = 0x000000;
-        var fillAlpha = 0.25;
+        var fillAlpha = 0.0;
         var outlineWidth = 1;
-        var outlineAlpha = 0.25;
+        var outlineAlpha = 0.0;
 
         this.vsiBackground.beginFill(fillColour, fillAlpha);
         this.vsiBackground.lineStyle(outlineWidth, fillColour, outlineAlpha, 0);
@@ -100,8 +100,8 @@ export class VsiIndicator {
 
 
         // draw the vertical line on the left
-        this.vsiTickMarks.moveTo(this.tickMarkOffsetFromLeft, height/2);
-        this.vsiTickMarks.lineTo(this.tickMarkOffsetFromLeft, -height/2);
+        this.vsiTickMarks.moveTo(this.tickMarkOffsetFromLeft, tickMarkAreaHeight + 1);
+        this.vsiTickMarks.lineTo(this.tickMarkOffsetFromLeft, -tickMarkAreaHeight - 1);
  
         // Draw the tick marks
 
@@ -169,12 +169,12 @@ export class VsiIndicator {
         let textOffset = (width - (this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength))/2 + this.tickMarkLargeLength + this.tickMarkLargeOffsetFromLeft;
 
         let text = new Text(".5", textStyle);
-        text.anchor.set(.5,.5);
+        text.anchor.set(.6,.5);
         text.position.set(textOffset, oneThousandsInterval * 5);
         this.vsiTickMarks.addChild(text);
 
         text = new Text(".5", textStyle);
-        text.anchor.set(.5,.5);
+        text.anchor.set(.6,.5);
         text.position.set(textOffset, -oneThousandsInterval * 5);
         this.vsiTickMarks.addChild(text);
 
