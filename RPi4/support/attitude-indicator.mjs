@@ -268,6 +268,11 @@ export class AttitudeIndicator {
 
     set pitch(newValue) {
 
+        if (newValue === undefined) {
+            // TODO: fix this to show an x but for now
+            newValue = 0
+        }
+
         if (newValue == this._pitch) {
 
             return;

@@ -5,27 +5,32 @@ import struct
 
 import board
 import busio
-import canio
+
 import digitalio
+
+#from adafruit_mcp2515 import MCP2515 as CAN
+import adafruit_mcp2515
+import adafruit_mcp2515.canio
 
 from digitalio import DigitalInOut, Direction, Pull
 
-from honeywellHSC import HoneywellHSC 
-from kalman_filter import KalmanFilter
+from honeywellHSC import HoneywellHSC
+#from kalman_filter import KalmanFilter
 from NPXAnalogPressureSensor import NPXPressureSensor
 from rolling_average import RollingAverage
 from Regression import Regression
 
-import adafruit_ADS1x15.ads1115 as ADS
-from adafruit_ads1x15.analog_in import AnalogIn
+#import adafruit_ADS1x15.ads1115 as ADS
+#from adafruit_ads1x15.analog_in import AnalogIn
+
 
 from micropython import const # type: ignore
 
 import math
 
 # Constants
-DEBUG = False
-DEBUG_DIFFERENTIAL = False
+DEBUG = True
+DEBUG_DIFFERENTIAL = True
 DEBUG_STATIC = False
 DEBUG_VSI = False
 
@@ -43,7 +48,7 @@ previous_qnh = qnh
 # --- Constants for airspeed calculations                                   ---
 # -----------------------------------------------------------------------------
 
-# Used for calibrated airspeed (*** Not Used ***)
+# Used for calibrated airspeed (*** This calculation is not currently used ***)
 GAMMA = 1.401                       # ratio of specific heats of air
 SEA_LEVEL_PRESSURE_ISA = 101325     # Pa
 SEA_LEVEL_DENSITY_ISA = 1.225       # Kg / ( m * s^2 )
@@ -88,13 +93,19 @@ if hasattr(board, 'BOOST_ENABLE'):
     boost_enable.switch_to_output(True)
     if DEBUG:
         print("Boost On")
-    
-can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
-                baudrate=250_000, auto_restart=True)
+        
+cs = digitalio.DigitalInOut(board.D25)
+cs.direction = digitalio.Direction.OUTPUT
+spi = board.SPI()
+
+#TODO: review baud rate as documention says based on 16Mhz xtal
+# but we have 8Mhz so lets double the speed so it equal 250000
+can = adafruit_mcp2515.MCP2515(spi_bus=spi, cs_pin=cs,
+                baudrate=500000)
 
 # i2C - NPX Pressure Sensor via I2C ADS1115 -----------------------------------
 
-my_ads = NPXPressureSensor(i2c)   
+my_ads = NPXPressureSensor(board.A1, board.A0, 0.09, 0.08)  
 
 # i2c = Honeywell Pressure Sensor via i2c -------------------------------------
 
@@ -113,7 +124,7 @@ vsi_regression = Regression(120)
 # --- listener                                                              ---
 # -----------------------------------------------------------------------------
 
-qnh_match = canio.Match(id=CAN_QNH_Msg_id)
+qnh_match = adafruit_mcp2515.canio.Match(address=CAN_QNH_Msg_id)
 qnh_listener = can.listen(matches=[qnh_match], timeout=0.01)
 
 # -----------------------------------------------------------------------------
@@ -169,7 +180,7 @@ while True:
         differential_pressure)
     
     if DEBUG_DIFFERENTIAL:
-        print(f"differential pressure ave: {differential_pressure_average}", end="")
+        print(f"differential pressure ave: {differential_pressure_average} ", end="")
 
     # -------------------------------------------------------------------------
     # --- Calculate the VSI                                                 ---
@@ -270,7 +281,7 @@ while True:
                                 (int(altitude) >> 16) & 0xff,
                                 int(vsi),
                                 0)
-        message = canio.Message(CAN_Air_Msg_id, Air_data)
+        message = adafruit_mcp2515.canio.Message(id=CAN_Air_Msg_id, data=Air_data)
         can.send(message)
         CAN_Air_Timestamp = current_time_millis
         #print("Can Air")
@@ -283,7 +294,7 @@ while True:
                             int(static_pressure_average / 10),
                             int(temperature),
                             0,0,0,0,0)
-        message = canio.Message(CAN_Raw_Msg_id, Raw_data)
+        message = adafruit_mcp2515.canio.Message(id=CAN_Raw_Msg_id, data=Raw_data)
         can.send(message)
         CAN_RAW_Timestamp = current_time_millis
         #print("Can Raw")
@@ -297,6 +308,6 @@ while True:
                                 qnh_hpa,
                                 int(qnh*4),
                                 0,0,0,0)
-        message = canio.Message(CAN_QNH_Msg_id, QNH_data)
+        message = adafruit_mcp2515.canio.Message(id=CAN_QNH_Msg_id, data=QNH_data)
         can.send(message)
         CAN_QNH_Timestamp = current_time_millis
