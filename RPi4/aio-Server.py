@@ -19,7 +19,7 @@ from adafruit_seesaw import seesaw, rotaryio, digitalio
 
 global webServer, webSocket
 
-DEBUG = False
+DEBUG = True
 
 # Set constants for CAN bus use
 
@@ -92,15 +92,9 @@ async def get_index(request):
 
 class AvionicsData:
     def __init__(self):
-        self.altitude = 0
+        pass
+        #self.altitude = 0
 
-    @property
-    def altitude(self):
-        return self._altitude
-
-    @altitude.setter
-    def altitude(self, value):
-        self._altitude = value
 
 
 
@@ -113,10 +107,14 @@ class AvionicsData:
 
 class WebSocketResponse:
     def __init__(self):
-        self.ws = None
+        self._ws = None
         self.can_bus = None
         self.last_qnh = None
         self.can_qnh_timestamp = int(time.monotonic_ns() / 1000000)
+        
+    @property
+    def ws(self):
+        return (self._ws)
 
     # Function that is called when a request to create a websocket is received
     async def handler(self, request):
@@ -129,7 +127,7 @@ class WebSocketResponse:
 
         # save the request now that it is prepared
         # this allows us to use the object elsewhere
-        self.ws = ws
+        self._ws = ws
 
         try:
             async for msg in ws:
@@ -143,14 +141,24 @@ class WebSocketResponse:
                         # print("Got Ready message")
                         pass
                     # check if message contains json data
+                    
+                    #TODO: Handle no data
+                    
                     if msg.data[0:4] == 'json':
                         # decode the json
-                        dict_object = json.loads(msg.data[4:])
-                        # print(dict_object['qnh'])
-                        print(dict_object['position'])
-                        qnh = dict_object['qnh']
-                        self.process_qnh(qnh)
-                        
+                        try:
+                            dict_object = json.loads(msg.data[4:4])
+                            try: 
+                                # print(dict_object['qnh'])
+                                print(dict_object['position'])
+                                qnh = dict_object['qnh']
+                                self.process_qnh(qnh)
+                            except:
+                                #data not recieved so ignore it
+                                pass
+                        except:
+                            # if we didn't get any data then just ignore it
+                            pass
                 
                     #else:
                     #    await ws.send_str(msg.data + '/answer')
@@ -193,7 +201,11 @@ class WebSocketResponse:
 
 async def process_can_messages(reader, data):
     while True:
+        if DEBUG:
+            print("Looking for CAN msg")
         msg = await reader.get_message()
+        if DEBUG:
+            print("got msg")
         # kluge to get the altitued
         if (msg.arbitration_id == 0x28):
             data.altitude = msg.data[2] | (msg.data[3]<<8) | (msg.data[4]<<16)
@@ -228,7 +240,6 @@ async def process_can_messages(reader, data):
                 struct.unpack("<hhhh", msg.data)
             )
 
-
         await asyncio.sleep(0.02)
 
 # -----------------------------------------------------------------------------
@@ -240,8 +251,15 @@ async def send_json(web_socket_response, data):
     """
 
     while True:
+        if DEBUG:
+            print("Json Loop")
+            print (f"Web Socket response :{web_socket_response.ws}")
+            if (web_socket_response.ws is not None):
+                print (f"Web Socekt Closed :{web_socket_response.ws.closed}")
+        # --- Need to send message only when       
         if (web_socket_response.ws is not None and
             not web_socket_response.ws.closed):
+            print("Send Json")
             await web_socket_response.ws.send_json(data.__dict__)
 
         await asyncio.sleep(0.02)

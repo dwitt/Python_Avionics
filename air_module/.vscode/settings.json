@@ -6,8 +6,11 @@
     },
     "python.analysis.extraPaths": [
         "/Users/david/.vscode/extensions/joedevivo.vscode-circuitpython-0.1.13/stubs",
-        "../lib",
-        "/Users/david/Library/Application Support/Code/User/globalStorage/joedevivo.vscode-circuitpython/bundle/20210522/adafruit-circuitpython-bundle-py-20210522/lib"
+        "/Users/david/Library/Application Support/Code/User/globalStorage/joedevivo.vscode-circuitpython/bundle/20210522/adafruit-circuitpython-bundle-py-20210522/lib",
+        "./**"
     ],
-    "circuitpython.board.version": null
+    "circuitpython.board.version": null,
+    "python.autoComplete.extraPaths": [
+        "./**"
+    ]
 }

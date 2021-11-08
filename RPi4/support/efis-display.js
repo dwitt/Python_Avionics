@@ -71,8 +71,14 @@ document.body.appendChild(app2.view);
 
 //TODO: Not sure if this can be deleted. Need to add a pause and see what happens
 var dataObject = new Object();
-dataObject._altitude = 0;
+dataObject.altitude = 0;
 dataObject.airspeed = 0;
+dataObject.pitch = 0;
+dataObject.roll = 0;
+dataObject.qnh = 29.92;
+dataObject.vsi = 0;
+dataObject.accy = 0;
+dataObject.yaw = 0;
 
 // ----------------------------------------------------------------------------
 // --- Connect to the websocket to recieve the data from the can bus as     ---
@@ -185,9 +191,9 @@ function DisplayUpdateLoop(delta) {
     attitudeIndicator.pitch = dataObject.pitch;
     attitudeIndicator.roll = dataObject.roll;
     attitudeIndicator.accy = dataObject.accy;
-    altitudeWheel.value = dataObject._altitude;
+    altitudeWheel.value = dataObject.altitude;
     qnhDisplay.value = dataObject.qnh;
-    altimeter_ribbon.value = dataObject._altitude;
+    altimeter_ribbon.value = dataObject.altitude;
     //vsiDisplay.value = dataObject.vsi;
     //testAirspeedDisplay.value = dataObject.airspeed;
     airspeedWheel.value = dataObject.airspeed;
@@ -227,7 +233,7 @@ class UserInput {
     }
 
     processState(position, button) {
-        if 
+         
 
     }
 
