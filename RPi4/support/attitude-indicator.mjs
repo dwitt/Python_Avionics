@@ -19,6 +19,8 @@ var Application = PIXI.Application,
 export class AttitudeIndicator {
     constructor(app) {
 
+        this.app = app
+
         // initial values for internal position variables
         this._pitch = 0;
         this._roll = 0;
@@ -33,6 +35,10 @@ export class AttitudeIndicator {
         this._smoothed = 0;
         this._smoothing = 400;
         this.lastUpdate = new Date;
+
+        // save the undefined states
+        this._pitchUndefined = false;
+        this._rollUndefined = false;
 
         // get the size of the canvas used by the app
         this.displayWidth = app.screen.width;
@@ -244,6 +250,26 @@ export class AttitudeIndicator {
         this.slipSkidGraphics.x = this.displayWidth/2;
         this.slipSkidGraphics.y = this.displayHeight/2;
 
+        /*********************************************************************
+         * Draw a Red X for when the indicater is invalid                    *
+         *********************************************************************/
+
+        this.badDataGraphic = new Graphics();
+
+        lineWidth = 2;
+        lineColour = 0xFF0000; // Red
+        fillColour = 0xFF0000; // Yellow
+
+        this.badDataGraphic.lineStyle(lineWidth, lineColour);
+        this.badDataGraphic.moveTo(radius,radius);
+        this.badDataGraphic.lineTo(-radius, -radius);
+        this.badDataGraphic.moveTo(radius, -radius);
+        this.badDataGraphic.lineTo(-radius, radius);
+
+        this.badDataGraphic.x = this.displayWidth/2;
+        this.badDataGraphic.y = this.displayHeight/2;
+
+
         // Add the pitch container
 
         this.rollContainer.addChild(this.pitchContainer);
@@ -267,18 +293,26 @@ export class AttitudeIndicator {
      */
 
     set pitch(newValue) {
-
-        if (newValue === undefined) {
-            // TODO: fix this to show an x but for now
-            newValue = 0
-        }
-
+        // check if value changed
         if (newValue == this._pitch) {
-
             return;
         }
 
+        //TODO: Fix this is does not work yet 
+
+        // check if new value undefined
+        if (newValue === undefined && !this._pitchUndefined) {
+            // new value just changed to undefined
+            this._pitchUndefined = true
+            this.app.stage.addChild(this.badDataGraphic);  
+        } else if (this._pitchUndefined ) {
+            // new value just changed to defined
+            this.app.stage.removeChild(this.badDataGraphic);
+            this._pitchUndefined = false
+        }
+
         
+
         // the value should be a number of degrees and negative is up
         //console.log(newValue);
         this.pitchContainer.y = -newValue * this.pitchRatio;
@@ -288,6 +322,13 @@ export class AttitudeIndicator {
 
     set roll(newValue) {
 
+        if (newValue === undefined) {
+            // TODO: fix this to show an x but for now
+            this.app.stage.addChild(this.badDataGraphic);
+            newValue = 0
+        } else {
+            this.app.stage.removeChild(this.badDataGraphic);
+        }
         if (newValue == this._roll) {
             return;
         }
