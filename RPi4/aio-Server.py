@@ -1,49 +1,41 @@
+""" Asychronous I/O based webserver to handle page and websocket"""
+# pyright: reportMissingImports=false
+
 import asyncio
-from aiohttp import web
-import aiohttp
-import json
-import can
-# import RPi.GPIO as GPIO
 import json
 import struct
-
 import time
-
 from pathlib import Path
+from aiohttp import web #pylint: disable=import-error
+import aiohttp #pylint: disable=import-error
+import can #pylint: disable=import-error
 
-import board
-#import busio
-#import digitalio
+import board #pylint: disable=import-error
+from adafruit_seesaw import seesaw, rotaryio, digitalio #pylint: disable=import-error
 
-from adafruit_seesaw import seesaw, rotaryio, digitalio
-
-global webServer, webSocket
-
-DEBUG = True
+DEBUG = False
+DEBUG_CAN = True
 
 # Set constants for CAN bus use
 
-CAN_QNH_MSG_ID = 0x02E
+CAN_QNH_MSG_ID = 0x2E
 CAN_QNH_PERIOD = 1000 # ms between messages
 
-# 
-
-can_qnh_timestamp = 0
 
 # -----------------------------------------------------------------------------
 # --- Asynchronous function to create the web and websocket servers         ---
 # -----------------------------------------------------------------------------
-# --- handler = the response handler to be used for the websocket serve     --- 
+# --- handler = the response handler to be used for the websocket serve     ---
 # -----------------------------------------------------------------------------
 async def create_servers(websocket_handler):
-    
+    """Create web server to handle requests"""
+
     #Create the application and add routes
-    #global webServer, webSocket
 
     # -------------------------------------------------------------------------
     # --- Create the web server                                             ---
     # -------------------------------------------------------------------------
-    
+
     # Notes: using web as that is how aiohttp was imported
     server = web.Application()
 
@@ -54,9 +46,6 @@ async def create_servers(websocket_handler):
     server.add_routes([web.get('/', get_index),
                        web.static('/support/','./support/'),
                        web.get('/ws', websocket_handler)])
-    
-    #server.add_routes([web.static('/', 
-    #        './')]
 
     # Create the application runner
     runner = web.AppRunner(server)
@@ -78,110 +67,122 @@ async def create_servers(websocket_handler):
 # -----------------------------------------------------------------------------
 
 async def get_index(request):
+    """Return index.html file when the root directory is requested"""
     if request.path == '/':
- 
-        indexFile = open(Path.cwd() / 'index.html')
-        indexContent = indexFile.read()
 
-    return web.Response(text=indexContent, content_type="text/html")
+        index_file = open(Path.cwd() / 'index.html')
+        index_content = index_file.read()
+
+    return web.Response(text=index_content, content_type="text/html")
 
 # -----------------------------------------------------------------------------
 # --- Class for Avionics Data                                               ---
 # -----------------------------------------------------------------------------
-# TODO - Not sure if this is needed
 
 class AvionicsData:
+    """Class to store all the avionics data recieved over the CAN bus in."""
     def __init__(self):
-        pass
-        #self.altitude = 0
-
-
-
+        # set any default value here
+        self.qnh = 2992
 
 
 # -----------------------------------------------------------------------------
 # --- Web Socket Response Handler class
-# --- Created so that the web socket response object can be exposed for 
+# --- Created so that the web socket response object can be exposed for
 # --- later use sending data to the socket javascript create object with initializer and functions
 # -----------------------------------------------------------------------------
 
 class WebSocketResponse:
+    """Class to handle websocket responses"""
     def __init__(self):
         self._ws = None
         self.can_bus = None
         self.last_qnh = None
         self.can_qnh_timestamp = int(time.monotonic_ns() / 1000000)
-        
+
     @property
-    def ws(self):
-        return (self._ws)
+    def web_socket(self):
+        """Returns the web socket once it has been created"""
+        return self._ws
 
     # Function that is called when a request to create a websocket is received
     async def handler(self, request):
-        """
-        """
+        """Handler to process web socket requests"""
 
         # Create a websocket response object and prepare it for use
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
+        web_socket = web.WebSocketResponse()
+        await web_socket.prepare(request)
 
         # save the request now that it is prepared
         # this allows us to use the object elsewhere
-        self._ws = ws
+        self._ws = web_socket
 
         try:
-            async for msg in ws:
+            async for msg in web_socket:
                 #print("message recieved")
                 if msg.type == aiohttp.WSMsgType.TEXT:
                     if msg.data == 'close':
-                        await ws.close()
+                        await web_socket.close()
                     if msg.data == 'ready':
                         # do nothing really other than recognize that ready
                         # was sent
                         # print("Got Ready message")
                         pass
                     # check if message contains json data
-                    
+
                     #TODO: Handle no data
-                    
+
                     if msg.data[0:4] == 'json':
+                        if DEBUG_CAN:
+                            print("websocket message with json recieved")
                         # decode the json
                         try:
-                            dict_object = json.loads(msg.data[4:4])
-                            try: 
+
+                            dict_object = json.loads(msg.data[4:])
+                            try:
+                                if DEBUG_CAN:
+                                    print("get QNH from json")
                                 # print(dict_object['qnh'])
-                                print(dict_object['position'])
+                                # print(dict_object['position'])
                                 qnh = dict_object['qnh']
                                 self.process_qnh(qnh)
-                            except:
+                            except: # pylint: disable=bare-except
                                 #data not recieved so ignore it
                                 pass
-                        except:
+                        except: # pylint: disable=bare-except
                             # if we didn't get any data then just ignore it
                             pass
-                
+
                     #else:
                     #    await ws.send_str(msg.data + '/answer')
                 elif msg.type == aiohttp.WSMsgType.ERROR:
-                    print('ws connection closed with exception %s' % ws.exception())
-
-            print('websocket connection closed')
+                    if DEBUG:
+                        print('ws connection closed with exception %s' % web_socket.exception())
+            if DEBUG:
+                print('websocket connection closed')
         finally:
-            await ws.close()
+            await web_socket.close()
 
-        return ws
+        return web_socket
 
     def process_qnh(self, qnh):
         """ Determine if qnh needs to be sent on the can bus."""
         current_time_millis = int(time.monotonic_ns() / 1000000)
         if (qnh != self.last_qnh or
             current_time_millis > self.can_qnh_timestamp + CAN_QNH_PERIOD):
+            if DEBUG_CAN:
+                print("prepare to send QNH on CAN")
+                print(f"qnh = {qnh}")
             message = self.pack_can_qnh_msg(qnh)
             self.can_qnh_timestamp = current_time_millis
             self.last_qnh = qnh
             #print(f"QNH: {qnh}, Last QNH:{self.last_qnh}")
             #print(f"Sending can message {message}")
+            if DEBUG_CAN:
+                print(self.can_bus)
             self.can_bus.send(message)
+            if DEBUG_CAN:
+                print(f"Message sent on {self.can_bus.channel_info}")
 
     def pack_can_qnh_msg(self, qnh):
         """ Pack the qnh value ito a message for sending on the CAN bus """
@@ -191,7 +192,10 @@ class WebSocketResponse:
                                     int(qnh*4),
                                     0,0,0,0)
         message = can.Message(arbitration_id = CAN_QNH_MSG_ID,
-                              data = qnh_message)
+                              data = qnh_message,
+                              is_extended_id = False)
+        if DEBUG_CAN:
+            print(message)
         return message
 
 # -----------------------------------------------------------------------------
@@ -200,6 +204,7 @@ class WebSocketResponse:
 # -----------------------------------------------------------------------------
 
 async def process_can_messages(reader, data):
+    """Process the can messages when the are recieved"""
     while True:
         if DEBUG:
             print("Looking for CAN msg")
@@ -207,35 +212,36 @@ async def process_can_messages(reader, data):
         if DEBUG:
             print("got msg")
         # kluge to get the altitued
-        if (msg.arbitration_id == 0x28):
+        if msg.arbitration_id == 0x28:
             data.altitude = msg.data[2] | (msg.data[3]<<8) | (msg.data[4]<<16)
 
             # Check for obvious signs of negative data
             # Check if high bit is a 1
-            if ((msg.data[4] & 1<<7) == 1<<7):
+            if (msg.data[4] & 1<<7) == 1<<7:
                 #XOR to peform 1s compliment (high byte was not sent by CAN)
                 data.altitude = -1 * (data.altitude ^ 0xffffff)
-            (data.airspeed, null2, null3, null4, data.vsi, null7) = (
+            (data.airspeed, dummy_2, dummy_3, dummy_4, data.vsi, dummy_7) = (
                 struct.unpack("<hBBBhB", msg.data))
-            
+
             if DEBUG:
                 print(data.vsi, data.airspeed)
-            
-        elif (msg.arbitration_id == 0x2E):
-            (qnh_hpa, qnhx4, null3, null4, null5, null6) = (
+
+        elif msg.arbitration_id == 0x2E:
+            (qnh_hpa, qnhx4, dummy_3, dummy_4, dummy_5, dummy_6) = (
                 struct.unpack("<hhBBBB",msg.data))
             data.qnh = qnhx4 / 4.0
+            data.qnh_hpa = qnh_hpa
             if DEBUG:
                 print(data.qnh)
-            
-        # process heading message    
-        elif (msg.arbitration_id == 0x48):
+
+        # process heading message
+        elif msg.arbitration_id == 0x48:
             (data.yaw, data.pitch, data.roll, data.turn_rate) = (
                 struct.unpack("<hhhh", msg.data)
             )
-            
+
         # process accelerometer message
-        elif (msg.arbitration_id == 0x49):
+        elif msg.arbitration_id == 0x49:
             (data.accx, data.accy, data.accz, data.calib) = (
                 struct.unpack("<hhhh", msg.data)
             )
@@ -253,14 +259,15 @@ async def send_json(web_socket_response, data):
     while True:
         if DEBUG:
             print("Json Loop")
-            print (f"Web Socket response :{web_socket_response.ws}")
-            if (web_socket_response.ws is not None):
-                print (f"Web Socekt Closed :{web_socket_response.ws.closed}")
-        # --- Need to send message only when       
-        if (web_socket_response.ws is not None and
-            not web_socket_response.ws.closed):
-            print("Send Json")
-            await web_socket_response.ws.send_json(data.__dict__)
+            print (f"Web Socket response :{web_socket_response.web_socket}")
+            if web_socket_response.ws is not None:
+                print (f"Web Socekt Closed :{web_socket_response.web_socket.closed}")
+        # --- Need to send message only when
+        if (web_socket_response.web_socket is not None and
+            not web_socket_response.web_socket.closed):
+            if DEBUG:
+                print("Send Json")
+            await web_socket_response.web_socket.send_json(data.__dict__)
 
         await asyncio.sleep(0.02)
 
