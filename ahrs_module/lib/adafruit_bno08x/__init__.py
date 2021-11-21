@@ -974,7 +974,7 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
         # status, accel_en, gyro_en, mag_en, planar_en, table_en, *_reserved) = response_values
         command_status, *_rest = response_values
         if command == _ME_CALIBRATE:
-            self._dbg("ME_CALIBRATE with command_status: ",command_status")
+            self._dbg("ME_CALIBRATE with command_status: ",command_status)
 
         if command == _ME_CALIBRATE and command_status == 0:
             self._me_calibration_started_at = time.monotonic()
