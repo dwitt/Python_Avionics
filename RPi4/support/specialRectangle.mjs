@@ -19,7 +19,7 @@ var Application = PIXI.Application,
  */
 
 
-    drawSpecialRectangle(graphic, x, y, width, height, radius, 
+export function drawSpecialRectangle(graphic, x, y, width, height, radius, 
         topLeftRounded, topRightRounded, bottomRightRounded, bottomLeftRounded) {
 
     if (topLeftRounded) {
@@ -44,17 +44,17 @@ var Application = PIXI.Application,
     }
 
     if (bottomLeftRounded) {
-        graphic.lineTo(x - radius, y + height);
+        graphic.lineTo(x + radius, y + height);
         graphic.arc(x + radius, y + height - radius, radius, .5 * Math.PI, Math.PI)
     } else {
-        graphie.lineTo(x, y + height);
+        graphic.lineTo(x, y + height);
     }
 
     if (topLeftRounded) {
-        graphic.lineTo(x, y - radius);
+        graphic.lineTo(x, y + radius);
     } else {
         graphic.lineTo(x,y);
     }
 
         
-    }
+}
