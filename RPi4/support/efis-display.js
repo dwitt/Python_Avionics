@@ -1,3 +1,4 @@
+/*global PIXI */
 import { Ribbon } from './ribbon.mjs';
 import { AirspeedRibbon } from './airspeedRibbon.mjs';
 import { VsiIndicator } from './vsi-indicator.mjs';
@@ -5,6 +6,7 @@ import { AttitudeIndicator } from './attitude-indicator.mjs';
 import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
 import { Interactions } from './interaction.mjs';
+import { QNHDisplay } from './qnhdisplay.mjs';
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
 
 
@@ -79,6 +81,8 @@ dataObject.qnh = 29.92;
 dataObject.vsi = 0;
 dataObject.accy = 0;
 dataObject.yaw = 0;
+dataObject.position = 0;
+dataObject.pressed = false;
 
 // ----------------------------------------------------------------------------
 // --- Connect to the websocket to recieve the data from the can bus as     ---
@@ -114,6 +118,8 @@ tahoma_bold_font.load().then(function(loaded_face){
 // --- Wait for the document to report the fonts are loaded then call setup ---
 // ----------------------------------------------------------------------------
 
+// declare global variables??
+
 var attitudeIndicator,
     altitudeWheel, 
     qnhDisplay, 
@@ -126,7 +132,8 @@ var attitudeIndicator,
     vsiIndicator,
     slipBallIndicator,
     headingIndicator,
-    menu;
+    menu,
+    userInput
     
 document.fonts.ready.then(function() {
     setup();
@@ -134,6 +141,8 @@ document.fonts.ready.then(function() {
 
 // ****************************************************************************
 // ****************************************************************************
+
+// ----------------------------------------------------------------------------
 // --- END OF SCRIPT - We should be event based from this point onward      ---
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
@@ -145,9 +154,8 @@ document.fonts.ready.then(function() {
 
 myWebSocket.onmessage = function (event) {
     // parse the event.data into a data object
-    // this will contain the data from the CAN buss
+    // this will contain the data from the CAN bus
     dataObject = JSON.parse(event.data);
-
 }
 
 // ----------------------------------------------------------------------------
@@ -177,6 +185,15 @@ function setup() {
     headingIndicator = new HeadingIndicator(app, x );//- 260);
     //menu = new Interactions(app, x - 150, y - 40, 150, 40);
 
+    userInput = new UserInput(app);
+
+    //TODO: remove this later. This is a callback test 
+    var myCallBackClass = new MyCallBackClass();
+
+    userInput.registerCallback(qnhDisplay);
+    userInput.registerCallback(myCallBackClass);
+    userInput.registerCallback(myCallBackClass);
+
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
 
@@ -202,6 +219,13 @@ function DisplayUpdateLoop(delta) {
     slipBallIndicator.acc = dataObject.accy;
     headingIndicator.value = dataObject.yaw;
 
+    // Process any change in the user input encoder
+    userInput.processState(dataObject.position, dataObject.pressed)
+
+
+
+
+
     // Send the qnh value out to python using the websocket and json
     current_time_millis = Date.now()
     if (dataObject.qnh != last_qnh || current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD) {
@@ -218,24 +242,270 @@ function DisplayUpdateLoop(delta) {
 
 
 }
+class MyCallBackClass{
+    callback(selected, change, encoder){
+        // nothing to do here
+    }
+}
+
+
 
 // ----------------------------------------------------------------------------
 // --- User Input                                                           ---
 // ----------------------------------------------------------------------------
+/*
+The goal of this function is allow you to use the selector button to toggle
+between two modes. Mode 0 is to select between different UI elements to adjust
+and Mode 1 is to adjust the element
+Ideally this class will be generic and allow you to add UI elements to it
+with call backs to indicated whether the UI element is selected for adjustment
+and to pass on adjustements to the UI element
+*/
 
 class UserInput {
 
-    constructor() {
-        encoderPosition = 0;
-        encoderButton = false;
-        lastButton = encoderButton;
-        lastPosition = encoderPosition;
+    constructor(app) {
+        this.encoderPosition = 0;
+        this.encoderButton = false;
+        this.lastButton = this.encoderButton;
+        this.lastPosition = this.encoderPosition;
+
+        this.itemSelectionMode = false;
+        this.firstPass = true;
+
+        // storage for call back and virtual encoder
+        this.numberOfCallbacksRegistered = 0;
+        this.callbackFunction = new Array();
+        this.virtualEncoderValue = new Array();
+        this.currentSelection = 0;      // currently selected callback
+        this.encoderAdjustment = 0;     // adjustement of encoder position
+        this.virtualEncoderForSelection = 0;
+        
+        // TODO: Remove this later. It is for testing 
+        this.emptyCircle = new Graphics();
+        this.filledCircle = new Graphics();
+
+        let displayWidth = app.screen.width;
+        this.displayHeight = app.screen.height;
+
+        // draw a circle in the lower left corner
+        this.emptyCircle.lineStyle(1, 0xffffff, 1);
+        this.emptyCircle.drawCircle(5, this.displayHeight - 5, 4);
+
+        // draw a filled circle in the lower left corner
+        this.filledCircle.lineStyle(1, 0xffffff, 1);
+        //this.filledCircle.beginFill(0xffffff, 1);
+        this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
+        //this.filledCircle.endFill();
+
+        // The following is for debugging
+        // create text for the screen
+        this.style = new PIXI.TextStyle({
+            fontFamily: 'Tahoma',
+            fontSize: '20px',
+            fill: "white",
+            fontWeight: "normal"
+        });
+
+        this.itemSelectorText = new Text("0", this.style);
+        this.itemSelectorText.anchor.set(0,1);
+        this.itemSelectorText.position.set(10, this.displayHeight);
+
+        this.encoderText = new Text("0", this.style);
+        this.encoderText.anchor.set(0,1);
+        this.encoderText.position.set(40, this.displayHeight);
+
+
+        app.stage.addChild(this.filledCircle);
+        app.stage.addChild(this.itemSelectorText);
+        app.stage.addChild(this.encoderText);
+        this.app = app;
     }
+
+    /**
+     * 
+     * processState: processes the encoder position and button to all 
+     *  adjustment of multiple objects
+     * 
+     * @param {*} position 
+     * @param {*} button 
+     */
+
 
     processState(position, button) {
-         
+        var encoderPosition;
+        // handle first time through until there is a call back registered
+        if (this.firstPass) {
+            // save the current encoder position
+            this.encoderAdjustment = position;
+
+            // check if we have any registered callbacks
+            if (this.numberOfCallbacksRegistered > 0) {
+
+                this.firstPass = false;
+            }
+        } else {
+            // We have at least one call back registered
+            // Check if the button has changed
+
+            if (button != this.lastButton) {
+                this.lastButton = button
+                if (button == false) {
+                    // The button was just released
+                    // toggle the selection mode
+                    this.itemSelectionMode = !this.itemSelectionMode
+                    
+
+                    if (this.itemSelectionMode) {
+                        // We have entered selection mode which means we can
+                        // selected between the items that have been reigistered
+
+                        // Unselect previous item if there are any
+                        if (this.numberOfCallbacksRegistered > 0 ) {
+                            this.callbackFunction[this.currentSelection].callback(
+                                true,   // The item is selected
+                                false,  // The item cannot be adjusted
+                                0       // The position should be ignored
+                            );
+                        }
+
+                        // Save the encoder position
+                        encoderPosition = (position + 
+                            this.virtualEncoderValue[this.currentSelection] -
+                            this.encoderAdjustment);
+                        this.virtualEncoderValue[this.currentSelection] = encoderPosition;
+
+
+                        this.filledCircle.clear();
+                        this.filledCircle.lineStyle(1, 0xffffff, 1);
+                        this.filledCircle.beginFill(0xffffff, 1);
+                        this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
+                        this.filledCircle.endFill();
+                    } else {
+                        // We have exited selection mode which means 
+                        // The currently selected item can be adjusted
+                        // Unselect previous item if there are any
+
+
+                        // save the encoder position so that we can start
+                        // at the same place when we return to selection
+                        this.virtualEncoderForSelection = (position +
+                            this.virtualEncoderForSelection -
+                            this.encoderAdjustment);
+                        
+                        if (this.numberOfCallbacksRegistered > 0 ) {
+                            this.callbackFunction[this.currentSelection].callback(
+                                true,   // The item is selected
+                                true,  // The item can be adjusted
+                                this.virtualEncoderForSelection       // The position should be ignored
+                            );
+                        }
+
+
+                        this.filledCircle.clear();
+                        this.filledCircle.lineStyle(1, 0xffffff, 1);
+                        //this.filledCircle.beginFill(0xffffff, 1);
+                        this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
+                        //this.filledCircle.endFill();
+                    }
+                    // save the current encoder position to be applied
+                    // as the encoder makes adjustments
+                    this.encoderAdjustment = position
+                }
+            }
+
+            // Check if the position has changed
+            if (position != this.lastPosition) {
+                // Handle changes in the position of the encoder
+                if (this.itemSelectionMode) {
+                    // We are in selection mode
+                    // check if the encoder has moved
+
+                    // calculate new encoder position
+
+                    encoderPosition = (position + 
+                                            this.virtualEncoderForSelection -
+                                            this.encoderAdjustment);
+                    // deslect item
+                    this.callbackFunction[this.currentSelection].callback(
+                        false,  // item is not selected
+                        false,  // item cannot be adjusted
+                        0       // should be ignored
+                    );
+
+                    this.currentSelection = (Math.abs(encoderPosition) % 
+                        this.numberOfCallbacksRegistered);
+
+                    // select item
+                    this.callbackFunction[this.currentSelection].callback(
+                        true,   // item is selected
+                        false,  // item cannot be adjusted
+                        0       // should be ignored
+                    );
+
+                    // TODO: debugging output
+                    // Output the currently selected item
+                    this.itemSelectorText.text = this.currentSelection.toString();
+                    // Calculate and display the encoder value for the item
+                    let itemEncoderPosition = this.virtualEncoderValue[this.currentSelection];
+                    this.encoderText.text = itemEncoderPosition;
+
+
+                } else {
+                    // we are in adjustment mode
+                    
+                    
+                    // Adjust the selected item
+                    
+                    encoderPosition = (position + 
+                        this.virtualEncoderValue[this.currentSelection] -
+                        this.encoderAdjustment);
+
+                    this.callbackFunction[this.currentSelection].callback(
+                        true,   // item is selected
+                        true,   // item can be adjusted
+                        encoderPosition // new position
+                    );
+
+                    //TODO: debugging output
+                    this.encoderText.text = encoderPosition.toString();
+                }
+
+                // Save the last positoin for the next time through
+                this.lastPosition = position;
+            }
+    
+        }
+
 
     }
+
+    /**
+     * Register a callback function.
+     * The callback should take two parameters
+     *      parameter 1 indicates if the item is selected (true/false)
+     *      parameter 2 indicates if the item can be changed (true/false)
+     *      parameter 3 is the virtual encoder value
+     * 
+     * @param {*} callbackFunction 
+     */
+
+    registerCallback(callbackClass){
+        this.numberOfCallbacksRegistered = this.callbackFunction.push(callbackClass);
+        this.virtualEncoderValue[this.numberOfCallbacksRegistered - 1] = 0;
+
+        if (this.numberOfCallbacksRegistered == 1) {
+            // This is the first callback registered so select it
+            this.callbackFunction[this.currentSelection].callback(
+                true,   // item is selected
+                true,   // item can be edited
+                this.virtualEncoderValue[this.currentSelection]  // 0 to start
+                );
+        }
+    }
+
+    
+
 
 }
 
@@ -367,7 +637,7 @@ function VSIDisplay(app){
     let text = this.VSIFormat.format(0);
 
     this.VSIText = new PIXI.Text(text, this.style);
-    this.VSIText.anchor.set(1,0);
+    this.VSIText.anchor.set(0,0);
     this.VSIText.position.set(this.screen_width-5,this.screen_height - 26);
 
     this.display_box_width = 60;
@@ -398,46 +668,55 @@ Object.defineProperties(VSIDisplay.prototype,{
 
 // Constructor
 
-function QNHDisplay(app, x , y, width, height, radius){
+// function QNHDisplay(app, x , y, width, height, radius){
 
-    this.screen_width = app.screen.width;
-    let arc_radius = radius;
+//     this.screen_width = app.screen.width;
+//     let arc_radius = radius;
 
-    // Create a style to be used for the qnh characters
-    this.style = new PIXI.TextStyle({
-        fontFamily: 'Tahoma',
-        fontSize: '18px',
-        fill: "aqua",
-        fontWeight: "normal"
-    });
+//     // Create a style to be used for the qnh characters
+//     this.style = new PIXI.TextStyle({
+//         fontFamily: 'Tahoma',
+//         fontSize: '18px',
+//         fill: "aqua",
+//         fontWeight: "normal"
+//     });
 
-    this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
-    let text = this.QNHFormat.format(29.92) + " in";
+//     this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
+//     let text = this.QNHFormat.format(29.92) + " in";
 
-    this.QNHText = new PIXI.Text(text, this.style);
-    this.QNHText.anchor.set(.5,.5);
-    this.QNHText.position.set(x + width/2 , y - height/2);
+//     this.QNHText = new PIXI.Text(text, this.style);
+//     this.QNHText.anchor.set(.5,.5);
+//     this.QNHText.position.set(x + width/2 , y - height/2);
 
-    // Draw Custom Rectangle
-    this.QNHRectangle = new PIXI.Graphics();
-    this.QNHRectangle.beginFill(0x000000, 0.25); 
-    this.QNHRectangle.lineStyle(1,0x00FFFF, 0.5);
+//     // Draw Custom Rectangle
+//     this.QNHRectangle = new PIXI.Graphics();
+//     this.QNHRectangle.beginFill(0x000000, 0.25); 
+//     this.QNHRectangle.lineStyle(1,0x00FFFF, 0.5);
 
-    drawSpecialRectangle(this.QNHRectangle, x, y - height, width, height, arc_radius, false, false, true, true);
+//     drawSpecialRectangle(this.QNHRectangle, x, y - height, width, height, arc_radius, false, false, true, true);
 
-    this.QNHRectangle.endFill();
+//     this.QNHRectangle.endFill();
 
-    app.stage.addChild(this.QNHRectangle);
-    app.stage.addChild(this.QNHText)
-}
+//     app.stage.addChild(this.QNHRectangle);
+//     app.stage.addChild(this.QNHText)
 
-Object.defineProperties(QNHDisplay.prototype,{
-    value: {
-        set: function(new_value) {
-            this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
-        }
-    }
-})
+//     function callback(selected, changable, value){
+//         // check if the selected parameter has changed
+//         if (selected != this.selected) {
+//             // We may be selected
+//         }
+//     }
+// }
+
+
+
+// Object.defineProperties(QNHDisplay.prototype,{
+//     value: {
+//         set: function(new_value) {
+//             this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
+//         }
+//     }
+// })
 
 // ----------------------------------------------------------------------------
 // --- TAS display                                                          ---

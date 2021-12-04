@@ -246,7 +246,7 @@ async def process_can_messages(reader, data):
                 struct.unpack("<hhhh", msg.data)
             )
 
-        await asyncio.sleep(0.02)
+        await asyncio.sleep(0)
 
 # -----------------------------------------------------------------------------
 # --- Send regular updates to the client using json                         ---
@@ -269,7 +269,7 @@ async def send_json(web_socket_response, data):
                 print("Send Json")
             await web_socket_response.web_socket.send_json(data.__dict__)
 
-        await asyncio.sleep(0.02)
+        await asyncio.sleep(0)
 
 
 async def read_input(encoder, button, data):
@@ -277,18 +277,25 @@ async def read_input(encoder, button, data):
     Read the rotary encoder position and button status and store them in the
     data object.
 
+    Should be called by run or gather
+
     Keyword arguments:
     encoder -- an adafruit rotaryio object
     button -- an adafruit digitalio object
     data -- an object in which the data can be stored
     """
+    last_encoder_position = -encoder.position
     while True:
-        data.position = -encoder.position
-        data.pressed = button.value
+        new_encoder_position = -encoder.position
+        if abs(new_encoder_position - last_encoder_position) < 100:
+            data.position = new_encoder_position
+            last_encoder_position = new_encoder_position
+        #data.position = -encoder.position
+        data.pressed = not button.value
         #TODO: adjust the sleep time as large as possible to be repsonsive but
         #       let the can updates take presidence as these functions are time
         #       consuming
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(0)
 
 def connect_to_rotary_encoder(addr=0x36):
     """

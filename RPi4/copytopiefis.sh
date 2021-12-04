@@ -21,6 +21,7 @@ rsync support/attitude-indicator.mjs pi@"$destination_server":"$piefis_support_d
 rsync support/slipBall.mjs pi@"$destination_server":"$piefis_support_dir"slipBall.mjs
 rsync support/headingIndicator.mjs pi@"$destination_server":"$piefis_support_dir"headingIndicator.mjs
 rsync support/interaction.mjs pi@"$destination_server":"$piefis_support_dir"interaction.mjs
-#rsync support/specialRectangle.mjs pi@"$destination_server":"$piefis_support_dir"specialRectangle.mjs
+rsync support/specialRectangle.mjs pi@"$destination_server":"$piefis_support_dir"specialRectangle.mjs
+rsync support/qnhdisplay.mjs pi@"$destination_server":"$piefis_support_dir"qnhdisplay.mjs
 
 echo 'Done'
