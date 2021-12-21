@@ -27,12 +27,8 @@ class RollingAverage:
             self._sum = self._sum - old_point + point
             self._index = self._index + 1
             _average = self._sum / self._number_of_points
-            if (self._index >= self._number_of_points):
+            if self._index >= self._number_of_points:
                 self._index = 0
-        
-        return(_average)
-    
- 
-        
-        
+
+        return _average
         
