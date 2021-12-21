@@ -115,7 +115,7 @@ class WebSocketResponse:
 
         if DEBUG_QNH:
             print("handler called")
-        if self._ws != None:
+        if self._ws is not None:
             await self._ws.close()
 
         # Create a websocket response object and prepare it for use
@@ -378,7 +378,7 @@ async def main():
     #notifier =
     can.Notifier(bus=bus, listeners=listeners, timeout=0.01,
         loop=loop)
-    
+
     # --- update the web socket response handler so that it can communicate
     # --- with the CAN bus and see the avionics data
 
