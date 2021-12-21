@@ -61,7 +61,7 @@ else:
     from adafruit_mcp2515 import canio #pylint: disable=import-error
 
 # -- Debugging Constants
-DEBUG = True
+DEBUG = False
 
 
 # --- CAN Message Constants ---
@@ -74,7 +74,9 @@ CAN_EULER_PERIOD = const(100)
 CAN_ACC_PERIOD = const(100)
 
 def main():
-    print("Starting AHRS module")
+    """Main function"""
+    if DEBUG:
+        print("Starting AHRS module")
 
     count = 0
 
@@ -130,7 +132,7 @@ def main():
         # Use external can bus provided by mcp2515 on spi bus
         # documentation says the baud rate is based on 16Mhz but we have an 8Mhz
         # crystal so we need to double the baud rate to achieve 250000
-        can = adafruit_mcp2515.MCP2515(spi_bus=spi, cs_pin=can_cs,
+        can = adafruit_mcp2515.MCP2515(spi_bus=spi, cs_pin=can_cs, # pylint: disable=no-member
                 baudrate=500000)
 
 
@@ -141,8 +143,8 @@ def main():
     #bno = BNO08X_SPI(spi_bus = spi, cspin = cs_bno, intpin = in_bno,
     #                resetpin = rs_bno, baudrate=1000000, debug=True)
 
-
-    print("BNO Object created")
+    if DEBUG:
+        print("BNO Object created")
 
     bno.enable_feature(BNO_REPORT_ACCELEROMETER)
     bno.enable_feature(BNO_REPORT_GYROSCOPE)
@@ -281,7 +283,8 @@ def main():
         # -------------------------------------------------------------------------
 
         if DEBUG:
-            print(f"{count:d}: Roll: {roll:.1f}, Pitch: {pitch:.1f}, Yaw: {yaw:.1f}, Acc: {magnetometer_accuracy:1d}")
+            print(f"{count:d}: Roll: {roll:.1f}, Pitch: {pitch:.1f}," +
+                   "Yaw: {yaw:.1f}, Acc: {magnetometer_accuracy:1d}")
             count = count+1
 
 
