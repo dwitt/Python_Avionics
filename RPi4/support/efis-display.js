@@ -29,7 +29,7 @@ var Application = PIXI.Application,
 
 // ----------------------------------------------------------------------------
 
-var CAN_QNH_PERIOD = 1000;   // time in milliseconds
+var CAN_QNH_PERIOD = 1000;   // time in milliseconds (1 second)
 var last_qnh = 29.92;
 var can_qnh_timestamp = Date.now();
 var current_time_millis = Date.now();
@@ -84,12 +84,12 @@ dataObject.yaw = 0;
 dataObject.position = 0;
 dataObject.pressed = false;
 
+
 // ----------------------------------------------------------------------------
 // --- Connect to the websocket to recieve the data from the can bus as     ---
 // --- objects.                                                             ---
 // ----------------------------------------------------------------------------
 
-//console.log(location)
 var webSocketURL = "ws://" + location.host + "/ws";
 var myWebSocket = new WebSocket(webSocketURL);
 
@@ -133,7 +133,9 @@ var attitudeIndicator,
     slipBallIndicator,
     headingIndicator,
     menu,
-    userInput
+    userInput;
+
+//var qnh;
     
 document.fonts.ready.then(function() {
     setup();
@@ -204,12 +206,11 @@ function setup() {
 
 function DisplayUpdateLoop(delta) {
 
-    //console.log(dataObject);
     attitudeIndicator.pitch = dataObject.pitch;
     attitudeIndicator.roll = dataObject.roll;
     attitudeIndicator.accy = dataObject.accy;
     altitudeWheel.value = dataObject.altitude;
-    qnhDisplay.value = dataObject.qnh;
+    //qnhDisplay.value = globalThis.qnh; // dataObject.qnh; // Don't update from json
     altimeter_ribbon.value = dataObject.altitude;
     //vsiDisplay.value = dataObject.vsi;
     //testAirspeedDisplay.value = dataObject.airspeed;
@@ -222,17 +223,16 @@ function DisplayUpdateLoop(delta) {
     // Process any change in the user input encoder
     userInput.processState(dataObject.position, dataObject.pressed)
 
-
-
-
-
     // Send the qnh value out to python using the websocket and json
-    current_time_millis = Date.now()
-    if (dataObject.qnh != last_qnh || current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD) {
-        last_qnh = dataObject.qnh;
+    current_time_millis = Date.now();
+
+    if (qnhDisplay.value != last_qnh || current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD) {
+        
+        last_qnh = qnhDisplay.value;
         can_qnh_timestamp = current_time_millis;
 
-        var obj = {qnh: dataObject.qnh, ticker: delta, position: dataObject.position};
+        var obj = {qnh: qnhDisplay.value, ticker: delta, position: dataObject.position};
+
         var json = JSON.stringify(obj);
         if (myWebSocket.readyState == 1) {
             myWebSocket.send("json" + json);}
@@ -375,12 +375,12 @@ class UserInput {
                             this.encoderAdjustment);
                         this.virtualEncoderValue[this.currentSelection] = encoderPosition;
 
-
-                        this.filledCircle.clear();
-                        this.filledCircle.lineStyle(1, 0xffffff, 1);
-                        this.filledCircle.beginFill(0xffffff, 1);
-                        this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
-                        this.filledCircle.endFill();
+                        // TODO: Commented out the drawing to see if this speeds things up
+                        // this.filledCircle.clear();
+                        // this.filledCircle.lineStyle(1, 0xffffff, 1);
+                        // this.filledCircle.beginFill(0xffffff, 1);
+                        // this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
+                        // this.filledCircle.endFill();
                     } else {
                         // We have exited selection mode which means 
                         // The currently selected item can be adjusted
@@ -401,12 +401,12 @@ class UserInput {
                             );
                         }
 
-
-                        this.filledCircle.clear();
-                        this.filledCircle.lineStyle(1, 0xffffff, 1);
-                        //this.filledCircle.beginFill(0xffffff, 1);
-                        this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
-                        //this.filledCircle.endFill();
+                        // TODO: Commented out the drawing to see if this speeds things up
+                        // this.filledCircle.clear();
+                        // this.filledCircle.lineStyle(1, 0xffffff, 1);
+                        // //this.filledCircle.beginFill(0xffffff, 1);
+                        // this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
+                        // //this.filledCircle.endFill();
                     }
                     // save the current encoder position to be applied
                     // as the encoder makes adjustments
@@ -1184,6 +1184,11 @@ function NumericWheel(font_name, font_size, capital_height_ratio, digit_display_
 Object.defineProperties(NumericWheel.prototype, {
     value: {
         set: function(value) {
+            if (value === undefined) {
+                return;
+            }
+
+
             let negative;
 
             if (value < 0 ) {

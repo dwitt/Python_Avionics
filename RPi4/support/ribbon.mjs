@@ -33,6 +33,7 @@ export class Ribbon {
         this.ribbon_major_intervals = majorIntervals;
         this.ribbon_minor_intervals = minorIntervals;
 
+        // calculate intervals in pixels
         this.ribbon_interval = this.ribbonHeight / this.ribbon_major_intervals;
         this.ribbon_minor_interval = this.ribbon_interval / this.ribbon_minor_intervals ;
         this.ribbon_interval_ratio = this.ribbon_interval / this.ribbon_major_interval_size;
@@ -42,8 +43,13 @@ export class Ribbon {
         this.colour_bar1 = colour_bar1;
         this.colour_bar2 = colour_bar2;
 
+        this._ribbonUndefined = false;
+
         let mask_x, mask_y, i;
 
+        // --------------------------------------------------------------------
+        // --- CREATE THE RIBBON CONTAINER
+        // --------------------------------------------------------------------
         // --- create a Container to hold the entire ribbon including text --------
         this.ribbon_container = new Container();
 
@@ -53,8 +59,10 @@ export class Ribbon {
         } else {
             this.ribbonSideRight = 1;
         }
-
-        // BACKGROUND
+        // --------------------------------------------------------------------
+        // BACKGROUND - Semi-transparent rectangle behind the ribbon
+        //          called: ribbon_background
+        // --------------------------------------------------------------------
         // --- create the semi-transparent background as a new GRAPHICS -------
         this.ribbon_background = new Graphics();
 
@@ -78,8 +86,11 @@ export class Ribbon {
 
 
 
-
-        // TICK MARKS
+        // --------------------------------------------------------------------
+        // TICK MARKS - This graphic moves up or down as required to 
+        //              position the tick marcks correctly
+        //          called: ruler
+        // --------------------------------------------------------------------
         // --- create the ruler tick marks as a new GRAPHICS-------------------
         this.ruler = new Graphics()
 
@@ -117,7 +128,11 @@ export class Ribbon {
         //this.ruler.moveTo(this.ribbonSideRight,rulerHeight);
         //this.ruler.lineTo(this.ribbonSideRight,-rulerHeight/2);
 
-        // MASK
+        // --------------------------------------------------------------------
+        // MASK - ensures only the desired tick marks and text appear in 
+        //        the ribbon area
+        //      called: ribbon_mask
+        // --------------------------------------------------------------------
         // --- create the ribbon mask as a new GRAPHICS------------------------
         // Masks must be positioned absolutely
 
@@ -135,8 +150,9 @@ export class Ribbon {
         this.ribbon_mask.endFill();
 
  
-
+        // --------------------------------------------------------------------
         // Position container and add Children and Mask
+        // --------------------------------------------------------------------
         // --- set the position of the container ----------------------------------
         // --- ruler container has 0 at the x,y value provided
 
@@ -155,8 +171,10 @@ export class Ribbon {
         //console.log(this.ribbon_container);
         app.stage.addChild(this.ribbon_container);
 
+        // --------------------------------------------------------------------
         // --- create the text elements for the ribbon as TEXT-----------------
         // --- and add them to container
+        // --------------------------------------------------------------------
 
         let text_style = new PIXI.TextStyle({
             fontFamily: "Tahoma",
@@ -183,15 +201,51 @@ export class Ribbon {
             this.text_stack[i].position.set(this.ribbonSideRight * 30, (i - halfMajorIntervals) * this.ribbon_major_interval_size);
             this.ribbon_container.addChild(this.text_stack[i]);
         }
+
+        // --------------------------------------------------------------------
+        // RED X
+        // --- Create red X to display if the value is undefined            ---
+        // --------------------------------------------------------------------
+
+        this.badDataGraphic = new Graphics();
+
+        this.badDataGraphic.lineStyle(2, 0xFF0000, 1,0);
+    
+        if (this.isRightAligned) {
+            this.badDataGraphic.moveTo(-width,-height/2);
+            this.badDataGraphic.lineTo(0, height/2);
+            this.badDataGraphic.moveTo(0, -height/2);
+            this.badDataGraphic.lineTo(-width, height/2);
+        } else {
+            this.badDataGraphic.moveTo(0,-height/2);
+            this.badDataGraphic.lineTo(width, height/2);
+            this.badDataGraphic.moveTo(width, -height/2);
+            this.badDataGraphic.lineTo(0, height/2);
+        }     
+
         
         this._value = 0;
-        this.value = 0;
+        this.position_ribbon(0);
+
     }
 
 
 // Value setter for Altimeter_Ribbon Object
     set value(new_value) { 
-        var value_interval, remainder, i;
+        // check if new value undefined
+        if (new_value === undefined && !this._ribbonUndefined) {
+            // new value just changed to undefined
+            this._pitchUndefined = true
+            this.ribbon_container.addChild(this.badDataGraphic);  
+        } else if (new_value !== undefined && this._ribbonUndefined ) {
+            // new value just changed to defined
+            this.ribbon_container.removeChild(this.badDataGraphic);
+            this._ribbonUndefined = false
+        }
+
+        if (new_value === undefined) {
+            return;
+        }
 
         // Only update the display if the value changed
         if (new_value == this._value) {
@@ -199,6 +253,13 @@ export class Ribbon {
         }
 
         this._value = new_value;
+        this.position_ribbon(new_value);
+
+    }
+
+    position_ribbon(new_value){
+        var value_interval, remainder, i;
+
         let interval = this.ribbon_major_interval_size;
 
         // if the numbers in 100 are evenly spaced we should have

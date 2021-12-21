@@ -2,6 +2,7 @@
 import board
 import busio
 
+from rolling_average import RollingAverage
 from micropython import const # type: ignore
 
 # pressure sensor constants
@@ -17,6 +18,8 @@ class HoneywellHSC:
         self._address = address
         self._input_buffer = bytearray(4)
         self._i2c = i2c
+        self._average = RollingAverage(120)
+        
 
     def read_transducer(self):
         self._data_read = False
@@ -30,9 +33,12 @@ class HoneywellHSC:
 
     @property
     def pressure(self):
-        self._bridge_data = (((self._input_buffer[0] & 0b00111111) << 8) | self._input_buffer[1])
+        # reduced number of bits to only the 11 MSB instead of 14 - dropped the lower 3
+        self._bridge_data = (((self._input_buffer[0] & 0b00111111) << 8) | self._input_buffer[1] & 0b11111000)
+        self._data = int(self._average.average(self._bridge_data))
+        print(self._bridge_data)
         #self._pressure = float((self._bridge_data - _OUTPUT_MIN) * (_PRESSURE_MAX - _PRESSURE_MIN) / (_OUTPUT_MAX - _OUTPUT_MIN) + _PRESSURE_MIN)
-        self._pressure = int((self._bridge_data - _OUTPUT_MIN) * (_PRESSURE_MAX - _PRESSURE_MIN) / (_OUTPUT_MAX - _OUTPUT_MIN) + _PRESSURE_MIN)
+        self._pressure = int((self._data - _OUTPUT_MIN) * (_PRESSURE_MAX - _PRESSURE_MIN) / (_OUTPUT_MAX - _OUTPUT_MIN) + _PRESSURE_MIN)
         return self._pressure
 
     @property

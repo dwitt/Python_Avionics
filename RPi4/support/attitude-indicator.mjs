@@ -298,44 +298,48 @@ export class AttitudeIndicator {
             return;
         }
 
-        //TODO: Fix this is does not work yet 
-
         // check if new value undefined
         if (newValue === undefined && !this._pitchUndefined) {
             // new value just changed to undefined
             this._pitchUndefined = true
             this.app.stage.addChild(this.badDataGraphic);  
-        } else if (this._pitchUndefined ) {
+        } else if (newValue !== undefined && this._pitchUndefined ) {
             // new value just changed to defined
             this.app.stage.removeChild(this.badDataGraphic);
             this._pitchUndefined = false
         }
 
-        
-
         // the value should be a number of degrees and negative is up
         //console.log(newValue);
-        this.pitchContainer.y = -newValue * this.pitchRatio;
-        this._pitch = newValue;
+        if (!this._pitchUndefined) {
+            this.pitchContainer.y = -newValue * this.pitchRatio;
+            this._pitch = newValue;
+        }
 
     }
 
     set roll(newValue) {
+        // check if value has changed
+        if (newValue == this._roll) {
+            return;
+        }
 
-        if (newValue === undefined) {
-            // TODO: fix this to show an x but for now
+        if (newValue === undefined && !this._rollUndefined) {
+            // new value just changed to undefined
+            this._rollUndefined = true
             this.app.stage.addChild(this.badDataGraphic);
-            newValue = 0
-        } else {
+        } else if (newValue !== undefined && this._rollUndefined){
             this.app.stage.removeChild(this.badDataGraphic);
+            this._rollUndefined = false
         }
         if (newValue == this._roll) {
             return;
         }
 
-        //console.log(newValue);
-        this.rollContainer.angle = -newValue;
-        this._roll = newValue;
+        if (!this._rollUndefined) {
+            this.rollContainer.angle = -newValue;
+            this._roll = newValue;
+        }
     }
 
     /**

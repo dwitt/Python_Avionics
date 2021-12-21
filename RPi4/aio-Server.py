@@ -13,14 +13,15 @@ import can #pylint: disable=import-error
 import board #pylint: disable=import-error
 from adafruit_seesaw import seesaw, rotaryio, digitalio #pylint: disable=import-error
 
+# Debugging constants
 DEBUG = False
-DEBUG_CAN = True
+DEBUG_CAN = False
+DEBUG_JSON = False
 
 # Set constants for CAN bus use
 
 CAN_QNH_MSG_ID = 0x2E
-CAN_QNH_PERIOD = 1000 # ms between messages
-
+CAN_QNH_PERIOD = 1000 # ms between messages (1 second between transmitting qnh)
 
 # -----------------------------------------------------------------------------
 # --- Asynchronous function to create the web and websocket servers         ---
@@ -28,9 +29,8 @@ CAN_QNH_PERIOD = 1000 # ms between messages
 # --- handler = the response handler to be used for the websocket serve     ---
 # -----------------------------------------------------------------------------
 async def create_servers(websocket_handler):
-    """Create web server to handle requests"""
-
-    #Create the application and add routes
+    """Create web server to handle requests for both the web page and the
+        websocket"""
 
     # -------------------------------------------------------------------------
     # --- Create the web server                                             ---
@@ -55,12 +55,13 @@ async def create_servers(websocket_handler):
 
     # create the site
     site = web.TCPSite(runner)  # Try this so we listen on all addresses
+    # The following should be used for the production version
     #site = web.TCPSite(runner, 'localhost', 8080)
 
     # Start the Site
     await site.start()
 
-    print("Server Started")
+    print("aio-Server.py has started the web server.")
 
 # -----------------------------------------------------------------------------
 # --- handler for get_index                                                ---
@@ -83,12 +84,13 @@ class AvionicsData:
     """Class to store all the avionics data recieved over the CAN bus in."""
     def __init__(self):
         # set any default value here
-        self.qnh = 2992
+        #self.can_qnh = None
+        pass
 
 
 # -----------------------------------------------------------------------------
 # --- Web Socket Response Handler class
-# --- Created so that the web socket response object can be exposed for
+# --- Created so that the web socket  response object can be exposed for
 # --- later use sending data to the socket javascript create object with initializer and functions
 # -----------------------------------------------------------------------------
 
@@ -97,6 +99,7 @@ class WebSocketResponse:
     def __init__(self):
         self._ws = None
         self.can_bus = None
+        self.data = None
         self.last_qnh = None
         self.can_qnh_timestamp = int(time.monotonic_ns() / 1000000)
 
@@ -121,41 +124,19 @@ class WebSocketResponse:
             async for msg in web_socket:
                 #print("message recieved")
                 if msg.type == aiohttp.WSMsgType.TEXT:
-                    if msg.data == 'close':
+                    if msg.data[0:5] == 'close':
                         await web_socket.close()
-                    if msg.data == 'ready':
+                    if msg.data[0:5] == 'ready':
                         # do nothing really other than recognize that ready
                         # was sent
-                        # print("Got Ready message")
                         pass
-                    # check if message contains json data
-
                     #TODO: Handle no data
 
                     if msg.data[0:4] == 'json':
-                        if DEBUG_CAN:
-                            print("websocket message with json recieved")
-                        # decode the json
-                        try:
+                        self.process_json_data(msg)
 
-                            dict_object = json.loads(msg.data[4:])
-                            try:
-                                if DEBUG_CAN:
-                                    print("get QNH from json")
-                                # print(dict_object['qnh'])
-                                # print(dict_object['position'])
-                                qnh = dict_object['qnh']
-                                self.process_qnh(qnh)
-                            except: # pylint: disable=bare-except
-                                #data not recieved so ignore it
-                                pass
-                        except: # pylint: disable=bare-except
-                            # if we didn't get any data then just ignore it
-                            pass
-
-                    #else:
-                    #    await ws.send_str(msg.data + '/answer')
                 elif msg.type == aiohttp.WSMsgType.ERROR:
+
                     if DEBUG:
                         print('ws connection closed with exception %s' % web_socket.exception())
             if DEBUG:
@@ -165,22 +146,52 @@ class WebSocketResponse:
 
         return web_socket
 
+    def process_json_data(self, web_socket_message):
+        """Process any json that is contained in the web socket message"""
+
+        if DEBUG_CAN:
+            print("websocket message with json recieved")
+
+        # decode the json
+        try:
+            dict_object = json.loads(web_socket_message.data[4:])
+            try:
+                if DEBUG_CAN:
+                    print("get QNH from json")
+                    print(dict_object['qnh'])
+
+                qnh = dict_object['qnh']
+                self.process_qnh(qnh)
+            except: # pylint: disable=bare-except
+                #data not recieved so ignore it
+                pass
+        except: # pylint: disable=bare-except
+            # if we didn't get any data then just ignore it
+            pass
+
     def process_qnh(self, qnh):
-        """ Determine if qnh needs to be sent on the can bus."""
+        """ Determine if qnh needs to be sent on the can bus based on
+            whether it has changed or if sufficient time has elapsed.
+            If it needs to be sent out pack it into the message and send it."""
         current_time_millis = int(time.monotonic_ns() / 1000000)
         if (qnh != self.last_qnh or
             current_time_millis > self.can_qnh_timestamp + CAN_QNH_PERIOD):
+
             if DEBUG_CAN:
                 print("prepare to send QNH on CAN")
                 print(f"qnh = {qnh}")
+
             message = self.pack_can_qnh_msg(qnh)
             self.can_qnh_timestamp = current_time_millis
             self.last_qnh = qnh
             #print(f"QNH: {qnh}, Last QNH:{self.last_qnh}")
             #print(f"Sending can message {message}")
+
             if DEBUG_CAN:
                 print(self.can_bus)
+
             self.can_bus.send(message)
+
             if DEBUG_CAN:
                 print(f"Message sent on {self.can_bus.channel_info}")
 
@@ -229,10 +240,11 @@ async def process_can_messages(reader, data):
         elif msg.arbitration_id == 0x2E:
             (qnh_hpa, qnhx4, dummy_3, dummy_4, dummy_5, dummy_6) = (
                 struct.unpack("<hhBBBB",msg.data))
-            data.qnh = qnhx4 / 4.0
-            data.qnh_hpa = qnh_hpa
-            if DEBUG:
-                print(data.qnh)
+            data.can_qnh = qnhx4 / 4.0 # send the can data marlked as such
+            data.can_qnh_hpa = qnh_hpa
+
+            if DEBUG_JSON:
+                print(data.can_qnh)
 
         # process heading message
         elif msg.arbitration_id == 0x48:
@@ -260,13 +272,16 @@ async def send_json(web_socket_response, data):
         if DEBUG:
             print("Json Loop")
             print (f"Web Socket response :{web_socket_response.web_socket}")
-            if web_socket_response.ws is not None:
+            if web_socket_response.web_socket is not None:
                 print (f"Web Socekt Closed :{web_socket_response.web_socket.closed}")
         # --- Need to send message only when
         if (web_socket_response.web_socket is not None and
             not web_socket_response.web_socket.closed):
-            if DEBUG:
+            if DEBUG_JSON:
                 print("Send Json")
+                print("Json Send qnh = ",data.can_qnh)
+                #print("Json qnhx4 = ", data.qnhx4)
+                print("Json Alt = ", data.altitude)
             await web_socket_response.web_socket.send_json(data.__dict__)
 
         await asyncio.sleep(0)
@@ -306,7 +321,7 @@ def connect_to_rotary_encoder(addr=0x36):
     my_seesaw = seesaw.Seesaw(board.I2C(), addr)
 
     seesaw_product = (my_seesaw.get_version() >> 16) & 0xFFFF
-    print("Found product {}".format(seesaw_product))
+    #print("Found product {}".format(seesaw_product))
     if seesaw_product != 4991:
         print("Wrong firmware loaded?  Expected 4991")
 
@@ -356,6 +371,7 @@ async def main():
         loop=loop)
 
     web_socket_response.can_bus = bus
+    web_socket_response.data = avionics_data
 
     # -------------------------------------------------------------------------
 

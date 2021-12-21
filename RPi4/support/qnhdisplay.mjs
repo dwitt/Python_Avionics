@@ -22,11 +22,14 @@ var Application = PIXI.Application,
  */
 
 export class QNHDisplay {
+
     constructor (app, x , y, width, height, radius){
 
         this.screen_width = app.screen.width;
         this.selected = false;
         this.changable = false;
+
+        this.my_value = 2992;
 
         this.container = new Container();
 
@@ -128,11 +131,19 @@ export class QNHDisplay {
     }  
     
     callback(selected, changable, value){
+        // Handle a call back from the main line to deal with selecting and
+        // changing the qnh value. We expect to be selected first then have
+        // the changable flag added to allow changes. The value should be 
+        // in sequence from where it was last.
+
         // Process changeable first as it should be enabled last
         if (changable && !this.changable) {
             // we just became changable
-            this.changable = true;
-            this.selected = false; // to allow the change to selected to work
+            this.changable = true; // set the changable flag to true
+
+            // clear the selected flag to allow detetion of a selected mode
+            // when changable goes false
+            this.selected = false;
 
             // Change to a changeable Container
             this.container.removeChildren();
@@ -142,7 +153,8 @@ export class QNHDisplay {
             this.changable = false;
         }
 
-        // check if the selected parameter has changed
+        // check if the selected parameter has changed or if changable state
+        // changed to false
         if (selected && !this.selected && !changable) {
             // we just became selected
             this.selected = true;
@@ -156,8 +168,6 @@ export class QNHDisplay {
             this.selected = false;
         }
 
-
-
         if (!selected && !changable) {
             // Change to a regular container
             this.container.removeChildren();
@@ -165,12 +175,24 @@ export class QNHDisplay {
             this.container.addChild(this.QNHText);
         }
 
+        // process the encoder value provided
+        if (changable) {
+            this.my_value = 2992 + value;
+
+            this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100) + " in";
+        }
+
     }
 
 
 
     set value(new_value) {
+        this.my_value = new_value
         this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
+    }
+
+    get value() {
+        return this.my_value;
     }
 
 }

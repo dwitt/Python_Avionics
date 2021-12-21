@@ -26,6 +26,7 @@ from Regression import Regression
 DEBUG = False
 DEBUG_DIFFERENTIAL = False
 DEBUG_STATIC = False
+DEBUG_ALT = False
 DEBUG_VSI = False
 DEBUG_QNH = False
 
@@ -56,6 +57,12 @@ CAN_RAW_PERIOD = 500 # ms between messages
 # change to 5 minutes from 6 seconds
 CAN_QNH_PERIOD = 300000 # ms between messages
 
+# -----------------------------------------------------------------------------
+# --- VSI Storage Interval                                                  ---
+# -----------------------------------------------------------------------------
+
+VSI_PERIOD = 200 # ms for storage of data for VSI calculation
+VSI_VALUES_TO_AVERAGE = 20
 
 def main():
     """Main used to allow proper naming of Constants and Variables"""
@@ -66,6 +73,8 @@ def main():
     can_air_timestamp = 0
     can_raw_timestamp = 0
     can_qnh_timestamp = 0
+    
+    vsi_timestamp = 0
 
     # -------------------------------------------------------------------------
     # --- Setup communication buses for various peripherals                 ---
@@ -111,14 +120,14 @@ def main():
 
     static_pressure_roll_avg = RollingAverage(120)
     differential_pressure_roll_avg = RollingAverage(60)
-    vsi_regression = Regression(120)
+    vsi_regression = Regression(VSI_VALUES_TO_AVERAGE)
 
     # -------------------------------------------------------------------------
     # --- Create a CAN bus message mask for the QNH message and create a    ---
     # --- listener                                                          ---
     # -------------------------------------------------------------------------
 
-    qnh_match = canio.Match(CAN_QNH_MSG_ID)#, mask=0x7FF)
+    qnh_match = canio.Match(address=CAN_QNH_MSG_ID)#, mask=0x7FF)
     qnh_listener = can.listen(matches=[qnh_match], timeout=1)
 
     # -------------------------------------------------------------------------
@@ -164,7 +173,7 @@ def main():
             static_pressure)
 
         if DEBUG_STATIC:
-            print(f"static pressure ave: {static_pressure_average}")
+            print(f"static pressure: {static_pressure}, ave: {static_pressure_average}")
 
         # Differential Pressure
         previous_differential_pressure = differential_pressure_average
@@ -180,8 +189,15 @@ def main():
         # --- Calculate the VSI                                             ---
         # ---------------------------------------------------------------------
 
+        # TODO: Remove the following 2 lines if the period calcualtion works 
+        #       better.
         # Calculating this only when the pressure changes
-        if static_pressure_average != previous_static_pressure:
+        #if static_pressure_average != previous_static_pressure:
+
+        # save data for VSI calculation each VSI_PERIOD
+
+        if  current_time_millis > VSI_PERIOD + vsi_timestamp:
+            vsi_timestamp = current_time_millis
 
             vsi_altitude = int(145442.0 * (
                 1.0 -
@@ -270,7 +286,7 @@ def main():
                 - pow(float(static_pressure_average / 101325), 0.1902632)
             ))
 
-        if DEBUG_STATIC:
+        if DEBUG_ALT:
             print(f'altitude : {altitude}')
 
         # ---------------------------------------------------------------------
