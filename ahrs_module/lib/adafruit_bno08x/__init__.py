@@ -790,7 +790,6 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
     @property
     def calibration_status(self):
         """Get the status of the self-calibration"""
-        print("send calibration command")
         self._send_me_command(
             [
                 0,  # reserved
