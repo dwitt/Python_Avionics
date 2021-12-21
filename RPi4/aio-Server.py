@@ -17,6 +17,7 @@ from adafruit_seesaw import seesaw, rotaryio, digitalio #pylint: disable=import-
 DEBUG = False
 DEBUG_CAN = False
 DEBUG_JSON = False
+DEBUG_QNH = False
 
 # Set constants for CAN bus use
 
@@ -112,6 +113,11 @@ class WebSocketResponse:
     async def handler(self, request):
         """Handler to process web socket requests"""
 
+        if DEBUG_QNH:
+            print("handler called")
+        if self._ws != None:
+            await self._ws.close()
+
         # Create a websocket response object and prepare it for use
         web_socket = web.WebSocketResponse()
         await web_socket.prepare(request)
@@ -156,9 +162,9 @@ class WebSocketResponse:
         try:
             dict_object = json.loads(web_socket_message.data[4:])
             try:
-                if DEBUG_CAN:
-                    print("get QNH from json")
-                    print(dict_object['qnh'])
+                if DEBUG_QNH:
+                    print("QNH from json=", end = "")
+                    print(dict_object['qnh'], end = "")
 
                 qnh = dict_object['qnh']
                 self.process_qnh(qnh)
@@ -180,6 +186,8 @@ class WebSocketResponse:
             if DEBUG_CAN:
                 print("prepare to send QNH on CAN")
                 print(f"qnh = {qnh}")
+            if DEBUG_QNH:
+                print(", sending via CAN")
 
             message = self.pack_can_qnh_msg(qnh)
             self.can_qnh_timestamp = current_time_millis
@@ -340,9 +348,10 @@ async def main():
     The main function for the program declared as a coroutine so that it can
     be run asynchronously.
     """
-
+    # --- Create the instance of the encoder and button
     (encoder, button) = connect_to_rotary_encoder()
 
+    # --- Create the instance of the class to store the data in
     avionics_data = AvionicsData()
 
     # --- Create an instance of the web socket response handler
@@ -369,6 +378,9 @@ async def main():
     #notifier =
     can.Notifier(bus=bus, listeners=listeners, timeout=0.01,
         loop=loop)
+    
+    # --- update the web socket response handler so that it can communicate
+    # --- with the CAN bus and see the avionics data
 
     web_socket_response.can_bus = bus
     web_socket_response.data = avionics_data
