@@ -62,6 +62,7 @@ else:
 
 # -- Debugging Constants
 DEBUG = False
+DEBUG_CAL = False
 
 
 # --- CAN Message Constants ---
@@ -90,6 +91,14 @@ def main():
     # --- Setup Communication buses for various peripherals                     ---
     # -----------------------------------------------------------------------------
 
+    bno_reset = digitalio.DigitalInOut(board.D11)
+    bno_reset.direction = digitalio.Direction.OUTPUT
+
+    bno_reset.value = False # active low - reset the bno
+    time.sleep(.1) # wait 100 ms second
+    bno_reset.value = True # release the reset
+    time.sleep(.2) # wait 200 ms for internal initialization and configuration
+
     # i2c bus ---------------------------------------------------------------------
 
     i2c = busio.I2C(board.SCL, board.SDA, frequency=400000, timeout = 1000)
@@ -100,15 +109,6 @@ def main():
 
     can_cs = digitalio.DigitalInOut(board.D25) # was 25 for RP2040 / 19 for M4
     can_cs.direction = digitalio.Direction.OUTPUT
-
-    # cs_bno = digitalio.DigitalInOut(board.D4)
-    # cs_bno.direction = digitalio.Direction.OUTPUT
-
-    # rs_bno = digitalio.DigitalInOut(board.D5)
-    # rs_bno.direction = digitalio.Direction.OUTPUT
-
-    # in_bno = digitalio.DigitalInOut(board.D6)
-    # in_bno.direction = digitalio.Direction.INPUT
 
     spi = board.SPI()
 
@@ -139,9 +139,8 @@ def main():
     # -----------------------------------------------------------------------------
     # AHRS Module (BNO085)
     # -----------------------------------------------------------------------------
+
     bno = BNO08X_I2C(i2c, debug=False)
-    #bno = BNO08X_SPI(spi_bus = spi, cspin = cs_bno, intpin = in_bno,
-    #                resetpin = rs_bno, baudrate=1000000, debug=True)
 
     if DEBUG:
         print("BNO Object created")
@@ -166,7 +165,7 @@ def main():
     #pixel_power.direction = digitalio.Direction.OUTPUT
 
     pixel[0]= 0x0000ff
-    pixel.brightness = .01
+    pixel.brightness = .3
 
     #pixel_power.value = False
 
@@ -255,28 +254,38 @@ def main():
                 #TODO: look this up and see how to handle it correctly
                 pass
             if isinstance(message, canio.Message):
-                data = message.data
-                if len(data) != 8:
-                    if DEBUG:
-                        print(f'Unusual message length {len(data)}')
-                    continue # jump out to the while loop
-                (calibration_command, _, _, _, _, _, _, _) = struct.unpack(
-                    "<BBBBBBBB", data
-                )
+                # Only process messages with the correct ID
+                # Some random messages could be recieved at the begining
+                #TODO: Review the actual calibration to see if it is really
+                # required
+                if message.id == CAN_Calib_Msg_id:
+                    data = message.data
+                    can_id = message.id
+                    if DEBUG_CAL:
+                        print(f"CAN id recieved = {can_id}")
+                        print(f"Can data recieved = {data}")
 
-                # bit 0 = true -> save calibration data
-                # bit 1 = true -> pause calibration efforts
-                # bit 2
-                # bit 3
-                # bit 4 = true -> enter calibration mode
+                    if len(data) != 8:
+                        if DEBUG:
+                            print(f'Unusual message length {len(data)}')
+                        continue # jump out to the while loop
+                    (calibration_command, _, _, _, _, _, _, _) = struct.unpack(
+                        "<BBBBBBBB", data
+                    )
 
-                if (calibration_command & 0b00010000) == 8:
-                    bno.begin_calibration()
-                    #pixel_power.value = True
-                    pixel.show()
-                if (calibration_command & 0b00000001) == 1:
-                    bno.save_calibration_data()
-                    #pixel_power.value = False
+                    # bit 0 = true -> save calibration data
+                    # bit 1 = true -> pause calibration efforts
+                    # bit 2
+                    # bit 3
+                    # bit 4 = true -> enter calibration mode
+
+                    if (calibration_command & 0b00010000) == 8:
+                        bno.begin_calibration()
+                        #pixel_power.value = True
+                        pixel.show()
+                    if (calibration_command & 0b00000001) == 1:
+                        bno.save_calibration_data()
+                        #pixel_power.value = False
 
         # -------------------------------------------------------------------------
         # --- Debuging display                                                  ---
