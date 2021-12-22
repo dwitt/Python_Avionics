@@ -18,6 +18,7 @@ from honeywellHSC import HoneywellHSC
 from NPXAnalogPressureSensor import NPXPressureSensor
 from rolling_average import RollingAverage
 from Regression import Regression
+from kalman_filter import KalmanFilter
 
 
 #from micropython import const
@@ -61,8 +62,10 @@ CAN_QNH_PERIOD = 300000 # ms between messages
 # --- VSI Storage Interval                                                  ---
 # -----------------------------------------------------------------------------
 
-VSI_PERIOD = 200 # ms for storage of data for VSI calculation
-VSI_VALUES_TO_AVERAGE = 20
+VSI_PERIOD = 50 # ms for storage of data for VSI calculation
+VSI_VALUES_TO_AVERAGE = 40 # low provides more response but more jitter
+
+
 
 def main():
     """Main used to allow proper naming of Constants and Variables"""
@@ -73,7 +76,7 @@ def main():
     can_air_timestamp = 0
     can_raw_timestamp = 0
     can_qnh_timestamp = 0
-    
+
     vsi_timestamp = 0
 
     # -------------------------------------------------------------------------
@@ -123,6 +126,13 @@ def main():
     vsi_regression = Regression(VSI_VALUES_TO_AVERAGE)
 
     # -------------------------------------------------------------------------
+    # --- Create Kalman Filters                                             ---
+    # -------------------------------------------------------------------------
+
+    static_pressure_kalman = KalmanFilter(q=10 , r=1000000 , x=101324)
+    differential_pressure_kalman = KalmanFilter(q=10, r=100000, x=0)
+
+    # -------------------------------------------------------------------------
     # --- Create a CAN bus message mask for the QNH message and create a    ---
     # --- listener                                                          ---
     # -------------------------------------------------------------------------
@@ -169,7 +179,10 @@ def main():
 
         my_hsc.read_transducer()
         static_pressure = my_hsc.pressure
-        static_pressure_average = static_pressure_roll_avg.average(
+        # static_pressure_average = static_pressure_roll_avg.average(
+        #     static_pressure)
+        #TODO: Change the variable name. using average for expedience
+        static_pressure_average = static_pressure_kalman.filter(
             static_pressure)
 
         if DEBUG_STATIC:
@@ -179,7 +192,10 @@ def main():
         previous_differential_pressure = differential_pressure_average
 
         differential_pressure = my_ads.pressure
-        differential_pressure_average = differential_pressure_roll_avg.average(
+        # differential_pressure_average = differential_pressure_roll_avg.average(
+        #     differential_pressure)
+        #TODO: Change the variable name. Using average for expedience
+        differential_pressure_average = differential_pressure_kalman.filter(
             differential_pressure)
 
         if DEBUG_DIFFERENTIAL:
@@ -189,7 +205,7 @@ def main():
         # --- Calculate the VSI                                             ---
         # ---------------------------------------------------------------------
 
-        # TODO: Remove the following 2 lines if the period calcualtion works 
+        # TODO: Remove the following 2 lines if the period calcualtion works
         #       better.
         # Calculating this only when the pressure changes
         #if static_pressure_average != previous_static_pressure:
