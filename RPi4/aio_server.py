@@ -24,6 +24,10 @@ DEBUG_QNH = False
 CAN_QNH_MSG_ID = 0x2E
 CAN_QNH_PERIOD = 1000 # ms between messages (1 second between transmitting qnh)
 
+CAN_GPS1_MSG_ID = 0x63
+CAN_GPS2_MSG_ID = 0x64
+
+
 # -----------------------------------------------------------------------------
 # --- Asynchronous function to create the web and websocket servers         ---
 # -----------------------------------------------------------------------------
@@ -230,7 +234,7 @@ async def process_can_messages(reader, data):
         msg = await reader.get_message()
         if DEBUG:
             print("got msg")
-        # kluge to get the altitued
+        # kluge to get the altitude
         if msg.arbitration_id == 0x28:
             data.altitude = msg.data[2] | (msg.data[3]<<8) | (msg.data[4]<<16)
 
@@ -265,6 +269,23 @@ async def process_can_messages(reader, data):
             (data.accx, data.accy, data.accz, data.calib) = (
                 struct.unpack("<hhhh", msg.data)
             )
+
+        # process GPS1 message
+        elif msg.arbitration_id == CAN_GPS1_MSG_ID:
+            (latitude, longitude) = (
+                struct.unpack("<ll", msg.data)
+            )
+            #TODO: Check if we are carrying enough significant digits
+            #       in the following calculations
+            data.latitude = latitude / 10^6
+            data.longitude = longitude / 10^6
+
+        # process GPS2 message
+        elif msg.arbitration_id == CAN_GPS2_MSG_ID:
+            (data.gps_speed, data.gps_altitude, data.true_track, _) = (
+                struct.unpack("<hhhh")
+            )
+
 
         await asyncio.sleep(0)
 
