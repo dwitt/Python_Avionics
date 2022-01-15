@@ -7,6 +7,7 @@ import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
 import { Interactions } from './interaction.mjs';
 import { QNHDisplay } from './qnhdisplay.mjs';
+import { SpeedDisplay } from './speedDisplay.mjs';
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
 
 
@@ -132,8 +133,10 @@ var attitudeIndicator,
     vsiIndicator,
     slipBallIndicator,
     headingIndicator,
+    speedDisplay,
     menu,
     userInput;
+
 
 //var qnh;
     
@@ -172,12 +175,16 @@ function setup() {
     altimeter_ribbon = new Ribbon(app, x-35, y/2, y-130, 90, true, 100, 4, 5, true);
     altitudeWheel = new AltitudeWheel(app) //, 755, 240);
     qnhDisplay = new QNHDisplay(app, x - (35 + 90), y-130/2+25, 90, 25, 8);
+
+
     //vsiDisplay = new VSIDisplay(app);
     //testAirspeedDisplay = new ASDisplay(app);
  
+
     airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
     airspeedWheel = new AirspeedWheel(app, 45, y/2);
-    tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
+    speedDisplay = new SpeedDisplay(app, 35, 130/2, 90, 25, 8);
+    //tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
 
     vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
 
@@ -193,8 +200,9 @@ function setup() {
     var myCallBackClass = new MyCallBackClass();
 
     userInput.registerCallback(qnhDisplay);
-    userInput.registerCallback(myCallBackClass);
-    userInput.registerCallback(myCallBackClass);
+    userInput.registerCallback(speedDisplay);
+    // userInput.registerCallback(myCallBackClass);
+    // userInput.registerCallback(myCallBackClass);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }

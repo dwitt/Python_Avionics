@@ -23,15 +23,15 @@ export function drawSpecialRectangle(graphic, x, y, width, height, radius,
         topLeftRounded, topRightRounded, bottomRightRounded, bottomLeftRounded) {
 
     if (topLeftRounded) {
-        graphic.moveTo(x, y - radius);
-        graphic.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
+        graphic.moveTo(x, y + radius);
+        graphic.arc(x + radius, y + radius , radius, Math.PI, 1.5 * Math.PI);
     } else {
         graphic.moveTo(x,y);
     }
 
     if (topRightRounded) {
         graphic.lineTo(x + width - radius, y);
-        graphic.arc(x + width - radius, y + radius, 1.5 * Math.PI, 0);
+        graphic.arc(x + width - radius, y + radius, radius, 1.5 * Math.PI, 0);
     } else {
         graphic.lineTo(x + width, y);
     }

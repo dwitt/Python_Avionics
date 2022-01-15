@@ -23,5 +23,6 @@ rsync support/headingIndicator.mjs pi@"$destination_server":"$piefis_support_dir
 rsync support/interaction.mjs pi@"$destination_server":"$piefis_support_dir"interaction.mjs
 rsync support/specialRectangle.mjs pi@"$destination_server":"$piefis_support_dir"specialRectangle.mjs
 rsync support/qnhdisplay.mjs pi@"$destination_server":"$piefis_support_dir"qnhdisplay.mjs
+rsync support/speedDisplay.mjs pi@"$destination_server":"$piefis_support_dir"speedDisplay.mjs
 
 echo 'Done'

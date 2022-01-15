@@ -63,10 +63,10 @@ export class QNHDisplay {
     regularRectangle(x, y, width, height, radius){
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
-        let fillAlpha = 0.35;       // 25% 
+        let fillAlpha = 0.35;       // 35% 
         let lineColour = 0x000000;  // black
         let lineThickness = 1;      // 1 pixel
-        let lineAlpha = 0.25;       // 75%
+        let lineAlpha = 0.25;       // 25%
         let linePosition = 0;       // 
 
 
@@ -111,8 +111,8 @@ export class QNHDisplay {
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
         let fillAlpha = 0.75;       // 75% 
-        let lineColour = 0x00FFFF;  // red
-        let lineThickness = 1;      // 2 pixel
+        let lineColour = 0x00FFFF;  // cyan???
+        let lineThickness = 2;      // 1 pixel
         let lineAlpha = .50;       // 100%
         let linePosition = 0;       // middle
 
