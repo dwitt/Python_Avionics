@@ -24,5 +24,6 @@ rsync support/interaction.mjs pi@"$destination_server":"$piefis_support_dir"inte
 rsync support/specialRectangle.mjs pi@"$destination_server":"$piefis_support_dir"specialRectangle.mjs
 rsync support/qnhdisplay.mjs pi@"$destination_server":"$piefis_support_dir"qnhdisplay.mjs
 rsync support/speedDisplay.mjs pi@"$destination_server":"$piefis_support_dir"speedDisplay.mjs
+rsync support/altitudeDisplay.mjs pi@"$destination_server":"$piefis_support_dir"altitudeDisplay.mjs
 
 echo 'Done'

@@ -16,16 +16,17 @@ var Graphics = PIXI.Graphics,
     Text = PIXI.Text;
 
 /**     
- * Class representing the speed display.
+ * Class representing the altitude display.
  * 
  * 
  */
 
 
- const GS = 0;
- const TAS = 1;
+ const GPS = 0;
+ const PRESS = 1;
+ const DEN = 2;
 
-export class SpeedDisplay {
+export class AltitudeDisplay {
 
     constructor (app, x , y, width, height, radius){
 
@@ -34,15 +35,16 @@ export class SpeedDisplay {
         this.changable = false;
         this.changeableFirstPass = false;
 
-        this.groundSpeedValue = 0;
-        this.trueAirSpeedValue = 0;
+        this.gpsAltitudeValue = 0;
+        this.pressureAltitudeValue = 0;
+        this.densityAltitudeValue = 0;
 
         this.container = new Container();
         this.colour = "chartreuse";
 
-        this.displayItem = GS;
+        this.displayItem = GPS;
     
-        // Create a style to be used for the speed characters
+        // Create a style to be used for the altitude characters
         this.style = new PIXI.TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '18px',
@@ -59,29 +61,29 @@ export class SpeedDisplay {
     
 
         let valueText = "0"
-        let legendText = "GS"
-        let unitsText = "kts" 
+        let legendText = "GPS"
+        let unitsText = "ft" 
     
-        this.speedText = new Text(valueText, this.style);
-        this.speedText.anchor.set(1,.5);
-        this.speedText.position.set(x + width*2/3 , y - height/2);
+        this.altitudeText = new Text(valueText, this.style);
+        this.altitudeText.anchor.set(1,.5);
+        this.altitudeText.position.set(x + width*2/3 , y - height/2);
 
-        this.speedLegend = new Text(legendText, this.unitsStyle);
-        this.speedLegend.anchor.set(0,.87);
-        this.speedLegend.position.set(x + width * 2/3 + 5, y - height / 2);
+        this.altitudeLegend = new Text(legendText, this.unitsStyle);
+        this.altitudeLegend.anchor.set(0,.87);
+        this.altitudeLegend.position.set(x + width * 2/3 + 5, y - height / 2);
 
-        this.speedUnits = new Text(unitsText, this.unitsStyle);
-        this.speedUnits.anchor.set(0,.17);
-        this.speedUnits.position.set(x + width * 2/3 + 5, y - height / 2);
+        this.altitudeUnits = new Text(unitsText, this.unitsStyle);
+        this.altitudeUnits.anchor.set(0,.17);
+        this.altitudeUnits.position.set(x + width * 2/3 + 5, y - height / 2);
     
-        this.speedRectangle = this.regularRectangle(x, y, width, height, radius);
-        this.speedSelectedRectangle = this.selectedRectangle(x, y, width, height, radius);
-        this.speedChangingRectangle = this.changingRectangle(x, y, width, height, radius);
+        this.altitudeRectangle = this.regularRectangle(x, y, width, height, radius);
+        this.altitudeSelectedRectangle = this.selectedRectangle(x, y, width, height, radius);
+        this.altitudeChangingRectangle = this.changingRectangle(x, y, width, height, radius);
     
-        this.container.addChild(this.speedRectangle);
-        this.container.addChild(this.speedText);
-        this.container.addChild(this.speedLegend);
-        this.container.addChild(this.speedUnits);
+        this.container.addChild(this.altitudeRectangle);
+        this.container.addChild(this.altitudeText);
+        this.container.addChild(this.altitudeLegend);
+        this.container.addChild(this.altitudeUnits);
 
         app.stage.addChild(this.container);
     }
@@ -96,18 +98,18 @@ export class SpeedDisplay {
         let linePosition = 0;       // 
 
 
-        var speedRectangle = new Graphics();
-        speedRectangle.beginFill(fillColour, fillAlpha); 
-        speedRectangle.lineStyle(lineThickness,
+        var altitudeRectangle = new Graphics();
+        altitudeRectangle.beginFill(fillColour, fillAlpha); 
+        altitudeRectangle.lineStyle(lineThickness,
             lineColour, 
             lineAlpha, 
             linePosition);
     
-        drawSpecialRectangle(speedRectangle, x, y - height, width, height, radius, true, true, false, false);
+        drawSpecialRectangle(altitudeRectangle, x, y - height, width, height, radius, true, true, false, false);
     
-        speedRectangle.endFill();
+        altitudeRectangle.endFill();
     
-        return(speedRectangle);
+        return(altitudeRectangle);
     }
 
     selectedRectangle(x, y, width, height, radius){
@@ -119,18 +121,18 @@ export class SpeedDisplay {
         let lineAlpha = 1.00;       // 100%
         let linePosition = 0.5;       // middle
 
-        var speedRectangle = new Graphics();
-        speedRectangle.beginFill(fillColour, fillAlpha); 
-        speedRectangle.lineStyle(lineThickness,
+        var altitudeRectangle = new Graphics();
+        altitudeRectangle.beginFill(fillColour, fillAlpha); 
+        altitudeRectangle.lineStyle(lineThickness,
             lineColour, 
             lineAlpha, 
             linePosition);
     
-        drawSpecialRectangle(speedRectangle, x, y - height, width, height, radius, true, true, false, false);
+        drawSpecialRectangle(altitudeRectangle, x, y - height, width, height, radius, true, true, false, false);
     
-        speedRectangle.endFill();
+        altitudeRectangle.endFill();
     
-        return(speedRectangle);
+        return(altitudeRectangle);
     }
 
     changingRectangle(x, y, width, height, radius){
@@ -142,18 +144,18 @@ export class SpeedDisplay {
         let lineAlpha = .50;       // 100%
         let linePosition = 0;       // middle
 
-        var speedRectangle = new Graphics();
-        speedRectangle.beginFill(fillColour, fillAlpha); 
-        speedRectangle.lineStyle(lineThickness,
+        var altitudeRectangle = new Graphics();
+        altitudeRectangle.beginFill(fillColour, fillAlpha); 
+        altitudeRectangle.lineStyle(lineThickness,
             lineColour, 
             lineAlpha, 
             linePosition);
     
-        drawSpecialRectangle(speedRectangle, x, y - height, width, height, radius, true, true, false, false);
+        drawSpecialRectangle(altitudeRectangle, x, y - height, width, height, radius, true, true, false, false);
     
-        speedRectangle.endFill();
+        altitudeRectangle.endFill();
     
-        return(speedRectangle);
+        return(altitudeRectangle);
     }  
     
     callback(selected, changable, value){
@@ -174,10 +176,10 @@ export class SpeedDisplay {
 
             // Change to a changeable Container
             this.container.removeChildren();
-            this.container.addChild(this.speedChangingRectangle);
-            this.container.addChild(this.speedText);
-            this.container.addChild(this.speedLegend);
-            this.container.addChild(this.speedUnits);
+            this.container.addChild(this.altitudeChangingRectangle);
+            this.container.addChild(this.altitudeText);
+            this.container.addChild(this.altitudeLegend);
+            this.container.addChild(this.altitudeUnits);
         } else if (!changable && this.changable){
             this.changable = false;
         }
@@ -189,41 +191,43 @@ export class SpeedDisplay {
 
             // Change to a selected Container
             this.container.removeChildren();
-            this.container.addChild(this.speedSelectedRectangle);
-            this.container.addChild(this.speedText);
-            this.container.addChild(this.speedLegend);
-            this.container.addChild(this.speedUnits);
+            this.container.addChild(this.altitudeSelectedRectangle);
+            this.container.addChild(this.altitudeText);
+            this.container.addChild(this.altitudeLegend);
+            this.container.addChild(this.altitudeUnits);
 
         // check if
         } else if (!selected && this.selected) {
             this.selected = false;
             // // Change to a regular container
             // this.container.removeChildren();
-            // this.container.addChild(this.speedRectangle);
-            // this.container.addChild(this.speedText);
-            // this.container.addChild(this.speedLegend);
-            // this.container.addChild(this.speedUnits);
+            // this.container.addChild(this.altitudeRectangle);
+            // this.container.addChild(this.altitudeText);
+            // this.container.addChild(this.altitudeLegend);
+            // this.container.addChild(this.altitudeUnits);
         }
 
         if (!selected && !changable ) {
             // Change to a regular container
             this.container.removeChildren();
-            this.container.addChild(this.speedRectangle);
-            this.container.addChild(this.speedText);
-            this.container.addChild(this.speedLegend);
-            this.container.addChild(this.speedUnits);
+            this.container.addChild(this.altitudeRectangle);
+            this.container.addChild(this.altitudeText);
+            this.container.addChild(this.altitudeLegend);
+            this.container.addChild(this.altitudeUnits);
         }
 
         // process the encoder value provided
         if (changable && !this.changeableFirstPass) {
-            this.displayItem = Math.abs(value % 2);
+            this.displayItem = Math.abs(value % 3);
 
-            if (this.displayItem == GS) {
-                this.speedLegend.text = "GS";
+            if (this.displayItem == GPS) {
+                this.altitudeLegend.text = "GPS";
             }
-            else if (this.displayItem == TAS) {
-                this.speedLegend.text = "TAS";
-            
+            else if (this.displayItem == PRESS) {
+                this.altitudeLegend.text = "PRE";
+            }
+            else if (this.displayItem == DEN) {
+                this.altitudeLegend.text = "DEN";
             }
         
             //this.my_value = 2992 + value;
@@ -236,31 +240,41 @@ export class SpeedDisplay {
     }
 
     update() {
-        if (this.displayItem == GS) {
-            if (this.groundSpeedValue !== undefined) {
-                this.speedText.text = this.groundSpeedValue;
+        if (this.displayItem == GPS) {
+            if (this.gpsAltitudeValue !== undefined) {
+                this.altitudeText.text = this.gpsAltitudeValue;
             }
         }
-        else if (this.displayItem == TAS) {
-            this.speedText.text = this.trueAirSpeedValue;
-        
+        else if (this.displayItem == PRESS) {
+            this.altitudeText.text = this.pressureAltitudeValue;
+        } 
+        else if (this.displayItem == DEN) {
+            this.altitudeText.text = this.densityAltitudeValue;
         }
     }
 
-    set groundSpeed(new_value) {
-        this.groundSpeedValue = new_value
+    set gpsAltitude(new_value) {
+        this.gpsAltitudeValue = new_value
         //this.speedText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
     }
 
-    get groundSpeed() {
-        return this.groundSpeedValue;
+    get gpsAltitude() {
+        return this.gpsAltitudeValue
     }
 
-    set trueAirSpeed(new_value) {
-        this.trueAirSpeedValue = new_value;
+    set pressureAltitude(new_value) {
+        this.pressureAltitudeValue = new_value;
     }
 
-    get trueAirSpeed() {
-        return this.trueAirSpeedValue;
+    get pressureAltitude() {
+        return this.pressureAltitudeValue;
+    }
+
+    set densityAltitude(new_value) {
+        this.densityAltitudeValue = new_value;
+    }
+
+    get densityAltitude() {
+        return this.densityAltitudeValue;
     }
 }
