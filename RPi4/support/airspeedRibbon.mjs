@@ -1,3 +1,4 @@
+/*global PIXI */
 import { Ribbon, Colour_Bar } from './ribbon.mjs';
 'use strict';
 

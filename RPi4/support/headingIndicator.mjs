@@ -1,3 +1,4 @@
+/*global PIXI */
 'use strict';
 // ----------------------------------------------------------------------------
 // Aliases - Allows for changes in PIXI.JS
@@ -19,51 +20,34 @@ var Application = PIXI.Application,
  * The indicator is positioned at the top of the display.
  */
 export class HeadingIndicator {
+    /**
+     * 
+     * @param {object} app Pixijs
+     * @param {number} width thw width of the screen
+     */
     constructor(app, width) {
+
+        // TODO: Create some consistency for the screen width variable
         this.displayWidth = app.screen.width;
+        
         let height = 36;            // height of heading ribbon
 
-        let fontFamily = "Tahoma";  // font name for this indictor
-        let fontSize = 28;          // font size for the magnifier 
-        let fontWeight = "bold";    // font weiht for the magnifier
+        let magnifierFontSize = 28;          // font size for the magnifier 
 
         /** Internal variables variables for the heading value */
         this._value = 0;
         this._previous_value = 0;
 
-        /** 
-         * Height of a capital letter ivided by the height of the em square. Used
-         * to calculate the center of the character veritcally
-        */
-        let digitCapitalHeightRatio = 1489/2048; 
-        
-        /**
-         * Create a style to use when measuring the character sizes
-         */
-        let measureTextStyle = new PIXI.TextStyle({
-            fontFamily: fontFamily,
-            fontSize: String(fontSize)+"px",
-            fontWeight: fontWeight
-        });
+        this._bugValue = 0;
 
-        /** Get the character metrics */
-        let sampleMetrics = PIXI.TextMetrics.measureText("0123456789", measureTextStyle);
 
-        let digitAscentDistance = sampleMetrics.fontProperties.ascent;
-        let overallHeight = sampleMetrics.height; 
+        let verticalCharacterCentre = this.calculateCharacterVerticalCentre(magnifierFontSize);
 
-        /** Calculate where the center of the character is vertically
-         *  as a ratio of the height of the sample message. (value between 0 and 1)
-         *  This is used for the anchor command.
-         *  Then add 2 pixels
-         */
-        let verticalCharacterCentre = ( digitAscentDistance - ((digitCapitalHeightRatio * fontSize)/2)) / (overallHeight);
-
-        let headingContainer = new Container();
+        this.headingContainer = new Container();
 
         /**********************************************************************
          * create the background for the heading indicator
-         */
+         **********************************************************************/
 
         let headingBackground = new Graphics();
 
@@ -80,11 +64,12 @@ export class HeadingIndicator {
         headingBackground.endFill();
 
         // position the heading background
+        //TODO: Remove positioning of the background and position the container
         headingBackground.x = this.displayWidth / 2 ;
 
         /**********************************************************************
          * Create a mask for the ribbon
-         */
+         **********************************************************************/
 
         let headingMask = new Graphics();
 
@@ -96,7 +81,7 @@ export class HeadingIndicator {
 
         headingMask.x = this.displayWidth / 2;
 
-        headingContainer.mask = headingMask;
+        this.headingContainer.mask = headingMask;
 
         /**********************************************************************
          * Create the horizontal ribbon with tick marks and numbers.
@@ -106,14 +91,17 @@ export class HeadingIndicator {
          * ribbon needs to include enough additional space at each end to fill
          * the space left in the ribbon.
          * This means that the extra is 1/2 the ribbon width
-         */
-
+         **********************************************************************/
         this.headingRibbon = new Graphics();
 
         let pixelsPerTenDegrees = 80; 
-        let pixelsPerFiveDegrees = pixelsPerTenDegrees / 2;
+        let pixelsPerFiveDegrees = pixelsPerTenDegrees/2;
         this.pixelsPerDegree = pixelsPerTenDegrees/10;
-        let extraRibbonWidth = (Math.ceil((width/2)/pixelsPerTenDegrees) * pixelsPerTenDegrees );
+
+        let extraRibbonTenDegrees = Math.ceil((width/2)/pixelsPerTenDegrees);
+        this.extraRibbonDegrees = extraRibbonTenDegrees * 10;
+        let extraRibbonWidth = extraRibbonTenDegrees * pixelsPerTenDegrees;
+        
         let RibbonStart = -extraRibbonWidth;
         let RibbonEnd = (360 * pixelsPerTenDegrees + extraRibbonWidth);
         
@@ -203,9 +191,7 @@ export class HeadingIndicator {
         magnifierGraphics.lineTo(-magnifierWidth/2, -magnifierOffset);
         magnifierGraphics.closePath();
 
-        // TODO: Remove the following. It is for testing only
-
-        textStyle = new PIXI.TextStyle({
+        let magnifierTextStyle = new PIXI.TextStyle({
             fontFamily: "Tahoma",
             fontSize: 28,
             fill: "white",
@@ -215,7 +201,7 @@ export class HeadingIndicator {
             
         });
 
-        this.headingText = new Text("0", textStyle);
+        this.headingText = new Text("0", magnifierTextStyle);
         this.headingText.anchor.set(0.5,verticalCharacterCentre );
         this.headingText.position.set(0, -magnifierHeight/2 - 5);
         
@@ -229,17 +215,319 @@ export class HeadingIndicator {
          */
 
 
-        headingContainer.addChild(headingMask);
-        headingContainer.addChild(headingBackground);
-        headingContainer.addChild(this.headingRibbon);
-        headingContainer.addChild(magnifierGraphics);
+        this.headingContainer.addChild(headingMask);
+        this.headingContainer.addChild(headingBackground);
+        this.headingContainer.addChild(this.headingRibbon);
+
         
+        // TODO: Temporaroy Code to draw the heading bug in the container. 
+        // The bug should be behind the magnifier
+        this.headingBugGraphics = this.createHeadingBug(height);
+        this.headingContainer.addChild(this.headingBugGraphics);
+
+        this.selectableGraphics = this.createSelectableGraphic(width, height);
+        //headingContainer.addChild(this.selectableGraphics);
+
+        [this.changableGraphics, this.bugText] = this.createChangableGraphic(width, height);
+        this.bugText.text = "000";
+        //headingContainer.addChild(this.changableGraphics);
+
+        this.headingContainer.addChild(magnifierGraphics);
         /**********************************************************************
          * add the container to the display
          */
 
-        app.stage.addChild(headingContainer);
+        app.stage.addChild(this.headingContainer);
 
+    }
+    /**
+     * 
+     * @param {number} fontSizeToMeasure The font size to measure in points
+     * @returns A ratio expressed as a number between 0 and 1 which which is 
+     *    where the centre of the character is located vertically starting from
+     *    the top. The value is used in an anchor setting to position the 
+     *    characters vertically centered about a point
+     */
+    calculateCharacterVerticalCentre(fontSizeToMeasure){
+
+        let fontFamily = "Tahoma";          // font name for this indictor
+        let fontSize = fontSizeToMeasure;   // font size for the magnifier 
+        let fontWeight = "bold";            // font weight for the magnifier
+
+        /** 
+         * Height of a capital letter divided by the height of the em square. Used
+         * to calculate the center of the character veritcally.
+         * This is font specific.
+         */
+        let digitCapitalHeightRatio = 1489/2048; 
+
+        /**
+         * Create a style to use when measuring the character sizes
+         */
+        let measureTextStyle = new PIXI.TextStyle({
+            fontFamily: fontFamily,
+            fontSize: String(fontSize)+"px",
+            fontWeight: fontWeight
+        });
+
+        /** Get the character metrics */
+        let sampleMetrics = PIXI.TextMetrics.measureText("0123456789", measureTextStyle);
+
+        let digitAscentDistance = sampleMetrics.fontProperties.ascent;
+        let overallHeight = sampleMetrics.height; 
+
+        /** Calculate where the center of the character is vertically
+         *  as a ratio of the height of the sample message. (value between 0 and 1)
+         *  This is used for the anchor command.
+         *  Then add 2 pixels
+         */
+        var verticalCharacterCentre = ( digitAscentDistance - ((digitCapitalHeightRatio * fontSize)/2)) / (overallHeight);
+
+        return(verticalCharacterCentre);
+    }
+
+
+    /**
+     * Create a PixiJS Graphics that draws the heading bug. The bug is drawn
+     *     with it's default position at 0,0.
+     * @param {number} ribbonHeight The height of the ribbon in pixels
+     * @returns A PixiJS Graphics object
+     */
+    createHeadingBug(ribbonHeight) {
+
+        var bugHeight = 7;             
+        var bugWidth = 26;
+        var bugLineColour = 0xFF0000; 
+        var bugOutlineWidth = 1;
+        var bugOutlineAlpha = 1;
+        var bugOutlineAlignment = 0; // Inner
+        var bugFillColour = 0xFF0000;
+        var bugFillAlpha = 1;
+        var bugTriangle = 7;
+    
+        // Create the Graphics
+
+        var bugGraphics = new Graphics();
+
+        // Draw the bug clockwise
+
+        bugGraphics.lineStyle(bugOutlineWidth, bugLineColour, bugOutlineAlpha, bugOutlineAlignment);
+
+        bugGraphics.moveTo(0, ribbonHeight);
+        bugGraphics.beginFill(bugFillColour, bugFillAlpha);
+
+        bugGraphics.lineTo(-bugWidth/2, ribbonHeight);
+        bugGraphics.lineTo(-bugWidth/2, ribbonHeight-bugHeight);
+        bugGraphics.lineTo(-bugTriangle, ribbonHeight-bugHeight);
+        bugGraphics.lineTo(0, ribbonHeight-(bugHeight-bugTriangle));
+        bugGraphics.lineTo(bugTriangle, ribbonHeight-bugHeight);
+        bugGraphics.lineTo(bugWidth/2, ribbonHeight-bugHeight);
+        bugGraphics.lineTo(bugWidth/2, ribbonHeight);
+        bugGraphics.lineTo(0, ribbonHeight);
+
+        bugGraphics.endFill();
+
+        return(bugGraphics);
+    }
+
+    /**
+     * Position the heading bug on the ribbon using the class properties _value
+     *    and _bugValue to locate the bug.
+     */
+    positionHeadingBugOnRibbon(){
+        var bugValue = this._bugValue;
+
+
+        // check if we are displaying the extra bit of ribbon
+        if (this._value < this.extraRibbonDegrees) {
+            // extra ribbon is being displayed to the left of the magnifier
+            // check if the bug should be in the extra
+            if (bugValue > (360 - this.extraRibbonDegrees)) {
+                // the bug needs to be displayed early
+                bugValue = bugValue - 360;
+            }
+        } else if (this._value > (360 - this.extraRibbonDegrees)) {
+            // we are displaying the extra at the right of the magnifier
+            // check if bug should be in the extra
+            if (bugValue < this.extraRibbonDegrees) {
+                // the bug needs to be displayed late
+                bugValue = bugValue + 360;
+            }
+        }
+        this.headingBugGraphics.x = this.displayWidth/2 + (bugValue - this._value) * this.pixelsPerDegree
+    }
+
+    /**
+     * Create a PixiJS Graphics object that draws a horizontal line at the 
+     *     bottom of the heading indicator to indicate the heading bug can
+     *     be selected.
+     * @param {number} width The width of the heading indicator ribbon in pixels. 
+     * @param {number} height The height of the heading indicator ribbon in pixels.
+     * @returns A PixiJS Graphics object that draws the selectable indicator
+     */
+    createSelectableGraphic(width, height){
+
+        var horizontalLineColour = 0xFF0000;
+        var horizontalLineWidth = 2;
+        var horizontalLineAlpha = 1;
+        var horizontalLineAlignment = 0; // inner
+
+        var selectableGraphics = new Graphics();
+
+        selectableGraphics.lineStyle(horizontalLineWidth, horizontalLineColour, horizontalLineAlpha, horizontalLineAlignment);
+
+        selectableGraphics.moveTo(0, height - horizontalLineWidth);
+        selectableGraphics.lineTo(width, height - horizontalLineWidth);
+    
+        return selectableGraphics;
+    }
+
+    /**
+     * Create a PixiJS Graphics object that draws a horizontal line at the
+     *     bottom of the heading indicator, a leader and a box displaying the
+     *     current heading bug setting to indicate the heading bug can be set
+     * @param {number} width The width of the heading indicator ribbon in pixels. 
+     * @param {number} height The height of the heading indicator ribbon in pixels. 
+     * @returns A PixiJS Graphics object that draws the changable graphics.
+     */
+    createChangableGraphic(width, height) {
+        
+        var outlineColour = 0x00FFFF;
+        var leaderLineWidth = 4;
+        var leaderLineAlignment = .5;
+        var outlineWidth = 2;
+        var outlineAlpha = 1;
+        var outlineAlignment = 0; // inner
+        var fillColour = 0x000000;
+        var fillAlpha = 1;
+        var boxHorizontalOffset = 10;
+        var boxHeight = 25;
+        var boxWidth = 40;
+        //var boxVerticalOffset = 5;
+        var boxCornerRadius = 7;
+
+        var bugValueTextStyle = new PIXI.TextStyle({
+            fontFamily: "Tahoma",
+            fontSize: 20,
+            fill: "aqua",
+            fontWeight: "normal"
+            
+        });
+
+        var yAnchor = this.calculateCharacterVerticalCentre(20);
+
+        let boxVerticalOffset = (height - boxHeight) / 2;
+
+        var changableGraphicsContainer = new Container();
+
+        var leaderAndBoxGraphics = new Graphics();
+
+        // draw horizontal line in new colour
+        leaderAndBoxGraphics.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlineAlignment);
+
+        leaderAndBoxGraphics.moveTo(0, height - outlineWidth);
+        leaderAndBoxGraphics.lineTo(width, height - outlineWidth);
+
+        // draw the leader line
+        leaderAndBoxGraphics.moveTo(width - (boxWidth / 2 + boxHorizontalOffset), height);
+        leaderAndBoxGraphics.lineTo(width - (boxWidth / 2 + boxHorizontalOffset), height - boxVerticalOffset);
+
+        // draw the box
+        leaderAndBoxGraphics.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlineAlignment);
+
+
+        let topLeftX = width - (boxWidth + boxHorizontalOffset);
+        let topLeftY = height - (boxHeight + boxVerticalOffset);
+        
+        
+        leaderAndBoxGraphics.beginFill(fillColour, fillAlpha);
+        leaderAndBoxGraphics.drawRoundedRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
+        leaderAndBoxGraphics.endFill();
+
+        changableGraphicsContainer.addChild(leaderAndBoxGraphics);
+
+        let textX = width - (boxHorizontalOffset + 3);
+        let textY = height / 2;
+        var bugText = new Text("260", bugValueTextStyle);
+        bugText.anchor.set(1, yAnchor);
+        bugText.position.set(textX, textY);
+
+        changableGraphicsContainer.addChild(bugText);
+
+        return [changableGraphicsContainer, bugText];
+    }
+
+    /**
+     * callback will be called based on the users input to the rotary control.
+     * Handles a call back from the main line to deal with selecting and
+     * changing the bug value. We expect to be selected first then have
+     * the changable flag added to allow changes. The value should be 
+     *in sequence from where it was last.
+     * @param {boolean} selected When true indicates this display element is selected 
+     * @param {boolean} changable When true indicates this display element should 
+     *     to the value parameter but only on the second pass through the function 
+     * @param {*} value The value of the encoder when changeable is true
+     */
+     callback(selected, changable, value){
+
+        // Process changeable first as it should be enabled last
+        if (changable && !this.changable) {
+            // we just became changable
+            this.changable = true; // set the changable flag to true
+            this.changeableFirstPass = true; 
+
+            // clear the selected flag to allow detetion of a selected mode
+            // when changable goes false
+            this.selected = false;
+
+            // indicate that the bug is adjustable
+            this.headingContainer.addChild(this.changableGraphics);
+
+        } else if (!changable && this.changable){
+            // we just left the changable state
+            this.changable = false;
+            this.headingContainer.removeChild(this.changableGraphics);
+        }
+
+        // check if selectied was just set while we are not changeable
+        // if changable is set we can ignor this
+        if (!changable && (selected && !this.selected)) {
+            // we just became selected or we just left the changable state
+            this.selected = true;
+
+            // indicate that the bug is selectable
+            // Place a red line down the side of the 
+            this.headingContainer.addChild(this.selectableGraphics);
+
+
+        } else if (!selected && this.selected) {
+            // we left the selected state
+            this.selected = false;
+            this.headingContainer.removeChild(this.selectableGraphics);
+        }
+
+        if (!selected && !changable) {
+            // TODO: restore the normal screen
+            // TODO: Consider moving this up so that it is only done once
+            
+        }
+
+        // process the encoder value provided
+        if (changable && !this.changeableFirstPass) {
+            // TODO: process the value provided
+            //this.my_value = 2992 + value;
+            if (value >= 0) {
+                this._bugValue = value % 360;
+            }
+            this.bugText.text = this._bugValue.toString();
+            this.positionHeadingBugOnRibbon(this._value);
+
+            // TODO reposition the bug as the value changes
+            //this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100) + " in";
+        } else if (this.changeableFirstPass) {
+            // TODO: handle any first pas requirements
+            this.changeableFirstPass = false;
+        }
     }
 
     set value(new_value){
@@ -259,7 +547,7 @@ export class HeadingIndicator {
         this.headingText.text = String(this._value);
 
         this.headingRibbon.x = this.displayWidth/2 - this._value * this.pixelsPerDegree;
-        
+        this.positionHeadingBugOnRibbon(new_value);
         
     }
 }

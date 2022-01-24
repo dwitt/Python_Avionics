@@ -277,13 +277,13 @@ async def process_can_messages(reader, data):
             )
             #TODO: Check if we are carrying enough significant digits
             #       in the following calculations
-            data.latitude = latitude / 10^6
-            data.longitude = longitude / 10^6
+            data.latitude = latitude #/ 10^6
+            data.longitude = longitude #/ 10^6
 
         # process GPS2 message
         elif msg.arbitration_id == CAN_GPS2_MSG_ID:
             (data.gps_speed, data.gps_altitude, data.true_track, _) = (
-                struct.unpack("<hhhh")
+                struct.unpack("<hhhh", msg.data)
             )
 
 

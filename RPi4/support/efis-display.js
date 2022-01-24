@@ -8,6 +8,7 @@ import { HeadingIndicator } from './headingIndicator.mjs';
 import { Interactions } from './interaction.mjs';
 import { QNHDisplay } from './qnhdisplay.mjs';
 import { SpeedDisplay } from './speedDisplay.mjs';
+import { AltitudeDisplay } from './altitudeDisplay.mjs';
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
 
 
@@ -86,6 +87,7 @@ dataObject.position = 0;
 dataObject.pressed = false;
 
 
+
 // ----------------------------------------------------------------------------
 // --- Connect to the websocket to recieve the data from the can bus as     ---
 // --- objects.                                                             ---
@@ -134,6 +136,7 @@ var attitudeIndicator,
     slipBallIndicator,
     headingIndicator,
     speedDisplay,
+    altitudeDisplay,
     menu,
     userInput;
 
@@ -171,10 +174,12 @@ function setup() {
     let x = app.screen.width;
     let y = app.screen.height;
 
-    attitudeIndicator = new AttitudeIndicator(app);            
-    altimeter_ribbon = new Ribbon(app, x-35, y/2, y-130, 90, true, 100, 4, 5, true);
+    attitudeIndicator = new AttitudeIndicator(app);       
+         
+    altimeter_ribbon = new Ribbon(app, x-35, y/2, y-130, 90, true, 100, 4, 5, true, undefined, undefined, true);
     altitudeWheel = new AltitudeWheel(app) //, 755, 240);
     qnhDisplay = new QNHDisplay(app, x - (35 + 90), y-130/2+25, 90, 25, 8);
+    altitudeDisplay = new AltitudeDisplay(app, x - (35 + 90), 130/2, 90, 25, 8);
 
 
     //vsiDisplay = new VSIDisplay(app);
@@ -201,6 +206,9 @@ function setup() {
 
     userInput.registerCallback(qnhDisplay);
     userInput.registerCallback(speedDisplay);
+    userInput.registerCallback(headingIndicator);
+    userInput.registerCallback(altitudeDisplay);
+    userInput.registerCallback(altimeter_ribbon);
     // userInput.registerCallback(myCallBackClass);
     // userInput.registerCallback(myCallBackClass);
 
@@ -227,6 +235,12 @@ function DisplayUpdateLoop(delta) {
     vsiIndicator.value = dataObject.vsi;
     slipBallIndicator.acc = dataObject.accy;
     headingIndicator.value = dataObject.yaw;
+
+    speedDisplay.groundSpeed = dataObject.gps_speed;
+    speedDisplay.update();
+
+    altitudeDisplay.gpsAltitude = dataObject.gps_altitude;
+    altitudeDisplay.update();
 
     // Process any change in the user input encoder
     userInput.processState(dataObject.position, dataObject.pressed)
@@ -328,20 +342,24 @@ class UserInput {
         app.stage.addChild(this.itemSelectorText);
         app.stage.addChild(this.encoderText);
         this.app = app;
+        //TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Remove
     }
 
     /**
-     * 
-     * processState: processes the encoder position and button to all 
+     *  processState: processes the encoder position and button to all 
      *  adjustment of multiple objects
      * 
-     * @param {*} position 
-     * @param {*} button 
+     * @param {number} position 
+     * @param {boolean} button The state of the encoder push button. True is 
+     *     depressed. False is released.
      */
 
 
     processState(position, button) {
         var encoderPosition;
+
+        // TODO: Rewrite the following to simply depend on the numberOfCallbacksRegistered
+
         // handle first time through until there is a call back registered
         if (this.firstPass) {
             // save the current encoder position
@@ -352,21 +370,29 @@ class UserInput {
 
                 this.firstPass = false;
             }
+
+        // All regular processing happens here
         } else {
             // We have at least one call back registered
-            // Check if the button has changed
+            
+            /******************************************************************
+             * Handle changes to the push button state first                  *
+             ******************************************************************/
 
+            // Check if the button has changed
             if (button != this.lastButton) {
+
                 this.lastButton = button
                 if (button == false) {
-                    // The button was just released
-                    // toggle the selection mode
+                    // The button was just released therefore the item selection
+                    // mode just changed.
+                    // Toggle the item selection mode
                     this.itemSelectionMode = !this.itemSelectionMode
                     
-
+                    // Process the current selection Mode
                     if (this.itemSelectionMode) {
                         // We have entered selection mode which means we can
-                        // selected between the items that have been reigistered
+                        // selected between the items that have been registered
 
                         // Unselect previous item if there are any
                         if (this.numberOfCallbacksRegistered > 0 ) {
@@ -377,50 +403,46 @@ class UserInput {
                             );
                         }
 
-                        // Save the encoder position
+                        // Save the virtual encoder position for the item that is currently selected
+
+                        // position: is the current encoder position
+                        // this.virtualEncoderValue[]: holds the last virtual position
+                        // this.encoderAdjustment: was the encoder value when this item was selected
+
                         encoderPosition = (position + 
                             this.virtualEncoderValue[this.currentSelection] -
                             this.encoderAdjustment);
                         this.virtualEncoderValue[this.currentSelection] = encoderPosition;
 
-                        // TODO: Commented out the drawing to see if this speeds things up
-                        // this.filledCircle.clear();
-                        // this.filledCircle.lineStyle(1, 0xffffff, 1);
-                        // this.filledCircle.beginFill(0xffffff, 1);
-                        // this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
-                        // this.filledCircle.endFill();
                     } else {
                         // We have exited selection mode which means 
                         // The currently selected item can be adjusted
-                        // Unselect previous item if there are any
-
 
                         // save the encoder position so that we can start
-                        // at the same place when we return to selection
+                        // at the same place when we return to selection mode
                         this.virtualEncoderForSelection = (position +
                             this.virtualEncoderForSelection -
                             this.encoderAdjustment);
                         
+                        // Make the current selected item adjustable
                         if (this.numberOfCallbacksRegistered > 0 ) {
                             this.callbackFunction[this.currentSelection].callback(
-                                true,   // The item is selected
+                                true,  // The item is selected
                                 true,  // The item can be adjusted
-                                this.virtualEncoderForSelection       // The position should be ignored
+                                this.virtualEncoderValue[this.currentSelection]  // last saved encoder value
                             );
                         }
 
-                        // TODO: Commented out the drawing to see if this speeds things up
-                        // this.filledCircle.clear();
-                        // this.filledCircle.lineStyle(1, 0xffffff, 1);
-                        // //this.filledCircle.beginFill(0xffffff, 1);
-                        // this.filledCircle.drawCircle(5, this.displayHeight -5 , 4);
-                        // //this.filledCircle.endFill();
                     }
                     // save the current encoder position to be applied
                     // as the encoder makes adjustments
                     this.encoderAdjustment = position
                 }
             }
+
+            /******************************************************************
+             * Handle changes to the encode position after the button state   *
+             ******************************************************************/
 
             // Check if the position has changed
             if (position != this.lastPosition) {
@@ -441,8 +463,13 @@ class UserInput {
                         0       // should be ignored
                     );
 
-                    this.currentSelection = (Math.abs(encoderPosition) % 
-                        this.numberOfCallbacksRegistered);
+                    let remainder = encoderPosition % this.numberOfCallbacksRegistered;
+                    if (remainder < 0) {
+                        remainder = remainder + this.numberOfCallbacksRegistered;
+                    }
+                    this.currentSelection = remainder;
+
+
 
                     // select item
                     this.callbackFunction[this.currentSelection].callback(

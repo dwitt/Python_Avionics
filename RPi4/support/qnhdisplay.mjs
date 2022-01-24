@@ -28,13 +28,34 @@ export class QNHDisplay {
         this.screen_width = app.screen.width;
         this.selected = false;
         this.changable = false;
+        this.changeableFirstPass = false;
 
         this.my_value = 2992;
 
-        this.container = new Container();
-
         let arc_radius = radius;
     
+        // Create the container to hold the PIXI.DisplayObjects.
+        this.QNHContainer = new Container();
+        this.QNHContainer.sortableChildren = true;
+
+        this.QNHText = this.createQNHText(x, y, width, height);
+        this.QNHText.zIndex = 10;
+    
+        this.QNHRectangle = this.regularRectangle(x, y, width, height, radius);
+        this.QNHRectangle.zIndex = 1;
+        this.QNHSelectedRectangle = this.selectedRectangle(x, y, width, height, radius);
+        this.QNHSelectedRectangle.zIndex = 2;
+        this.QNHChangingRectangle = this.changingRectangle(x, y, width, height, radius);
+        this.QNHChangingRectangle.zIndex = 3;
+    
+        this.QNHContainer.addChild(this.QNHRectangle);
+        this.QNHContainer.addChild(this.QNHText);
+
+        app.stage.addChild(this.QNHContainer);
+    }
+
+    createQNHText(x, y, width, height) {
+
         // Create a style to be used for the qnh characters
         this.style = new PIXI.TextStyle({
             fontFamily: 'Tahoma',
@@ -46,18 +67,11 @@ export class QNHDisplay {
         this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
         let text = this.QNHFormat.format(29.92) + " in";
     
-        this.QNHText = new Text(text, this.style);
-        this.QNHText.anchor.set(.5,.5);
-        this.QNHText.position.set(x + width/2 , y - height/2);
-    
-        this.QNHRectangle = this.regularRectangle(x, y, width, height, radius);
-        this.QNHSelectedRectangle = this.selectedRectangle(x, y, width, height, radius);
-        this.QNHChangingRectangle = this.changingRectangle(x, y, width, height, radius);
-    
-        this.container.addChild(this.QNHRectangle);
-        this.container.addChild(this.QNHText);
+        var QNHText = new Text(text, this.style);
+        QNHText.anchor.set(.5,.5);
+        QNHText.position.set(x + width/2 , y - height/2);
 
-        app.stage.addChild(this.container)
+        return QNHText;
     }
 
     regularRectangle(x, y, width, height, radius){
@@ -140,15 +154,16 @@ export class QNHDisplay {
         if (changable && !this.changable) {
             // we just became changable
             this.changable = true; // set the changable flag to true
+            this.changeableFirstPass = true; 
 
             // clear the selected flag to allow detetion of a selected mode
             // when changable goes false
             this.selected = false;
 
             // Change to a changeable Container
-            this.container.removeChildren();
-            this.container.addChild(this.QNHChangingRectangle);
-            this.container.addChild(this.QNHText);
+            this.QNHContainer.removeChild(this.QNHRectangle);
+            this.QNHContainer.addChild(this.QNHChangingRectangle);
+            //this.container.addChild(this.QNHText);
         } else if (!changable && this.changable){
             this.changable = false;
         }
@@ -160,26 +175,30 @@ export class QNHDisplay {
             this.selected = true;
 
             // Change to a selected Container
-            this.container.removeChildren();
-            this.container.addChild(this.QNHSelectedRectangle);
-            this.container.addChild(this.QNHText);
+            this.QNHContainer.removeChild(this.QNHChangingRectangle);
+            this.QNHContainer.addChild(this.QNHSelectedRectangle);
+            //this.container.addChild(this.QNHText);
 
         } else if (!selected && this.selected) {
             this.selected = false;
+            this.QNHContainer.removeChild(this.QNHSelectedRectangle);
+            this.QNHContainer.addChild(this.QNHRectangle)
         }
 
         if (!selected && !changable) {
             // Change to a regular container
-            this.container.removeChildren();
-            this.container.addChild(this.QNHRectangle);
-            this.container.addChild(this.QNHText);
+            // this.container.removeChildren();
+            // this.container.addChild(this.QNHRectangle);
+            // this.container.addChild(this.QNHText);
         }
 
         // process the encoder value provided
-        if (changable) {
+        if (changable && !this.changeableFirstPass) {
             this.my_value = 2992 + value;
 
             this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100) + " in";
+        } else if (this.changeableFirstPass) {
+            this.changeableFirstPass = false;
         }
 
     }
