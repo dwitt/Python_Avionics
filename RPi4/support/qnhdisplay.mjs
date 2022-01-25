@@ -5,52 +5,64 @@ import { drawSpecialRectangle } from './specialRectangle.mjs';
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
-var Application = PIXI.Application,
-    loader = PIXI.Loader.shared,
-    resources = PIXI.Loader.shared.resources,
-    TextureCache = PIXI.utils.TextureCache,
-    Sprite = PIXI.Sprite,
-    Rectangle = PIXI.Rectangle,
-    Graphics = PIXI.Graphics,
+// var Application = PIXI.Application,
+//     loader = PIXI.Loader.shared,
+//     resources = PIXI.Loader.shared.resources,
+//     TextureCache = PIXI.utils.TextureCache,
+//     Sprite = PIXI.Sprite,
+//     Rectangle = PIXI.Rectangle,
+var Graphics = PIXI.Graphics,
     Container = PIXI.Container,
     Text = PIXI.Text;
 
 /**     
  * Class representing the QNH display.
- * 
- * 
  */
 
 export class QNHDisplay {
-
+    /**
+     * Create a QNHDisplay Object that will display the QNH value and allow it
+     *     to be selected and changed by the user
+     * @param {PIXI.Application} app The PixiJS application that is the EFIS display
+     * @param {number} x The x position of the QNH display in pixels
+     * @param {number} y The y position of the QNH display in pixels
+     * @param {number} width The width of the QNH display in pixels
+     * @param {number} height The height of the QNH display in pixels
+     * @param {number} radius The corner radius of the QNH display in pixels
+     */
     constructor (app, x , y, width, height, radius){
 
+        // TODO: remove screen_width as I don't think it is used
         this.screen_width = app.screen.width;
+
         this.selected = false;
         this.changable = false;
         this.changeableFirstPass = false;
 
         this.my_value = 2992;
-
-        let arc_radius = radius;
     
         // Create the container to hold the PIXI.DisplayObjects.
         this.QNHContainer = new Container();
         this.QNHContainer.sortableChildren = true;
 
+        // Create the PIXI.DisplayObjexts for the QNH Display.
         this.QNHText = this.createQNHText(x, y, width, height);
         this.QNHText.zIndex = 10;
     
         this.QNHRectangle = this.regularRectangle(x, y, width, height, radius);
         this.QNHRectangle.zIndex = 1;
+
         this.QNHSelectedRectangle = this.selectedRectangle(x, y, width, height, radius);
         this.QNHSelectedRectangle.zIndex = 2;
+
         this.QNHChangingRectangle = this.changingRectangle(x, y, width, height, radius);
         this.QNHChangingRectangle.zIndex = 3;
     
+        // Add the DisplayObject to the Container
         this.QNHContainer.addChild(this.QNHRectangle);
         this.QNHContainer.addChild(this.QNHText);
 
+        // Add the Container to the Stage
         app.stage.addChild(this.QNHContainer);
     }
 
@@ -161,9 +173,9 @@ export class QNHDisplay {
             this.selected = false;
 
             // Change to a changeable Container
-            this.QNHContainer.removeChild(this.QNHRectangle);
+            this.QNHContainer.removeChild(this.QNHSelectedRectangle);
             this.QNHContainer.addChild(this.QNHChangingRectangle);
-            //this.container.addChild(this.QNHText);
+
         } else if (!changable && this.changable){
             this.changable = false;
         }
@@ -183,13 +195,6 @@ export class QNHDisplay {
             this.selected = false;
             this.QNHContainer.removeChild(this.QNHSelectedRectangle);
             this.QNHContainer.addChild(this.QNHRectangle)
-        }
-
-        if (!selected && !changable) {
-            // Change to a regular container
-            // this.container.removeChildren();
-            // this.container.addChild(this.QNHRectangle);
-            // this.container.addChild(this.QNHText);
         }
 
         // process the encoder value provided
