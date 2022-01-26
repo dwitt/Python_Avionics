@@ -202,16 +202,11 @@ function setup() {
 
     userInput = new UserInput(app);
 
-    //TODO: remove this later. This is a callback test 
-    var myCallBackClass = new MyCallBackClass();
-
     userInput.registerCallback(qnhDisplay);
     userInput.registerCallback(speedDisplay);
     userInput.registerCallback(headingIndicator);
     userInput.registerCallback(altitudeDisplay);
     userInput.registerCallback(altimeter_ribbon);
-    // userInput.registerCallback(myCallBackClass);
-    // userInput.registerCallback(myCallBackClass);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
