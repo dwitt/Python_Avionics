@@ -26,5 +26,7 @@ rsync support/qnhdisplay.mjs pi@"$destination_server":"$piefis_support_dir"qnhdi
 rsync support/speedDisplay.mjs pi@"$destination_server":"$piefis_support_dir"speedDisplay.mjs
 rsync support/altitudeDisplay.mjs pi@"$destination_server":"$piefis_support_dir"altitudeDisplay.mjs
 rsync support/userInput.mjs pi@"$destination_server":"$piefis_support_dir"userInput.mjs
+rsync support/numericWheelDisplay.mjs pi@"$destination_server":"$piefis_support_dir"numericWheelDisplay.mjs
+rsync support/utilityFunctions.mjs pi@"$destination_server":"$piefis_support_dir"utilityFunctions.mjs
 
 echo 'Done'

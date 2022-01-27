@@ -10,6 +10,8 @@ import { QNHDisplay } from './qnhdisplay.mjs';
 import { SpeedDisplay } from './speedDisplay.mjs';
 import { AltitudeDisplay } from './altitudeDisplay.mjs';
 import { UserInput } from './userInput.mjs';
+import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
+
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
 
 
@@ -1063,16 +1065,16 @@ Object.defineProperties(NumericWheel.prototype, {
 // Create wheel digit text 
 // Constructor Function
 
-function NumericWheelDigit(fontName, fontSize, digit) {
-    this.fontName = fontName;
-    this.fontSize = fontSize;
-    this.digit = digit
-    this.style = new PIXI.TextStyle({
-        fontFamily: this.fontName,
-        fontSize: this.fontSize,
-        fill: "white",
-        fontWeight: "bold"
-    });
-    this.text = new PIXI.Text(digit, this.style);
+// function NumericWheelDigit(fontName, fontSize, digit) {
+//     this.fontName = fontName;
+//     this.fontSize = fontSize;
+//     this.digit = digit
+//     this.style = new PIXI.TextStyle({
+//         fontFamily: this.fontName,
+//         fontSize: this.fontSize,
+//         fill: "white",
+//         fontWeight: "bold"
+//     });
+//     this.text = new PIXI.Text(digit, this.style);
 
-}
+// }
