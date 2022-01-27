@@ -38,7 +38,20 @@ var Application = PIXI.Application,
 
 
 export class NumericWheelDisplay{
-
+    /**
+     * 
+     * @param {string} font_name The name of the font family.
+     * @param {number} font_size The size of the font in pixels.
+     * @param {number} capital_height_ratio The ration of the hight of a capital divided by the em square
+     * @param {number} digit_display_area_height The height in pixels of the display area
+     * @param {number} digit_position_in_wheel 
+     * @param {boolean} display_negative_symbol Display negative symbol if true
+     * @param {number} window_height The number of pixels to expand the display both above and below.
+     * @param {boolean} resolution_tens If true display the first digit in tens instead of ones.
+     * @param {boolean} align_right If true the display is right aligned.
+     * @param {number} x The x position wheel taking into account the alignment.
+     * @param {number} y The y position of the center of the wheel vertically.
+     */
     constructor(font_name, font_size, capital_height_ratio, digit_display_area_height, digit_position_in_wheel, display_negative_symbol, window_height, resolution_tens, align_right, x ,y){
         this.digit_position_in_wheel = digit_position_in_wheel;
         this.display_negative_symbol = display_negative_symbol;
@@ -63,24 +76,26 @@ export class NumericWheelDisplay{
 
         // Calculate the font ratio (digit_display_area_height/10)
         // This is used to move the digit up and down when scrolling
-        // this.font_ratio = this.digit_display_area_height / 10;
+        this.font_ratio = this.digit_display_area_height / 10;
 
         // // Create sample text to measure using the typical digits to be displayed
-        // this.sample_message = new PIXI.Text("0123456789", this.style);
+        this.sample_message = new PIXI.Text("0123456789", this.style);
 
 
-        // this.sample_metrics = PIXI.TextMetrics.measureText("0123456789", this.style);
+        //this.sample_metrics = PIXI.TextMetrics.measureText("0123456789", this.style);
 
-        // // measure the text
-        // this.digit_ascent_distance = this.sample_metrics.fontProperties.ascent;
-        // this.overall_height = this.sample_metrics.height; 
+        // measure the text
+        //this.digit_ascent_distance = this.sample_metrics.fontProperties.ascent;
+        ///this.overall_height = this.sample_metrics.height; 
 
-        // // Calculate where the center of the character is vertically
-        // // as a ratio of the height of the sample message. (value between 0 and 1)
-        // // This is used for the anchor command.
-        // this.character_centre = ( this.digit_ascent_distance - (this.digit_capital_height/2)) / (this.overall_height);
+        // Calculate where the center of the character is vertically
+        // as a ratio of the height of the sample message. (value between 0 and 1)
+        // This is used for the anchor command.
+        //this.character_centre = ( this.digit_ascent_distance - (this.digit_capital_height/2)) / (this.overall_height);
 
-        this.character_centre = calculateCharacterVerticalCentre(font_name, this.font_size, "bold", capital_height_ratio, "0123456789" );
+        this.character_centre = calculateCharacterVerticalCentre(font_name, font_size, "bold", capital_height_ratio, "0123456789" );
+
+        //console.log(this.character_centre);
 
         this.digit_width = Math.ceil(this.sample_message.width / 10);
         if (this.resolution_tens == true && this.digit_position_in_wheel == 1) {
@@ -143,6 +158,7 @@ export class NumericWheelDisplay{
         this.mask_rectangle.beginFill(0xFF0000);    // Red Mask
 
         let mask_rectangle_x;
+
         if (align_right) {
             mask_rectangle_x = x - this.digit_width;
         } else {
@@ -158,7 +174,8 @@ export class NumericWheelDisplay{
 
         // Position the container in the parent
         this.digit_container.position.set(x,y);
-        
+        console.log(x,y);
+
         let i;
         for (i = 0; i <= 9; i++) {
             this.digit_container.addChild(this['digit' + String(i)].text);
@@ -167,24 +184,24 @@ export class NumericWheelDisplay{
             this.digit_container.addChild(this['negative'].text);
         }
 
-        // This will force a call to the set function so all objects need to be created first
-        
         this.digit_container.mask = this.mask_rectangle;
+
+        // This will force a call to the set function so all objects need to be created first
 
         //console.log("constructor");
         this.value = 0;
     }
 
 
-    set value (value) {
-        if (value === undefined) {
+    set value (new_value) {
+        if (new_value === undefined) {
             return;
         }
 
         let negative;
 
-        if (value < 0 ) {
-            value = Math.abs(value);
+        if (new_value < 0 ) {
+            new_value = Math.abs(new_value);
             negative = true
         } else {
             negative = false
@@ -193,6 +210,7 @@ export class NumericWheelDisplay{
         //console.log("value = " + value);
 
         //console.debug(value);
+
         // Calculate the smallest base 10 number that is represented when
         //   this digit is non zero. This multiplier is to be used to extract
         //   the digit to be displayed from the value.
@@ -209,7 +227,7 @@ export class NumericWheelDisplay{
         // Exract the digit that needs to be displayed starting with the reminder when 
         //   dividing by the next digit position and then determining the floor when 
         //   dividing by the current digit position.
-        let _digit = Math.floor((value % _next_digit_value) / _smallest_digit_value);
+        let _digit = Math.floor((new_value % _next_digit_value) / _smallest_digit_value);
 
         // ----------------------------------------------------------------
         // --- Determin if we need to hide the zero digit display       ---
@@ -217,18 +235,19 @@ export class NumericWheelDisplay{
 
         let _hide_zero;
 
-        if ((_digit == 0) && (value < _next_digit_value)) {
+        if ((_digit == 0) && (new_value < _next_digit_value)) {
             _hide_zero = !this._zero_ok;
         } else {
             _hide_zero = false;
         }
 
         // ----------------------------------------------------------------
-        // --- Calculate the rotation to be applied                     ---
+        // --- Calculate the simulated rotation to be applied                ---
         // ----------------------------------------------------------------
 
         // The rotation is based on the lowest digit position being displayed 
-        //   rotating  betwenn 9 and 0 or 90 and 00
+        //   rotating  betwenn 9 and 0 or 90 and 00 when increasing or the
+        //   reverse when decreasing
 
         // Set the rotation to 0 in case there is no rotation required
 
@@ -247,9 +266,9 @@ export class NumericWheelDisplay{
             //     rotation = value % 10;
             //     console.debug(rotation);
             // } else {
-                if ((value % _smallest_digit_value) > (_smallest_digit_value - 10)) {
+                if ((new_value % _smallest_digit_value) > (_smallest_digit_value - 10)) {
                 // The rotation position is based on the 1s position
-                    rotation = (value % 10);
+                    rotation = (new_value % 10);
                 }
             // }
         } else {
@@ -260,13 +279,17 @@ export class NumericWheelDisplay{
             // Check if we are transitioning through the last 1 (0.1) numbers and
             //   need to rotate
 
-            if ((value % _smallest_digit_value) > (_smallest_digit_value - 1)) {
+            if ((new_value % _smallest_digit_value) > (_smallest_digit_value - 1)) {
                 // The rotation position is based on the 0.1s position
-                rotation = ((value % 1) * 10);
+                rotation = ((new_value % 1) * 10);
             }
         }
 
         // Display the wheel
+        // Arrange the digits in the correct order
+        // Fill an array (wheel_digit) with the digits arrange as an unwound
+        //    wheel with the 5th (index of 4) position being the digit to be 
+        //    displayed
 
         var wheel_digit = [];
         var i;
@@ -306,16 +329,16 @@ export class NumericWheelDisplay{
 
 export class NumericWheelDigit {
     
-    constructor(fontName, fontSize, digit) {
-        this.fontName = fontName;
-        this.fontSize = fontSize;
-        this.digit = digit
-        this.style = new PIXI.TextStyle({
-            fontFamily: this.fontName,
-            fontSize: this.fontSize,
-            fill: "white",
+    constructor(fontName, fontSize, digit, colour = "white") {
+        //this.fontName = fontName;
+        //this.fontSize = fontSize;
+        //this.digit = digit
+        let style = new PIXI.TextStyle({
+            fontFamily: fontName,
+            fontSize: fontSize,
+            fill: colour,
             fontWeight: "bold"
         });
-        this.text = new PIXI.Text(digit, this.style);
+        this.text = new PIXI.Text(digit, style);
     }
 }
