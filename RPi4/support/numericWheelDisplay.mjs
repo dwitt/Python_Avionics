@@ -2,17 +2,15 @@
 'use strict';
 import { calculateCharacterVerticalCentre } from "./utilityFunctions.mjs";
 
-
-// Aliases - Allows for changes in PIXI.JScapital_height
-// TODO - Make sure we have all of the necessary aliases set
+/** Aliases - Allows for changes in PIXI.JScapital_height */
 // ----------------------------------------------------------------------------
-var Application = PIXI.Application,
-    loader = PIXI.Loader.shared,
-    resources = PIXI.Loader.shared.resources,
-    TextureCache = PIXI.utils.TextureCache,
-    Sprite = PIXI.Sprite,
-    Rectangle = PIXI.Rectangle,
-    Graphics = PIXI.Graphics,
+// var Application = PIXI.Application,
+//     loader = PIXI.Loader.shared,
+//     resources = PIXI.Loader.shared.resources,
+//     TextureCache = PIXI.utils.TextureCache,
+//     Sprite = PIXI.Sprite,
+//     Rectangle = PIXI.Rectangle,
+var Graphics = PIXI.Graphics,
     Container = PIXI.Container,
     Text = PIXI.Text;
 
