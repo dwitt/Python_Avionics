@@ -589,14 +589,14 @@ function AirspeedWheel(app, x, y){
 
     this.airspeedHundredsWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 2, false, 1, false, false, x, y);
 
-    let airspeedTensWheelX = x + this.airspeedHundredsWheel.digit_width;
+    let airspeedTensWheelX = x + this.airspeedHundredsWheel.digitWidth;
     
     this.airspeedTensWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 1, false, 1, false, false, airspeedTensWheelX, y);
 
-    let airspeedOnesWheelX = airspeedTensWheelX + this.airspeedTensWheel.digit_width;
+    let airspeedOnesWheelX = airspeedTensWheelX + this.airspeedTensWheel.digitWidth;
     this.airspeedOnesWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 0, false, 1, false, false, airspeedOnesWheelX, y);
 
-    let airspeedWidth = this.airspeedOnesWheel.digit_width + this.airspeedTensWheel.digit_width + this.airspeedHundredsWheel.digit_width;
+    let airspeedWidth = this.airspeedOnesWheel.digitWidth + this.airspeedTensWheel.digitWidth + this.airspeedHundredsWheel.digitWidth;
 
     airspeedWheelOutline(app, x ,y , airspeedWidth, 15);
 
@@ -630,9 +630,9 @@ function AirspeedWheel(app, x, y){
 
     app.stage.addChild(this.IASunits);
     //app.stage.addChild(this.IASlegend);
-    app.stage.addChild(this.airspeedOnesWheel.digit_container);
-    app.stage.addChild(this.airspeedTensWheel.digit_container);
-    app.stage.addChild(this.airspeedHundredsWheel.digit_container);
+    app.stage.addChild(this.airspeedOnesWheel.digitContainer);
+    app.stage.addChild(this.airspeedTensWheel.digitContainer);
+    app.stage.addChild(this.airspeedHundredsWheel.digitContainer);
 
 }
 
@@ -682,24 +682,24 @@ function AltitudeWheel(app){
     //console.log("construct alt tens");
     this.tensWheel = new NumericWheelDisplay("Tahoma", 28, 1489/2048, 30, 1 ,false, 20, true, true, this.x, this.y);
 
-    let hundredsWheelX = this.x - this.tensWheel.digit_width;
+    let hundredsWheelX = this.x - this.tensWheel.digitWidth;
     this.hundredsWheel = new NumericWheelDisplay("Tahoma", 28, 1489/2048, 30, 2, false, 1, true, true, hundredsWheelX, this.y);
 
-    let thousandsWheelX = hundredsWheelX - this.hundredsWheel.digit_width;
+    let thousandsWheelX = hundredsWheelX - this.hundredsWheel.digitWidth;
     this.thousandsWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 3, false, 1, true, true, thousandsWheelX, this.y);
 
-    let tenThousandsWheelX = thousandsWheelX - this.thousandsWheel.digit_width;
+    let tenThousandsWheelX = thousandsWheelX - this.thousandsWheel.digitWidth;
     this.tenThousandsWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 4, true, 1, true, true, tenThousandsWheelX, this.y);
 
-    let width = this.tensWheel.digit_width + this.hundredsWheel.digit_width + this.thousandsWheel.digit_width + this.tenThousandsWheel.digit_width;
-    let width1 = this.tensWheel.digit_width;
+    let width = this.tensWheel.digitWidth + this.hundredsWheel.digitWidth + this.thousandsWheel.digitWidth + this.tenThousandsWheel.digitWidth;
+    let width1 = this.tensWheel.digitWidth;
 
     AltitudeWheelOutline(app, this.x, this.y, true, width, 30/2 , width1, (30/2 + 20) );
 
-    this.app.stage.addChild(this.tensWheel.digit_container);
-    this.app.stage.addChild(this.hundredsWheel.digit_container);
-    this.app.stage.addChild(this.thousandsWheel.digit_container);
-    this.app.stage.addChild(this.tenThousandsWheel.digit_container);
+    this.app.stage.addChild(this.tensWheel.digitContainer);
+    this.app.stage.addChild(this.hundredsWheel.digitContainer);
+    this.app.stage.addChild(this.thousandsWheel.digitContainer);
+    this.app.stage.addChild(this.tenThousandsWheel.digitContainer);
 }
 
 function AltitudeWheelOutline(app,x,y,right,width,height,left_width,left_height){
