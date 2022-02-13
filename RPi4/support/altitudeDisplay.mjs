@@ -115,11 +115,11 @@ export class AltitudeDisplay {
     selectedRectangle(x, y, width, height, radius){
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
-        let fillAlpha = 0.35;       // 25% 
+        let fillAlpha = 0.35;       // 35% 
         let lineColour = 0xFF0000;  // red
         let lineThickness = 2;      // 2 pixel
         let lineAlpha = 1.00;       // 100%
-        let linePosition = 0.5;       // middle
+        let linePosition = 0.5;     // middle
 
         var altitudeRectangle = new Graphics();
         altitudeRectangle.beginFill(fillColour, fillAlpha); 

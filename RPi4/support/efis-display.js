@@ -9,6 +9,7 @@ import { Interactions } from './interaction.mjs';
 import { QNHDisplay } from './qnhdisplay.mjs';
 import { SpeedDisplay } from './speedDisplay.mjs';
 import { AltitudeDisplay } from './altitudeDisplay.mjs'
+import { TempTimeDisplay } from './tempTimeDisplay.mjs';
 import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
 import { UserInput } from './userInput.mjs';
 import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
@@ -130,10 +131,7 @@ tahoma_bold_font.load().then(function(loaded_face){
 var attitudeIndicator,
     altitudeWheel, 
     qnhDisplay, 
-    tasDisplay,
-    vsiDisplay, 
     altimeter_ribbon, 
-    testAirspeedDisplay, 
     airspeedWheel,
     airspeedRibbon,
     vsiIndicator,
@@ -141,9 +139,8 @@ var attitudeIndicator,
     headingIndicator,
     speedDisplay,
     altitudeDisplay,
-    menu,
-    userInput,
-    numericWheelDisplayTest;
+    tempTimeDisplay,
+    userInput;
 
 
 //var qnh;
@@ -186,7 +183,6 @@ function setup() {
     qnhDisplay = new QNHDisplay(app, x - (35 + 90), y-130/2+25, 90, 25, 8);
     altitudeDisplay = new AltitudeDisplay(app, x - (35 + 90), 130/2, 90, 25, 8);
 
-
     //vsiDisplay = new VSIDisplay(app);
     //testAirspeedDisplay = new ASDisplay(app);
  
@@ -194,6 +190,8 @@ function setup() {
     airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
     airspeedWheel = new AirspeedWheel(app, 45, y/2);
     speedDisplay = new SpeedDisplay(app, 35, 130/2, 90, 25, 8);
+    tempTimeDisplay = new TempTimeDisplay(app, 35, y-130/2+25, 90, 25, 8);
+
     //tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
 
     vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
@@ -207,6 +205,7 @@ function setup() {
     userInput = new UserInput(app);
 
     userInput.registerCallback(qnhDisplay);
+    userInput.registerCallback(tempTimeDisplay);
     userInput.registerCallback(speedDisplay);
     userInput.registerCallback(headingIndicator);
     userInput.registerCallback(altitudeDisplay);
@@ -238,6 +237,8 @@ function DisplayUpdateLoop(delta) {
 
     speedDisplay.groundSpeed = dataObject.gps_speed;
     speedDisplay.update();
+    tempTimeDisplay.temperature = dataObject.temperature;
+    tempTimeDisplay.update();
 
     altitudeDisplay.gpsAltitude = dataObject.gps_altitude;
     altitudeDisplay.update();

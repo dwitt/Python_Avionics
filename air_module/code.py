@@ -13,10 +13,11 @@ import digitalio # pylint: disable=import-error
 
 from adafruit_mcp2515 import MCP2515 as CAN #pylint: disable=no-name-in-module
 from adafruit_mcp2515 import canio  #pylint: disable=no-name-in-module
+import adafruit_max31865 # pylint: disable=import-error
 
 from honeywellHSC import HoneywellHSC
 from NPXAnalogPressureSensor import NPXPressureSensor
-from rolling_average import RollingAverage
+#from rolling_average import RollingAverage
 from Regression import Regression
 from kalman_filter import KalmanFilter
 
@@ -25,11 +26,12 @@ from kalman_filter import KalmanFilter
 
 # Constants
 DEBUG = False
-DEBUG_DIFFERENTIAL = False
+DEBUG_DIFFERENTIAL = True
 DEBUG_STATIC = False
 DEBUG_ALT = False
 DEBUG_VSI = False
 DEBUG_QNH = False
+DEBUG_RTD = False
 
 
 # -----------------------------------------------------------------------------
@@ -109,6 +111,13 @@ def main():
     # increase the baud rate by 2x from what we want (250,000 baud)
     can = CAN(spi_bus=spi, cs_pin=chip_select, baudrate=500000)
 
+    # MAX31865 RTD module -----------------------------------------------------
+    rtd_chip_select = digitalio.DigitalInOut(board.D5)
+    rtd_sensor = adafruit_max31865.MAX31865(spi, rtd_chip_select,
+                                            rtd_nominal=100,
+                                            ref_resistor=430.0,
+                                            wires=3)
+
     # i2C - NPX Pressure Sensor via I2C ADS1115 -------------------------------
 
     my_ads = NPXPressureSensor(board.A1, board.A0, 0.09, 0.08)
@@ -121,16 +130,16 @@ def main():
     # --- Setup Rolling Averages and Regression                             ---
     # -------------------------------------------------------------------------
 
-    static_pressure_roll_avg = RollingAverage(120)
-    differential_pressure_roll_avg = RollingAverage(60)
+    #static_pressure_roll_avg = RollingAverage(120)
+    #differential_pressure_roll_avg = RollingAverage(60)
     vsi_regression = Regression(VSI_VALUES_TO_AVERAGE)
 
     # -------------------------------------------------------------------------
     # --- Create Kalman Filters                                             ---
     # -------------------------------------------------------------------------
 
-    static_pressure_kalman = KalmanFilter(q=10 , r=1000000 , x=101324)
-    differential_pressure_kalman = KalmanFilter(q=10, r=100000, x=0)
+    static_pressure_kalman = KalmanFilter(q=10 , r=10000 , x=101324)
+    differential_pressure_kalman = KalmanFilter(q=10, r=1000, x=0)
 
     # -------------------------------------------------------------------------
     # --- Create a CAN bus message mask for the QNH message and create a    ---
@@ -144,8 +153,8 @@ def main():
     # --- Set the initial values to force a calculation on the first pass   ---
     # -------------------------------------------------------------------------
 
-    static_pressure_average = 0
-    differential_pressure_average = 0
+    static_pressure_filtered = 0
+    differential_pressure_filtered = 0
     airspeed = 0
     altitude = 0
     vsi = 0
@@ -175,49 +184,45 @@ def main():
         # ---------------------------------------------------------------------
 
         # Static Pressure
-        previous_static_pressure = static_pressure_average
+        previous_static_pressure = static_pressure_filtered
 
         my_hsc.read_transducer()
         static_pressure = my_hsc.pressure
-        # static_pressure_average = static_pressure_roll_avg.average(
-        #     static_pressure)
-        #TODO: Change the variable name. using average for expedience
-        static_pressure_average = static_pressure_kalman.filter(
+        static_pressure_filtered = static_pressure_kalman.filter(
             static_pressure)
 
         if DEBUG_STATIC:
-            print(f"static pressure: {static_pressure}, ave: {static_pressure_average}")
+            print(f"static pressure: {static_pressure}, ave: {static_pressure_filtered}")
 
         # Differential Pressure
-        previous_differential_pressure = differential_pressure_average
+        previous_differential_pressure = differential_pressure_filtered
 
         differential_pressure = my_ads.pressure
-        # differential_pressure_average = differential_pressure_roll_avg.average(
-        #     differential_pressure)
-        #TODO: Change the variable name. Using average for expedience
-        differential_pressure_average = differential_pressure_kalman.filter(
+        differential_pressure_filtered = differential_pressure_kalman.filter(
             differential_pressure)
 
         if DEBUG_DIFFERENTIAL:
-            print(f"differential pressure ave: {differential_pressure_average} ", end="")
+            print(f"differential pressure filtered: {differential_pressure_filtered} ",
+                  end="")
 
         # ---------------------------------------------------------------------
-        # --- Calculate the VSI                                             ---
+        # --- Read the RTD temperature                                      ---
         # ---------------------------------------------------------------------
 
-        # TODO: Remove the following 2 lines if the period calcualtion works
-        #       better.
-        # Calculating this only when the pressure changes
-        #if static_pressure_average != previous_static_pressure:
+        temperature = rtd_sensor.temperature
+        if DEBUG_RTD:
+            print(f"temperature = {temperature}")
 
-        # save data for VSI calculation each VSI_PERIOD
+        # ---------------------------------------------------------------------
+        # --- Calculate the VSI using regression                            ---
+        # ---------------------------------------------------------------------
 
         if  current_time_millis > VSI_PERIOD + vsi_timestamp:
             vsi_timestamp = current_time_millis
 
             vsi_altitude = int(145442.0 * (
                 1.0 -
-                pow(float(static_pressure_average / 101325.0), 0.1902632)))
+                pow(float(static_pressure_filtered / 101325.0), 0.1902632)))
 
             # save the altitude and time for regression
             vsi_regression.save_point(vsi_altitude, current_time_millis)
@@ -229,23 +234,23 @@ def main():
                 print(f'vsi: {vsi}')
 
         # ---------------------------------------------------------------------
-        # --- Read the transducer temperature for transmission over CAN bus ---
+        # --- Read the transducer temperature from the pressure sensor      ---
         # ---------------------------------------------------------------------
 
-        temperature = my_hsc.temperature
+        temperature_hsc = my_hsc.temperature # pylint: disable=unused-variable
 
         # ---------------------------------------------------------------------
         # --- Calculate Air Speed if we have a new differential pressure    ---
         # ---------------------------------------------------------------------
 
-        if previous_differential_pressure != differential_pressure_average:
+        if previous_differential_pressure != differential_pressure_filtered:
             # calculate airspeed if pressure has changed
 
             # airspeed= CONVERT_MPS_TO_KNOTS * math.sqrt(MULTIPLIER * (
             #     pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
             #     EXPONENT) - 1))
             #
-            airspeed = 2 * math.sqrt( 2 * abs(differential_pressure_average) /
+            airspeed = 2 * math.sqrt( 2 * abs(differential_pressure_filtered) /
                                     SEA_LEVEL_DENSITY_ISA )
 
             if DEBUG_DIFFERENTIAL:
@@ -294,12 +299,12 @@ def main():
         # --- changed                                                       ---
         # ---------------------------------------------------------------------
 
-        if (previous_static_pressure != static_pressure_average or
+        if (previous_static_pressure != static_pressure_filtered or
             previous_qnh != qnh):
 
             altitude = int(145442 * (
                 pow(float(qnh / 2992), 0.1902632)
-                - pow(float(static_pressure_average / 101325), 0.1902632)
+                - pow(float(static_pressure_filtered / 101325), 0.1902632)
             ))
 
         if DEBUG_ALT:
@@ -330,7 +335,7 @@ def main():
             random.randint(0,50)):
 
             raw_data = struct.pack("<hbBBBBB",
-                                int(static_pressure_average / 10),
+                                int(static_pressure_filtered / 10),
                                 int(temperature),
                                 0,0,0,0,0)
             message = canio.Message(id=CAN_RAW_MSG_ID, data=raw_data)

@@ -1,3 +1,4 @@
+
 """ Asychronous I/O based webserver to handle page and websocket"""
 # pyright: reportMissingImports=false
 
@@ -5,6 +6,7 @@ import asyncio
 import json
 import struct
 import time
+import datetime
 from pathlib import Path
 from aiohttp import web #pylint: disable=import-error
 import aiohttp #pylint: disable=import-error
@@ -18,6 +20,7 @@ DEBUG = False
 DEBUG_CAN = False
 DEBUG_JSON = False
 DEBUG_QNH = False
+DEBUG_GPS_TIME = False
 
 # Set constants for CAN bus use
 
@@ -26,6 +29,9 @@ CAN_QNH_PERIOD = 1000 # ms between messages (1 second between transmitting qnh)
 
 CAN_GPS1_MSG_ID = 0x63
 CAN_GPS2_MSG_ID = 0x64
+
+CAN_STATICP_MSG_ID = 0x2B
+CAN_TIME_SYNC_ID = 0x19
 
 
 # -----------------------------------------------------------------------------
@@ -228,6 +234,7 @@ class WebSocketResponse:
 
 async def process_can_messages(reader, data):
     """Process the can messages when the are recieved"""
+
     while True:
         if DEBUG:
             print("Looking for CAN msg")
@@ -248,6 +255,14 @@ async def process_can_messages(reader, data):
 
             if DEBUG:
                 print(data.vsi, data.airspeed)
+
+        # recieve static pressure and temperature
+        elif msg.arbitration_id == CAN_STATICP_MSG_ID:
+            (static_pressure, temperature, _, _, _, _, _) = (
+                struct.unpack("<hbbbbbb", msg.data)
+            )
+            data.static_pressure = static_pressure
+            data.temperature = temperature
 
         elif msg.arbitration_id == 0x2E:
             (qnh_hpa, qnhx4, dummy_3, dummy_4, dummy_5, dummy_6) = (
@@ -286,6 +301,26 @@ async def process_can_messages(reader, data):
                 struct.unpack("<hhhh", msg.data)
             )
 
+        # process Time Sync message
+        elif msg.arbitration_id == CAN_TIME_SYNC_ID:
+            (data.tm_year, data.tm_mon, data.tm_mday,
+             data.tm_hour, data.tm_min, data.tm_sec, _, _) = (
+                struct.unpack("<bbbbbbbb", msg.data)
+                )
+            data.tm_year = 2000 + data.tm_year
+
+
+            gps_datetime = datetime.datetime(
+                data.tm_year,
+                data.tm_mon,
+                data.tm_mday,
+                data.tm_hour,
+                data.tm_min,
+                data.tm_sec,
+                tzinfo = None
+            )
+            if DEBUG_GPS_TIME:
+                print(f"{gps_datetime}")
 
         await asyncio.sleep(0)
 
@@ -397,7 +432,7 @@ async def main():
     loop = asyncio.get_event_loop()
     # create a notifier to let us know when messages arrive
     #notifier =
-    can.Notifier(bus=bus, listeners=listeners, timeout=0.01,
+    can.Notifier(bus=bus, listeners=listeners, timeout=0.1,
         loop=loop)
 
     # --- update the web socket response handler so that it can communicate

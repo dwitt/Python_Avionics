@@ -20,7 +20,7 @@ Implmentation Notes
 # pyright: reportMissingImports=false
 
 import time
-import random
+#import random
 import struct
 
 import board # pylint: disable=import-error
@@ -35,14 +35,18 @@ import adafruit_gps # pylint: disable=import-error
 
 from micropython import const # pylint: disable=import-error
 
+# --- DEBUG Constants ---------------------------------------------------------
+DEBUG_GPS_TIME = False
 
 # --- CAN Message Constants ---------------------------------------------------
 
 CAN_GPS1_ID = const(0x63)
 CAN_GPS2_ID = const(0x64)
+CAN_TIME_SYNC_ID = const(0x19)
 
 CAN_GPS1_PERIOD = const(1000)
 CAN_GPS2_PERIOD = const(1000)
+CAN_TIME_SYNC_PERIOD = const(1000)
 
 # --- Converstion Constants ---------------------------------------------------
 
@@ -55,6 +59,9 @@ def main():
 
     can_gps1_timestamp = 0
     can_gps2_timestamp = 0
+    can_time_sync_timestamp = 0
+    
+    gps_has_date = False
 
     # -----------------------------------------------------------------------------
     # --- Setup communication buses for various peripherals                     ---
@@ -146,6 +153,7 @@ def main():
     # Set the NEMA update rate to 1 second
     gps.send_command(b"PMTK220,1000")
 
+    # Initialize the variables we need for sending on the CAN bus
     latitude = 0
     longitude = 0
     speed_knots = 0
@@ -153,6 +161,12 @@ def main():
     track_true_deg = 0
     track_mag_deg = 0
     vdop = 0
+    hour = 0
+    minute = 0
+    second = 0
+    year = 0
+    month = 0
+    day = 0
 
 
     # -----------------------------------------------------------------------------
@@ -195,48 +209,85 @@ def main():
                 track_mag_deg = 0
             if gps.vdop is not None:
                 vdop = gps.vdop
+            if gps.timestamp_utc is not None:
+                year = gps.timestamp_utc.tm_year
+                if year > 255:
+                    year = year - 2000
+                month = gps.timestamp_utc.tm_mon
+                day = gps.timestamp_utc.tm_mday
+                hour = gps.timestamp_utc.tm_hour
+                minute = gps.timestamp_utc.tm_min
+                second = gps.timestamp_utc.tm_sec
+                
+                if month > 0 and day > 0:
+                    gps_has_date = True
 
+                if DEBUG_GPS_TIME:
+                    print(f"GPS Time is {gps.timestamp_utc.tm_year}")
 
-        if current_time_millis > can_gps1_timestamp + CAN_GPS1_PERIOD:
-            gps1_data = struct.pack("<ii",
-                                    latitude,
-                                    longitude)
-            message = canio.Message(id=CAN_GPS1_ID, data=gps1_data)
+            if current_time_millis > can_gps1_timestamp + CAN_GPS1_PERIOD:
+                gps1_data = struct.pack("<ii",
+                                        latitude,
+                                        longitude)
+                message = canio.Message(id=CAN_GPS1_ID, data=gps1_data)
 
-            try:
-                can.send(message)
-            except RuntimeError as err:
-                # Handle a Runtime Error when not connected to CAN bus
-                if err == "No transmit buffer available to send":
-                    pass
-                else:
-                    print(f'RuntimeError: {err}')
+                try:
+                    can.send(message)
+                except RuntimeError as err:
+                    # Handle a Runtime Error when not connected to CAN bus
+                    if err == "No transmit buffer available to send":
+                        pass
+                    else:
+                        print(f'RuntimeError: {err}')
 
-            can_gps1_timestamp = current_time_millis
+                can_gps1_timestamp = current_time_millis
 
-        if current_time_millis > can_gps2_timestamp + CAN_GPS2_PERIOD:
-            gps2_data = struct.pack("<hhhh",
-                                    speed_knots,
-                                    altitude_feet,
-                                    track_true_deg,
-                                    track_mag_deg)
-            message = canio.Message(id=CAN_GPS2_ID, data=gps2_data)
-            try:
-                can.send(message)
-            except RuntimeError as err:
-                # Handle a Runtime Error when not connected to CAN bus
-                if err == "No transmit buffer available to send":
-                    pass
-                else:
-                    print(f'RuntimeError: {err}')
+            if current_time_millis > can_gps2_timestamp + CAN_GPS2_PERIOD:
+                gps2_data = struct.pack("<hhhh",
+                                        speed_knots,
+                                        altitude_feet,
+                                        track_true_deg,
+                                        track_mag_deg)
+                message = canio.Message(id=CAN_GPS2_ID, data=gps2_data)
+                try:
+                    can.send(message)
+                except RuntimeError as err:
+                    # Handle a Runtime Error when not connected to CAN bus
+                    if err == "No transmit buffer available to send":
+                        pass
+                    else:
+                        print(f'RuntimeError: {err}')
 
+                can_gps2_timestamp = current_time_millis
 
+                print(f"lat = {latitude}, long = {longitude} , spd = {speed_knots} "+
+                    f"alt = {altitude_feet}, vdop = {vdop}")
 
+            if current_time_millis > can_time_sync_timestamp + CAN_TIME_SYNC_PERIOD:
+                
+                print(f"{year}/{month}/{day} {hour}:{minute}:{second}")
+                
+                if gps_has_date:
+                    time_sync_data = struct.pack("<bbbbbbbb",
+                                            year,
+                                            month,
+                                            day,
+                                            hour,
+                                            minute,
+                                            second,
+                                            0,
+                                            0)
+                    message = canio.Message(id=CAN_TIME_SYNC_ID, data=time_sync_data)
+                    try:
+                        can.send(message)
+                    except RuntimeError as err:
+                        # Handle a Runtime Error when not connected to CAN bus
+                        if err == "No transmit buffer available to send":
+                            pass
+                        else:
+                            print(f'RuntimeError: {err}')
 
-            can_gps2_timestamp = current_time_millis
-
-            print(f"lat = {latitude}, long = {longitude} , spd = {speed_knots} "+
-                  f"alt = {altitude_feet}, vdop = {vdop}")
+                    can_time_sync_timestamp = current_time_millis
 
 if __name__ == '__main__':
     main()
