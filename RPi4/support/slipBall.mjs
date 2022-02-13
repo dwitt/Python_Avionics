@@ -28,7 +28,7 @@ export class SlipBallIndicator {
         this._smoothedY = 0;
         this._smoothing = 400;
         this._lastUpdateZ = new Date;
-        this._lastUpdateY = new Date
+        this._lastUpdateY = new Date;
 
         // all co-ordinates about the center of this indicator
         let displayHeight = app.screen.height;
