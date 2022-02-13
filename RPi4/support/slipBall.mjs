@@ -18,13 +18,17 @@ var Application = PIXI.Application,
  */
 export class SlipBallIndicator {
     constructor(app) {
-        this._acc100 = 0;
-        this._acc = 0;
+        this._acc100Z = 0;
+        this._accZ = 0;
+        this._acc100Y = 0;
+        this._accY = 0;
 
         // parameters for smoothing
-        this._smoothed = 0;
+        this._smoothedZ = 0;
+        this._smoothedY = 0;
         this._smoothing = 400;
-        this.lastUpdate = new Date;
+        this._lastUpdateZ = new Date;
+        this._lastUpdateY = new Date
 
         // all co-ordinates about the center of this indicator
         let displayHeight = app.screen.height;
@@ -106,30 +110,50 @@ export class SlipBallIndicator {
      */
 
 
-    set acc(newValue) {
-        // if (newValue == this._acc100) {
-        //     return;
-        // }
-        if (isNaN(newValue)){ // check for NaN
-            newValue = 0;
-        }
-        this._acc100 = newValue;
-        this._acc = this.smoothedValue(newValue/100);
+    update() {
+
 
         // caluclate effective angle of slip or skid
-        let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
+
+        // let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
+        let angle = Math.atan(this._accY / this._accZ) * 180 / Math.PI;
         let sign = Math.sign(angle);
 
-        let horizontalPosition = Math.min(Math.abs(angle),30) * sign * this.indicatorSize * this.ballDiameter / 30;
+        let horizontalPosition = Math.min(Math.abs(angle),10) * sign * this.indicatorSize * this.ballDiameter / 10;
         this.slipBallGraphics.x = horizontalPosition;
+
 
     }
 
-    smoothedValue(newValue){
+    set accZ(newValue) {
+        if (isNaN(newValue)){ // check for NaN
+            newValue = 0;
+        }
+        //this._acc100Z = newValue;
+        this._accZ = this.smoothedValueZ(newValue/100)
+    }
+
+    set accY(newValue) {
+        if (isNaN(newValue)){ // check for NaN
+            newValue = 0;
+        }
+        //this._acc100Y = newValue;
+        this._accY = this.smoothedValueY(newValue/100)
+    }
+
+    smoothedValueZ(newValue){
         let now = new Date;
-        let elapsedTime = now - this.lastUpdate;
-        this._smoothed = this._smoothed +  elapsedTime * (newValue - this._smoothed) / this._smoothing;
-        this.lastUpdate = now;
-        return this._smoothed;
+        let elapsedTime = now - this._lastUpdateZ;
+        this._smoothedZ = this._smoothedZ + elapsedTime * (newValue - this._smoothedZ) / this._smoothing;
+        this._lastUpdateZ = now;
+        return this._smoothedZ;
+    }
+
+    smoothedValueY(newValue){
+        let now = new Date;
+        let elapsedTime = now - this._lastUpdateY;
+        this._smoothedY = this._smoothedY + elapsedTime * (newValue - this._smoothedY) / this._smoothing;
+        this._lastUpdateY = now;
+        return this._smoothedY;
     }
 }
