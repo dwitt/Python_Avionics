@@ -262,14 +262,6 @@ export class AltitudeDisplay {
         return this.gpsAltitudeValue
     }
 
-    set pressureAltitude(new_value) {
-        this.pressureAltitudeValue = new_value;
-    }
-
-    get pressureAltitude() {
-        return this.pressureAltitudeValue;
-    }
-
     set densityAltitude(new_value) {
         this.densityAltitudeValue = new_value;
     }
@@ -277,4 +269,16 @@ export class AltitudeDisplay {
     get densityAltitude() {
         return this.densityAltitudeValue;
     }
+
+    set staticPressure(newValue) {
+
+        this.pressureAltitudeValue = Math.round(145442 * (1 - Math.pow((newValue / 10132.5),0.1902632)));
+    }
+
+    set temperature(newValue) {
+        let tempK = newValue + 273.15;
+        let tempSK = 288.15 - 0.0019812 * this.pressureAltitudeValue;
+        this.densityAltitudeValue = Math.round(this.pressureAltitudeValue + (tempSK/0.0019812) * (1 - Math.pow((tempSK/tempK),0.2349690)));
+    }
+
 }

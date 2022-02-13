@@ -246,6 +246,8 @@ function DisplayUpdateLoop(delta) {
     tempTimeDisplay.update();
 
     altitudeDisplay.gpsAltitude = dataObject.gps_altitude;
+    altitudeDisplay.staticPressure = dataObject.static_pressure;
+    altitudeDisplay.temperature = dataObject.temperature;
     altitudeDisplay.update();
 
     // Process any change in the user input encoder
