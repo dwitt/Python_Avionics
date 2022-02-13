@@ -232,12 +232,19 @@ function DisplayUpdateLoop(delta) {
     airspeedWheel.value = dataObject.airspeed;
     airspeedRibbon.value = dataObject.airspeed;
     vsiIndicator.value = dataObject.vsi;
-    slipBallIndicator.acc = dataObject.accy;
+
+    slipBallIndicator.accZ = dataObject.accz;
+    slipBallIndicator.accY = dataObject.accy;
+    slipBallIndicator.update();
+
     headingIndicator.value = dataObject.yaw;
 
     speedDisplay.groundSpeed = dataObject.gps_speed;
     speedDisplay.update();
     tempTimeDisplay.temperature = dataObject.temperature;
+    tempTimeDisplay.timeHour = dataObject.tm_hour
+    tempTimeDisplay.timeMinute = dataObject.tm_min;
+
     tempTimeDisplay.update();
 
     altitudeDisplay.gpsAltitude = dataObject.gps_altitude;
@@ -367,210 +374,6 @@ function AircraftIndicator(app){
 
 
 
-
-// ----------------------------------------------------------------------------
-// --- VSI Temporary display                                                          ---
-// ----------------------------------------------------------------------------
-
-// Constructor
-
-function VSIDisplay(app){
-
-    this.screen_width = app.screen.width;
-    this.screen_height = app.screen.height;
-
-    // Create a style to be used for the qnh characters
-    this.style = new PIXI.TextStyle({
-        fontFamily: 'Tahoma',
-        fontSize: '20px',
-        fill: "white",
-        fontWeight: "normal"
-    });
-
-    this.VSIFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 0});
-    let text = this.VSIFormat.format(0);
-
-    this.VSIText = new PIXI.Text(text, this.style);
-    this.VSIText.anchor.set(0,0);
-    this.VSIText.position.set(this.screen_width-5,this.screen_height - 26);
-
-    this.display_box_width = 60;
-    this.display_box_height = 26;
-
-    this.VSIRectangle = new PIXI.Graphics();
-    this.VSIRectangle.beginFill(0x000000); 
-    this.VSIRectangle.lineStyle(2,0xFFFFFF);
-    this.VSIRectangle.drawRect(this.screen_width - (this.display_box_width + 1), this.screen_height - (this.display_box_height + 1), this.display_box_width, this.display_box_height);
-    this.VSIRectangle.endFill();
-
-    app.stage.addChild(this.VSIRectangle);
-    app.stage.addChild(this.VSIText);
-}
-
-Object.defineProperties(VSIDisplay.prototype,{
-    value: {
-        set: function(new_value) {
-            this.VSIText.text = this.VSIFormat.format(new_value);
-        }
-    }
-})
-
-
-// ----------------------------------------------------------------------------
-// --- QNH display                                                          ---
-// ----------------------------------------------------------------------------
-
-// Constructor
-
-// function QNHDisplay(app, x , y, width, height, radius){
-
-//     this.screen_width = app.screen.width;
-//     let arc_radius = radius;
-
-//     // Create a style to be used for the qnh characters
-//     this.style = new PIXI.TextStyle({
-//         fontFamily: 'Tahoma',
-//         fontSize: '18px',
-//         fill: "aqua",
-//         fontWeight: "normal"
-//     });
-
-//     this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
-//     let text = this.QNHFormat.format(29.92) + " in";
-
-//     this.QNHText = new PIXI.Text(text, this.style);
-//     this.QNHText.anchor.set(.5,.5);
-//     this.QNHText.position.set(x + width/2 , y - height/2);
-
-//     // Draw Custom Rectangle
-//     this.QNHRectangle = new PIXI.Graphics();
-//     this.QNHRectangle.beginFill(0x000000, 0.25); 
-//     this.QNHRectangle.lineStyle(1,0x00FFFF, 0.5);
-
-//     drawSpecialRectangle(this.QNHRectangle, x, y - height, width, height, arc_radius, false, false, true, true);
-
-//     this.QNHRectangle.endFill();
-
-//     app.stage.addChild(this.QNHRectangle);
-//     app.stage.addChild(this.QNHText)
-
-//     function callback(selected, changable, value){
-//         // check if the selected parameter has changed
-//         if (selected != this.selected) {
-//             // We may be selected
-//         }
-//     }
-// }
-
-
-
-// Object.defineProperties(QNHDisplay.prototype,{
-//     value: {
-//         set: function(new_value) {
-//             this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
-//         }
-//     }
-// })
-
-// ----------------------------------------------------------------------------
-// --- TAS display                                                          ---
-// ----------------------------------------------------------------------------
-
-// Constructor
-
-function TASDisplay(app, x , y, width, height, radius){
-
-    this.screen_width = app.screen.width;
-    let arc_radius = radius;
-
-    // Create a style to be used for the TAS characters
-    this.style = new PIXI.TextStyle({
-        fontFamily: 'Tahoma',
-        fontSize: '18px',
-        fill: "chartreuse",
-        fontWeight: "normal"
-    });
-
-    this.TASFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 0});
-    let text = this.TASFormat.format(0) + " TAS";
-
-    this.TASText = new PIXI.Text(text, this.style);
-    this.TASText.anchor.set(.5,.5);
-    this.TASText.position.set(x + width/2 , y - height/2);
-
-    // Draw Custome Rectangle
-    this.TASRectangle = new PIXI.Graphics();
-    this.TASRectangle.beginFill(0x000000, 0.25); 
-    this.TASRectangle.lineStyle(1,0x7FFF00, 0.5);
-
-    drawSpecialRectangle(this.TASRectangle, x, y - height, width, height, arc_radius, true, true, false, false);
-
-    this.TASRectangle.endFill();
-
-    app.stage.addChild(this.TASRectangle);
-    app.stage.addChild(this.TASText)
-}
-
-Object.defineProperties(TASDisplay.prototype,{
-    value: {
-        set: function(new_value) {
-            this.TASText.text = this.TASFormat.format(Math.floor(new_value)/100) + " in";
-        }
-    }
-})
-
-// ----------------------------------------------------------------------------
-// --- TEMP AirSpeed display                                                ---
-// ----------------------------------------------------------------------------
-
-// Constructor
-
-function ASDisplay(app){
-
-    this.screen_width = app.screen.width;
-    this.screen_height = app.screen.height;
-
-    // Create a style to be used for the AS characters
-    this.style = new PIXI.TextStyle({
-        fontFamily: 'Tahoma',
-        fontSize: '20px',
-        fill: "white",
-        fontWeight: "normal"
-    });
-
-    this.ASFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
-    let text = this.ASFormat.format(29.92);
-
-    //TODO: Move Position of box
-    this.ASText = new PIXI.Text(text, this.style);
-    this.ASText.anchor.set(0,1);
-    this.ASText.position.set(0 + 4,this.screen_height - 4);
-
-    this.display_box_width = 60;
-    this.display_box_height = 26;
-
-    this.ASRectangle = new PIXI.Graphics();
-    this.ASRectangle.beginFill(0x000000); 
-    this.ASRectangle.lineStyle(2,0xFFFFFF);
-    //TODO: move positoin of box
-    this.ASRectangle.drawRect(1,this.screen_height-(this.display_box_height+1),this.display_box_width,this.display_box_height);
-    this.ASRectangle.endFill();
-
-    app.stage.addChild(this.ASRectangle);
-    app.stage.addChild(this.ASText);
-
-    this.testfunction = function TestFunction() {
-    
-    }
-}
-
-Object.defineProperties(ASDisplay.prototype,{
-    value: {
-        set: function(new_value) {
-            this.ASText.text = this.ASFormat.format(new_value);
-        }
-    }
-})
 
 /** ---------------------------------------------------------------------------
  * @brief AirspeedWheel Constructor function.
