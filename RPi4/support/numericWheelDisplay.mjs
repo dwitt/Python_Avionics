@@ -137,7 +137,15 @@ export class NumericWheelDisplay{
         /** Create a negative sign digit */
         if (this._displayNegativeSymbol) {
             this['negative'] = new NumericWheelDigit(fontName, fontSizePxString, "-");
-            this['negative'].text.anchor.set(0, characterVerticalCentre);
+            /** Set the anchor to align the character left or right and at the
+             *  vertical centre
+             */
+            if (alignRight) {
+                this['negative'].text.anchor.set(1, characterVerticalCentre);
+            } else {
+                this['negative'].text.anchor.set(0, characterVerticalCentre);
+            }
+
         }
 
         /** Create rectangle that will MASK the container
@@ -285,11 +293,10 @@ export class NumericWheelDisplay{
                     if (negative) {
                         this['negative'].text.position.set(0,0);
                     } else  {
-                        this['negative'].text.position.set(0,-this._digitDisplayAreaHeight * 7 + rotation * this._fontRatio)
+                        this['negative'].text.position.set(0,-this._digitDisplayAreaHeight * 7 + rotation * this._fontRatio);
                     }
                 }
             } else {
-
                 this['digit' + String(wheelDigit[i+4])].text.position.set(0,-this._digitDisplayAreaHeight * i + rotation * this._fontRatio);
 
             }
