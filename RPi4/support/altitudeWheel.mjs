@@ -17,8 +17,6 @@ export class AltitudeWheel  {
 
     constructor(app) {
 
-        //this.x = x;
-        //this.y = y;
         // position based on screen size
         this.x = app.screen.width - 45;
         this.y = app.screen.height / 2;
@@ -39,15 +37,32 @@ export class AltitudeWheel  {
         let width = this.tensWheel.digitWidth + this.hundredsWheel.digitWidth + this.thousandsWheel.digitWidth + this.tenThousandsWheel.digitWidth;
         let width1 = this.tensWheel.digitWidth;
 
-        self.AltitudeWheelOutline(app, this.x, this.y, true, width, 30/2 , width1, (30/2 + 20) );
+        this.altitudeWheelOutline(app, this.x, this.y, true, width, 30/2 , width1, (30/2 + 20) );
 
+        // Add text for ft
+        // Create a style to be used for the units characters
+        this.style = new PIXI.TextStyle({
+            fontFamily: 'Tahoma',
+            fontSize: '18px',
+            fill: "white",
+            fontWeight: "normal",
+            stroke: "black",
+            strokeThickness: 2
+            }
+        );
+
+        this.altUnits = new Text("ft", this.style);
+        this.altUnits.anchor.set(1,0.2);
+        this.altUnits.position.set((this.x - width) - 5, this.y);
+
+        this.app.stage.addChild(this.altUnits);
         this.app.stage.addChild(this.tensWheel.digitContainer);
         this.app.stage.addChild(this.hundredsWheel.digitContainer);
         this.app.stage.addChild(this.thousandsWheel.digitContainer);
         this.app.stage.addChild(this.tenThousandsWheel.digitContainer);
     }
 
-    AltitudeWheelOutline(app,x,y,right,width,height,left_width,left_height){
+    altitudeWheelOutline(app,x,y,right,width,height,left_width,left_height){
         let line = new Graphics();
         line.lineStyle(2,0xFFFFFF);
         line.beginFill(0x000000);
