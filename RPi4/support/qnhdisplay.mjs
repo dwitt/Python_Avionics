@@ -1,6 +1,7 @@
 'use strict';
 /*global PIXI */
 import { drawSpecialRectangle } from './specialRectangle.mjs';
+import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs'
 // ----------------------------------------------------------------------------
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
@@ -32,6 +33,7 @@ export class QNHDisplay {
      */
     constructor (app, x , y, width, height, radius){
 
+
         // TODO: remove screen_width as I don't think it is used
         this.screen_width = app.screen.width;
 
@@ -48,6 +50,9 @@ export class QNHDisplay {
         // Create the PIXI.DisplayObjexts for the QNH Display.
         this.QNHText = this.createQNHText(x, y, width, height);
         this.QNHText.zIndex = 10;
+        
+        this.QNHUnitText = this.createQNHUnitsText(x, y, width, height);
+        this.QNHUnitText.zIndex = 9;
     
         this.QNHRectangle = this.regularRectangle(x, y, width, height, radius);
         this.QNHRectangle.zIndex = 1;
@@ -61,13 +66,35 @@ export class QNHDisplay {
         // Add the DisplayObject to the Container
         this.QNHContainer.addChild(this.QNHRectangle);
         this.QNHContainer.addChild(this.QNHText);
+        this.QNHContainer.addChild(this.QNHUnitText);
 
         // Add the Container to the Stage
         app.stage.addChild(this.QNHContainer);
     }
 
-    createQNHText(x, y, width, height) {
+    createQNHUnitsText(x, y, width, height) {
+        let unitStyle, unitVerticalCentre, text, unitText;
 
+
+        unitStyle = new PIXI.TextStyle({
+            fontFamily: 'Tahoma',
+            fontSize: '12px',
+            fill: "aqua",
+            fontWeight: "normal"
+        });
+
+        unitVerticalCentre = calculateCharacterVerticalCentre('Tahoma', 12, 'normal');
+
+        text = "inHg";
+        unitText = new Text(text, unitStyle);
+        unitText.anchor.set(0, unitVerticalCentre);
+        unitText.position.set(x + width*2/3+3, y - height/2);
+
+        return unitText;
+    }
+
+    createQNHText(x, y, width, height) {
+        let textVerticalCentre;
         // Create a style to be used for the qnh characters
         this.style = new PIXI.TextStyle({
             fontFamily: 'Tahoma',
@@ -75,13 +102,15 @@ export class QNHDisplay {
             fill: "aqua",
             fontWeight: "normal"
         });
-    
+
+        textVerticalCentre = calculateCharacterVerticalCentre('Tahoma', 18, 'normal');
+
         this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
-        let text = this.QNHFormat.format(29.92) + " in";
+        let text = this.QNHFormat.format(29.92);
     
         var QNHText = new Text(text, this.style);
-        QNHText.anchor.set(.5,.5);
-        QNHText.position.set(x + width/2 , y - height/2);
+        QNHText.anchor.set(1.0,textVerticalCentre);
+        QNHText.position.set(x + width*2/3 , y - height/2);
 
         return QNHText;
     }
@@ -201,7 +230,7 @@ export class QNHDisplay {
         if (changable && !this.changeableFirstPass) {
             this.my_value = 2992 + value;
 
-            this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100) + " in";
+            this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100);
         } else if (this.changeableFirstPass) {
             this.changeableFirstPass = false;
         }
@@ -212,7 +241,7 @@ export class QNHDisplay {
 
     set value(new_value) {
         this.my_value = new_value
-        this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
+        this.QNHText.text = this.QNHFormat.format(Math.floor(new_value)/100);
     }
 
     get value() {

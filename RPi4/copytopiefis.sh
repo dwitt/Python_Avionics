@@ -28,5 +28,6 @@ rsync support/altitudeDisplay.mjs pi@"$destination_server":"$piefis_support_dir"
 rsync support/userInput.mjs pi@"$destination_server":"$piefis_support_dir"userInput.mjs
 rsync support/numericWheelDisplay.mjs pi@"$destination_server":"$piefis_support_dir"numericWheelDisplay.mjs
 rsync support/utilityFunctions.mjs pi@"$destination_server":"$piefis_support_dir"utilityFunctions.mjs
+rsync support/tempTimeDisplay.mjs pi@"$destination_server":"$piefis_support_dir"tempTimeDisplay.mjs
 
 echo 'Done'
