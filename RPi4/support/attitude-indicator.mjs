@@ -26,15 +26,18 @@ export class AttitudeIndicator {
         this._roll = 0;
 
         // initial values for slip/skid acc and smoothing
-        this._acc100 = 0;
-        this._acc = 0;
-        this._smooth = 0;
-        this.slipSkidDegrees = 20;
+        //this._acc100Z = 0;
+        this._accZ = 0;
+        //this._acc100Y = 0;
+        this._accY = 0;
+        this.slipSkidDegrees = 10;
 
         // parameters for smoothing
-        this._smoothed = 0;
+        this._smoothedZ = 0;
+        this._smoothedY = 0;
         this._smoothing = 400;
-        this.lastUpdate = new Date;
+        this._lastUpdateZ = new Date;
+        this._lastUpdateY = new Date;
 
         // save the undefined states
         this._pitchUndefined = false;
@@ -346,21 +349,36 @@ export class AttitudeIndicator {
      * set a new value for acceleration in the y direction (slip / skid)
      */
 
-    set accy(newValue) {
-        // check for NaN in order to protect the smoothing calculation
-        if (isNaN(newValue)){ // check for NaN
-            newValue = 0;
-        }
-        this._acc100 = newValue;
-        this._smooth = this.smoothedValue(newValue/100);
+    // set accy(newValue) {
+    //     // check for NaN in order to protect the smoothing calculation
+    //     if (isNaN(newValue)){ // check for NaN
+    //         newValue = 0;
+    //     }
+    //     this._acc100 = newValue;
+    //     this._smooth = this.smoothedValue(newValue/100);
 
-        if (this._smooth == this._acc) {
-            return;
-        }
-        this._acc = this._smooth;
+    //     if (this._smooth == this._acc) {
+    //         return;
+    //     }
+    //     this._acc = this._smooth;
+
+    //     // caluclate effective angle of slip or skid
+    //     let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
+    //     let sign = Math.sign(angle);
+
+    //     let horizontalPosition = Math.min(Math.abs(angle),this.slipSkidDegrees) * sign * this.triangleHeight / this.slipSkidDegrees;
+    //     this.slipSkidGraphics.x = horizontalPosition + this.displayWidth / 2;
+
+
+    // }
+
+    updateSlipSkid() {
+
 
         // caluclate effective angle of slip or skid
-        let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
+
+        // let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
+        let angle = Math.atan(this._accY / this._accZ) * 180 / Math.PI;
         let sign = Math.sign(angle);
 
         let horizontalPosition = Math.min(Math.abs(angle),this.slipSkidDegrees) * sign * this.triangleHeight / this.slipSkidDegrees;
@@ -369,12 +387,36 @@ export class AttitudeIndicator {
 
     }
 
-    smoothedValue(newValue){
+    set accZ(newValue) {
+        if (isNaN(newValue)){ // check for NaN
+            newValue = 0;
+        }
+        //this._acc100Z = newValue;
+        this._accZ = this.smoothedValueZ(newValue/100)
+    }
+
+    set accY(newValue) {
+        if (isNaN(newValue)){ // check for NaN
+            newValue = 0;
+        }
+        //this._acc100Y = newValue;
+        this._accY = this.smoothedValueY(newValue/100)
+    }
+
+    smoothedValueZ(newValue){
         let now = new Date;
-        let elapsedTime = now - this.lastUpdate;
-        this._smoothed = this._smoothed +  elapsedTime * (newValue - this._smoothed) / this._smoothing;
-        this.lastUpdate = now;
-        return this._smoothed;
+        let elapsedTime = now - this._lastUpdateZ;
+        this._smoothedZ = this._smoothedZ + elapsedTime * (newValue - this._smoothedZ) / this._smoothing;
+        this._lastUpdateZ = now;
+        return this._smoothedZ;
+    }
+
+    smoothedValueY(newValue){
+        let now = new Date;
+        let elapsedTime = now - this._lastUpdateY;
+        this._smoothedY = this._smoothedY + elapsedTime * (newValue - this._smoothedY) / this._smoothing;
+        this._lastUpdateY = now;
+        return this._smoothedY;
     }
 
     /**

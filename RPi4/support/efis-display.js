@@ -223,7 +223,9 @@ function DisplayUpdateLoop(delta) {
 
     attitudeIndicator.pitch = dataObject.pitch;
     attitudeIndicator.roll = dataObject.roll;
-    attitudeIndicator.accy = dataObject.accy;
+    attitudeIndicator.accY = dataObject.accy;
+    attitudeIndicator.accZ = dataObject.accz;
+    attitudeIndicator.updateSlipSkid();
     altitudeWheel.value = dataObject.altitude;
     //qnhDisplay.value = globalThis.qnh; // dataObject.qnh; // Don't update from json
     altimeter_ribbon.value = dataObject.altitude;
