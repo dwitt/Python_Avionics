@@ -38,7 +38,8 @@ export class TempTimeDisplay {
         this._changeableFirstPass = false;
 
         this._temperature = 0;
-        this._time = 0;
+        this._timeHour = 0;
+        this._timeMinute = 0;
 
         this._container = new Container()
 
@@ -239,10 +240,18 @@ export class TempTimeDisplay {
             }
         }
         else if (this._displayItem == TIME) {
-            if (this._time !== undefined) {
+            if (this._timeHour !== undefined && this._timeMinute !== undefined) {
                 //TODO: properly format the time
-                this._valueText.text = this._time;
-            }
+                let hourString = String(this._timeHour);
+                if (hourString.length == 1) {
+                    hourString = '0' + hourString;
+                }
+                let minuteString = String(this._timeMinute);
+                if (minuteString.length == 1) {
+                    minuteString = '0' + minuteString;
+                }
+                this._valueText.text = hourString + ":" + minuteString
+             }
         
         }
     }
@@ -251,8 +260,12 @@ export class TempTimeDisplay {
         this._temperature = newValue;
     }
 
-    set time(newValue) {
-        this._time = newValue;
+    set timeHour(newValue) {
+        this._timeHour = newValue;
+    }
+
+    set timeMinute(newValue) {
+        this._timeMinute = newValue;
     }
 
 }
