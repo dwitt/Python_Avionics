@@ -250,8 +250,12 @@ def main():
             #     pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
             #     EXPONENT) - 1))
             #
-            airspeed = 2 * math.sqrt( 2 * abs(differential_pressure_filtered) /
+            
+            if differential_pressure_filtered > 0:
+                airspeed = 2 * math.sqrt( 2 * abs(differential_pressure_filtered) /
                                     SEA_LEVEL_DENSITY_ISA )
+            else:
+                airspeed = 0
 
             if DEBUG_DIFFERENTIAL:
                 print(f"airspeed: {airspeed}")
