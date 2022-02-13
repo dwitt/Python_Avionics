@@ -286,7 +286,7 @@ function AircraftIndicator(app){
     let py2 = displayHeight/40; // height of verticals
 
     let lineOptions = new Object;
-    lineOptions.width = 6;
+    lineOptions.width = 8;
     lineOptions.color = 0x000000;
     lineOptions.alpha = 1;
     lineOptions.alignment = 0.5;
