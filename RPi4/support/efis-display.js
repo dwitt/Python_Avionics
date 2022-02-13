@@ -13,6 +13,7 @@ import { TempTimeDisplay } from './tempTimeDisplay.mjs';
 import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
 import { UserInput } from './userInput.mjs';
 import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
+import { AirspeedWheel } from './airSpeedWheel.mjs';
 
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
 
@@ -142,8 +143,6 @@ var attitudeIndicator,
     tempTimeDisplay,
     userInput;
 
-
-//var qnh;
     
 document.fonts.ready.then(function() {
     setup();
@@ -181,11 +180,7 @@ function setup() {
     altimeter_ribbon = new Ribbon(app, x-35, y/2, y-130, 90, true, 100, 4, 5, true, undefined, undefined, true);
     altitudeWheel = new AltitudeWheel(app) //, 755, 240);
     qnhDisplay = new QNHDisplay(app, x - (35 + 90), y-130/2+25, 90, 25, 8);
-    altitudeDisplay = new AltitudeDisplay(app, x - (35 + 90), 130/2, 90, 25, 8);
-
-    //vsiDisplay = new VSIDisplay(app);
-    //testAirspeedDisplay = new ASDisplay(app);
- 
+    altitudeDisplay = new AltitudeDisplay(app, x - (35 + 90), 130/2, 90, 25, 8); 
 
     airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
     airspeedWheel = new AirspeedWheel(app, 45, y/2);
@@ -269,9 +264,6 @@ function DisplayUpdateLoop(delta) {
         if (myWebSocket.readyState == 1) {
             myWebSocket.send("json" + json);}
     }
-
- 
-
 
 }
 
@@ -386,92 +378,89 @@ function AircraftIndicator(app){
  * ----------------------------------------------------------------------------
  */
 
-function AirspeedWheel(app, x, y){
+// function AirspeedWheel(app, x, y){
 
+//     // Create wheel elements for the digits in the airspeed
 
+//     this.airspeedHundredsWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 2, false, 1, false, false, x, y);
 
-
-    // Create wheel elements for the digits in the airspeed
-
-    this.airspeedHundredsWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 2, false, 1, false, false, x, y);
-
-    let airspeedTensWheelX = x + this.airspeedHundredsWheel.digitWidth;
+//     let airspeedTensWheelX = x + this.airspeedHundredsWheel.digitWidth;
     
-    this.airspeedTensWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 1, false, 1, false, false, airspeedTensWheelX, y);
+//     this.airspeedTensWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 1, false, 1, false, false, airspeedTensWheelX, y);
 
-    let airspeedOnesWheelX = airspeedTensWheelX + this.airspeedTensWheel.digitWidth;
-    this.airspeedOnesWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 0, false, 1, false, false, airspeedOnesWheelX, y);
+//     let airspeedOnesWheelX = airspeedTensWheelX + this.airspeedTensWheel.digitWidth;
+//     this.airspeedOnesWheel = new NumericWheelDisplay("Tahoma", 37, 1489/2048, 30, 0, false, 1, false, false, airspeedOnesWheelX, y);
 
-    let airspeedWidth = this.airspeedOnesWheel.digitWidth + this.airspeedTensWheel.digitWidth + this.airspeedHundredsWheel.digitWidth;
+//     let airspeedWidth = this.airspeedOnesWheel.digitWidth + this.airspeedTensWheel.digitWidth + this.airspeedHundredsWheel.digitWidth;
 
-    airspeedWheelOutline(app, x ,y , airspeedWidth, 15);
+//     airspeedWheelOutline(app, x ,y , airspeedWidth, 15);
 
-    // Add text for kts
-    // Create a style to be used for the units characters
-    this.style = new PIXI.TextStyle({
-        fontFamily: 'Tahoma',
-        fontSize: '18px',
-        fill: "white",
-        fontWeight: "normal",
-        stroke: "black",
-        strokeThickness: 2
-    });
+//     // Add text for kts
+//     // Create a style to be used for the units characters
+//     this.style = new PIXI.TextStyle({
+//         fontFamily: 'Tahoma',
+//         fontSize: '18px',
+//         fill: "white",
+//         fontWeight: "normal",
+//         stroke: "black",
+//         strokeThickness: 2
+//     });
 
-    this.IASunits = new PIXI.Text("kts", this.style);
-    this.IASunits.anchor.set(0,.2);
-    this.IASunits.position.set(x + airspeedWidth + 8,y);
+//     this.IASunits = new PIXI.Text("kts", this.style);
+//     this.IASunits.anchor.set(0,.2);
+//     this.IASunits.position.set(x + airspeedWidth + 8,y);
 
-    // this.style = new PIXI.TextStyle({
-    //     fontFamily: 'Tahoma',
-    //     fontSize: '14px',
-    //     fill: "white",
-    //     fontWeight: "normal",
-    //     stroke: "black",
-    //     strokeThickness: 2
-    // });
+//     // this.style = new PIXI.TextStyle({
+//     //     fontFamily: 'Tahoma',
+//     //     fontSize: '14px',
+//     //     fill: "white",
+//     //     fontWeight: "normal",
+//     //     stroke: "black",
+//     //     strokeThickness: 2
+//     // });
 
-    // this.IASlegend = new PIXI.Text("IAS", this.style);
-    // this.IASlegend.anchor.set(0,.15);
-    // this.IASlegend.position.set(x + airspeedWidth + 8, y );
+//     // this.IASlegend = new PIXI.Text("IAS", this.style);
+//     // this.IASlegend.anchor.set(0,.15);
+//     // this.IASlegend.position.set(x + airspeedWidth + 8, y );
 
-    app.stage.addChild(this.IASunits);
-    //app.stage.addChild(this.IASlegend);
-    app.stage.addChild(this.airspeedOnesWheel.digitContainer);
-    app.stage.addChild(this.airspeedTensWheel.digitContainer);
-    app.stage.addChild(this.airspeedHundredsWheel.digitContainer);
+//     app.stage.addChild(this.IASunits);
+//     //app.stage.addChild(this.IASlegend);
+//     app.stage.addChild(this.airspeedOnesWheel.digitContainer);
+//     app.stage.addChild(this.airspeedTensWheel.digitContainer);
+//     app.stage.addChild(this.airspeedHundredsWheel.digitContainer);
 
-}
+// }
 
-Object.defineProperties( AirspeedWheel.prototype, {
-    value: { 
-        set: function(value) {
-            this.airspeedOnesWheel.value = value;
-            this.airspeedTensWheel.value = value;
-            this.airspeedHundredsWheel.value = value;
-        }
-    }
-})
+// Object.defineProperties( AirspeedWheel.prototype, {
+//     value: { 
+//         set: function(value) {
+//             this.airspeedOnesWheel.value = value;
+//             this.airspeedTensWheel.value = value;
+//             this.airspeedHundredsWheel.value = value;
+//         }
+//     }
+// })
 
-function airspeedWheelOutline(app,x,y,width,height){
-    let line = new Graphics();
-    line.lineStyle(2,0xFFFFFF);
-    line.beginFill(0x000000);
-    // strart drawing the point
-    line.moveTo(x-6,y);
-    line.lineTo(x-1,y-5);
-    // draw box
-    line.lineTo(x-1,y-(1+height));
-    line.lineTo(x+(1+width),y-(1+height));
-    line.lineTo(x+(1+width),y+(1+height));
-    line.lineTo(x-1,y+(1+height));
-    // complete the point
-    line.lineTo(x-1,y+5);
-    line.lineTo(x-6,y);
-    line.endFill();
+// function airspeedWheelOutline(app,x,y,width,height){
+//     let line = new Graphics();
+//     line.lineStyle(2,0xFFFFFF);
+//     line.beginFill(0x000000);
+//     // strart drawing the point
+//     line.moveTo(x-6,y);
+//     line.lineTo(x-1,y-5);
+//     // draw box
+//     line.lineTo(x-1,y-(1+height));
+//     line.lineTo(x+(1+width),y-(1+height));
+//     line.lineTo(x+(1+width),y+(1+height));
+//     line.lineTo(x-1,y+(1+height));
+//     // complete the point
+//     line.lineTo(x-1,y+5);
+//     line.lineTo(x-6,y);
+//     line.endFill();
 
-    app.stage.addChild(line);
+//     app.stage.addChild(line);
 
-}
+// }
 
 // ----------------------------------------------------------------------------
 // --- AltitudeWheel object                                                 ---

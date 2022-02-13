@@ -29,5 +29,6 @@ rsync support/userInput.mjs pi@"$destination_server":"$piefis_support_dir"userIn
 rsync support/numericWheelDisplay.mjs pi@"$destination_server":"$piefis_support_dir"numericWheelDisplay.mjs
 rsync support/utilityFunctions.mjs pi@"$destination_server":"$piefis_support_dir"utilityFunctions.mjs
 rsync support/tempTimeDisplay.mjs pi@"$destination_server":"$piefis_support_dir"tempTimeDisplay.mjs
+rsync support/airSpeedWheel.mjs pi@"$destination_server":"$piefis_support_dir"airSpeedWheel.mjs
 
 echo 'Done'
