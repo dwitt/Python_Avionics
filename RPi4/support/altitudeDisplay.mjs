@@ -276,9 +276,14 @@ export class AltitudeDisplay {
     }
 
     set temperature(newValue) {
-        let tempK = newValue + 273.15;
-        let tempSK = 288.15 - 0.0019812 * this.pressureAltitudeValue;
-        this.densityAltitudeValue = Math.round(this.pressureAltitudeValue + (tempSK/0.0019812) * (1 - Math.pow((tempSK/tempK),0.2349690)));
+        const LAPSERATE = 0.0019812;
+        const TEMPEXPONENT = 0.234960;
+        const CTOK = 273.15;
+        const STDTEMPK = CTOK + 15;
+        let oATempK = newValue + CTOK;
+        let stdTempK =  STDTEMPK - LAPSERATE * this.pressureAltitudeValue;
+        this.densityAltitudeValue = Math.round(this.pressureAltitudeValue + (stdTempK/LAPSERATE) * (1 - Math.pow((stdTempK/oATempK),TEMPEXPONENT)));
+        console.log("Ts = " + stdTempK + "| T = "+ oATempK + "| Palt = " + this.pressureAltitudeValue + "| Dalt = " +this.densityAltitudeValue);
     }
 
 }
