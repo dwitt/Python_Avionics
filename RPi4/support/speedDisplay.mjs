@@ -25,7 +25,20 @@ var Graphics = PIXI.Graphics,
  const GS = 0;
  const TAS = 1;
 
+// Used for calibrated airspeed (*** This calculation is not currently used ***)
+const GAMMA = 1.401;                // ratio of specific heats of air
+SEA_LEVEL_PRESSURE_ISA = 101325     # Pa
+SEA_LEVEL_DENSITY_ISA = 1.225       # Kg / ( m * s^2 )
+MULTIPLIER = ((2 * GAMMA) / (GAMMA - 1) *
+            (float(SEA_LEVEL_PRESSURE_ISA) / SEA_LEVEL_DENSITY_ISA))
+EXPONENT = ( GAMMA - 1 ) / GAMMA
+CONVERT_MPS_TO_KNOTS = 1.943844
+
+
 export class SpeedDisplay {
+
+
+
 
     constructor (app, x , y, width, height, radius){
 
@@ -249,18 +262,23 @@ export class SpeedDisplay {
 
     set groundSpeed(new_value) {
         this.groundSpeedValue = new_value
-        //this.speedText.text = this.QNHFormat.format(Math.floor(new_value)/100) + " in";
     }
 
-    get groundSpeed() {
-        return this.groundSpeedValue;
+    /**  */
+    set staticPressure(newValue) {
+        this.staticPressureValue = newValue;
     }
 
-    set trueAirSpeed(new_value) {
-        this.trueAirSpeedValue = new_value;
-    }
 
-    get trueAirSpeed() {
-        return this.trueAirSpeedValue;
+
+    set temperature(newValue) {
+        const LAPSERATE = 0.0019812;
+        const TEMPEXPONENT = 0.234960;
+        const CTOK = 273.15;
+        const STDTEMPK = CTOK + 15;
+        let oATempK = newValue + CTOK;
+        let stdTempK =  STDTEMPK - LAPSERATE * this.pressureAltitudeValue;
+        this.densityAltitudeValue = Math.round(this.pressureAltitudeValue + (stdTempK/LAPSERATE) * (1 - Math.pow((stdTempK/oATempK),TEMPEXPONENT)));
+        console.log("Ts = " + stdTempK + "| T = "+ oATempK + "| Palt = " + this.pressureAltitudeValue + "| Dalt = " +this.densityAltitudeValue);
     }
 }
