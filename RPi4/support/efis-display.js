@@ -239,6 +239,7 @@ function DisplayUpdateLoop(delta) {
 
     speedDisplay.groundSpeed = dataObject.gps_speed;
     speedDisplay.update();
+    
     tempTimeDisplay.temperature = dataObject.temperature;
     tempTimeDisplay.timeHour = dataObject.tm_hour
     tempTimeDisplay.timeMinute = dataObject.tm_min;
