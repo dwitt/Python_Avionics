@@ -258,11 +258,12 @@ async def process_can_messages(reader, data):
 
         # recieve static pressure and temperature
         elif msg.arbitration_id == CAN_STATICP_MSG_ID:
-            (static_pressure, temperature, _, _, _, _, _) = (
-                struct.unpack("<hbbbbbb", msg.data)
+            (static_pressure, temperature, differential_pressure, _, _, _) = (
+                struct.unpack("<hbhbbb", msg.data)
             )
             data.static_pressure = static_pressure
             data.temperature = temperature
+            data.differential_pressure = differential_pressure
 
         elif msg.arbitration_id == 0x2E:
             (qnh_hpa, qnhx4, dummy_3, dummy_4, dummy_5, dummy_6) = (
