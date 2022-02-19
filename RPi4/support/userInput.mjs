@@ -14,7 +14,11 @@ var Application = PIXI.Application,
     Container = PIXI.Container,
     Text = PIXI.Text;
 
+    const DEBUG = false;
+
 export class UserInput {
+
+
 
     /**
      * The UserInput class allows the user to select between various elements using
@@ -50,16 +54,19 @@ export class UserInput {
         this.virtualEncoderForSelection = 0;
         
         // TODO: Remove this later. It is for testing 
-        let displayHeight = app.screen.height;
+        if (DEBUG) {
 
-        this.itemSelectorText = this.createTextObjectAt(10, displayHeight);
+            let displayHeight = app.screen.height;
 
-        this.encoderText = this.createTextObjectAt(50, displayHeight);
+            this.itemSelectorText = this.createTextObjectAt(10, displayHeight);
 
-        app.stage.addChild(this.itemSelectorText);
-        app.stage.addChild(this.encoderText);
+            this.encoderText = this.createTextObjectAt(50, displayHeight);
 
-        this.app = app;
+            app.stage.addChild(this.itemSelectorText);
+            app.stage.addChild(this.encoderText);
+
+            this.app = app;
+        }
 
         //TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Remove
     }
@@ -110,8 +117,10 @@ export class UserInput {
             // TODO: Saving the encoder position does not appear to be working.
             // TODO:     This needs debugging.
             this.encoderAdjustment = position;
-            console.log("First Pass processing encoder");
-            console.log(this.encoderAdjustment);
+            if (DEBUG) {
+                console.log("First Pass processing encoder");
+                console.log(this.encoderAdjustment);
+            }
 
             // check if we have any registered callbacks
             if (this.numberOfCallbacksRegistered > 0 && position !== undefined) {
@@ -227,11 +236,14 @@ export class UserInput {
 
                     // TODO: debugging output
                     // Output the currently selected item
-                    this.itemSelectorText.text = this.currentSelection.toString();
+                    if (DEBUG) {
+                        this.itemSelectorText.text = this.currentSelection.toString();
+                    }
                     // Calculate and display the encoder value for the item
                     let itemEncoderPosition = this.virtualEncoderValue[this.currentSelection];
-                    this.encoderText.text = itemEncoderPosition;
-
+                    if (DEBUG) {
+                        this.encoderText.text = itemEncoderPosition;
+                    }
 
                 } else {
                     // we are in adjustment mode
@@ -249,7 +261,9 @@ export class UserInput {
                     );
 
                     //TODO: debugging output to the screen
-                    this.encoderText.text = encoderPosition.toString();
+                    if (DEBUG) {
+                        this.encoderText.text = encoderPosition.toString();
+                    }
                 }
 
                 // Save the last positoin for the next time through
