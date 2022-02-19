@@ -245,13 +245,13 @@ def main():
 
         if previous_differential_pressure != differential_pressure_filtered:
             # calculate airspeed if pressure has changed
+            if differential_pressure_filtered > 0:
 
             # airspeed= CONVERT_MPS_TO_KNOTS * math.sqrt(MULTIPLIER * (
             #     pow((( abs(differential_pressure) / SEA_LEVEL_PRESSURE_ISA) + 1) ,
             #     EXPONENT) - 1))
             #
-            
-            if differential_pressure_filtered > 0:
+
                 airspeed = 2 * math.sqrt( 2 * abs(differential_pressure_filtered) /
                                     SEA_LEVEL_DENSITY_ISA )
             else:
@@ -335,13 +335,15 @@ def main():
             #print("Can Air")
 
         # --- Send Raw pressure and temperature sensor data                 ---
+        # --- added Raw Differential pressure id Pa 
         if (current_time_millis > can_raw_timestamp + CAN_RAW_PERIOD +
             random.randint(0,50)):
 
-            raw_data = struct.pack("<hbBBBBB",
+            raw_data = struct.pack("<hbhBBB",
                                 int(static_pressure_filtered / 10),
                                 int(temperature),
-                                0,0,0,0,0)
+                                int (differential_pressure_filtered),
+                                0,0,0)
             message = canio.Message(id=CAN_RAW_MSG_ID, data=raw_data)
             can.send(message)
             can_raw_timestamp = current_time_millis
