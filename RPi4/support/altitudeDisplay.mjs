@@ -262,6 +262,7 @@ export class AltitudeDisplay {
         return this.gpsAltitudeValue
     }
 
+    //TODO: Delete the setter and getter for densityAltitude
     set densityAltitude(new_value) {
         this.densityAltitudeValue = new_value;
     }
@@ -283,7 +284,7 @@ export class AltitudeDisplay {
         let oATempK = newValue + CTOK;
         let stdTempK =  STDTEMPK - LAPSERATE * this.pressureAltitudeValue;
         this.densityAltitudeValue = Math.round(this.pressureAltitudeValue + (stdTempK/LAPSERATE) * (1 - Math.pow((stdTempK/oATempK),TEMPEXPONENT)));
-        console.log("Ts = " + stdTempK + "| T = "+ oATempK + "| Palt = " + this.pressureAltitudeValue + "| Dalt = " +this.densityAltitudeValue);
+        //console.log("Ts = " + stdTempK + "| T = "+ oATempK + "| Palt = " + this.pressureAltitudeValue + "| Dalt = " +this.densityAltitudeValue);
     }
 
 }
