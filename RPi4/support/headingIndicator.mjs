@@ -514,10 +514,11 @@ export class HeadingIndicator {
 
         // process the encoder value provided
         if (changable && !this.changeableFirstPass) {
-            // TODO: process the value provided
-            //this.my_value = 2992 + value;
+
             if (value >= 0) {
                 this._bugValue = value % 360;
+            } else {
+                this._bugValue = 360 + (value % 360);
             }
             this.bugText.text = this._bugValue.toString();
             this.positionHeadingBugOnRibbon(this._value);
