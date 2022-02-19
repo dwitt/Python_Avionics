@@ -27,12 +27,12 @@ var Graphics = PIXI.Graphics,
 
 // Used for calibrated airspeed (*** This calculation is not currently used ***)
 const GAMMA = 1.401;                // ratio of specific heats of air
-SEA_LEVEL_PRESSURE_ISA = 101325     # Pa
-SEA_LEVEL_DENSITY_ISA = 1.225       # Kg / ( m * s^2 )
-MULTIPLIER = ((2 * GAMMA) / (GAMMA - 1) *
-            (float(SEA_LEVEL_PRESSURE_ISA) / SEA_LEVEL_DENSITY_ISA))
-EXPONENT = ( GAMMA - 1 ) / GAMMA
-CONVERT_MPS_TO_KNOTS = 1.943844
+// SEA_LEVEL_PRESSURE_ISA = 101325     // Pa
+// SEA_LEVEL_DENSITY_ISA = 1.225       // Kg / ( m * s^2 )
+// MULTIPLIER = ((2 * GAMMA) / (GAMMA - 1) *
+//             (float(SEA_LEVEL_PRESSURE_ISA) / SEA_LEVEL_DENSITY_ISA))
+// EXPONENT = ( GAMMA - 1 ) / GAMMA
+// CONVERT_MPS_TO_KNOTS = 1.943844
 
 
 export class SpeedDisplay {
@@ -49,6 +49,11 @@ export class SpeedDisplay {
 
         this.groundSpeedValue = 0;
         this.trueAirSpeedValue = 0;
+        this.staticPressureValue = 0;
+        this.differentialPressureValue = 0;
+        this.outsideAirTemperatureValue = 0;
+        this.mach = 0;
+        this.speedOfSound = 0;
 
         this.container = new Container();
         this.colour = "chartreuse";
@@ -260,25 +265,40 @@ export class SpeedDisplay {
         }
     }
 
-    set groundSpeed(new_value) {
-        this.groundSpeedValue = new_value
+    set groundSpeed(newValue) {
+        this.groundSpeedValue = newValue;
     }
 
-    /**  */
     set staticPressure(newValue) {
         this.staticPressureValue = newValue;
     }
 
+    set differentialPressure(newValue) {
+        const GAMMA = 1.401;
+        const CONSTANT1 = 2 / (GAMMA - 1);
+        const CONSTANT2 = (GAMMA - 1) / GAMMA;
+        
+        this.differentialPressureValue = newValue;
 
+        if (this.staticPressureValue > 0) {
+            // Calculate Mach number
+            this.mach = Math.sqrt(CONSTANT1 * (
+                Math.pow((this.differentialPressureValue / this.staticPressureValue) + 1, CONSTANT2) - 1));
+        }
+    }
 
-    set temperature(newValue) {
-        const LAPSERATE = 0.0019812;
-        const TEMPEXPONENT = 0.234960;
-        const CTOK = 273.15;
-        const STDTEMPK = CTOK + 15;
-        let oATempK = newValue + CTOK;
-        let stdTempK =  STDTEMPK - LAPSERATE * this.pressureAltitudeValue;
-        this.densityAltitudeValue = Math.round(this.pressureAltitudeValue + (stdTempK/LAPSERATE) * (1 - Math.pow((stdTempK/oATempK),TEMPEXPONENT)));
-        console.log("Ts = " + stdTempK + "| T = "+ oATempK + "| Palt = " + this.pressureAltitudeValue + "| Dalt = " +this.densityAltitudeValue);
+    set indicatedTemperature(newValue) {
+        const CONVERTTOKELVIN = 273.15;  // add to celcius
+        const RECOVERYFACTOR = 0.95;
+
+        const RAIR = 287.05;             // J / kg-K
+        const GAMMA = 1.401;
+        const CONSTANT1 = Math.sqrt(GAMMA * RAIR);
+
+        if (this.mach != 0) {
+            this.outsideAirTemperatureValue = (newValue + CONVERTTOKELVIN) / (1 + 0.2 * RECOVERYFACTOR * this.mach^2);
+            this.speedOfSoundValue = CONSTANT1 * Math.sqrt(this.outsideAirTemperatureValue);
+            this.trueAirSpeedValue = this.mach * this.speedOfSoundValue;
+        }
     }
 }
