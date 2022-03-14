@@ -238,6 +238,10 @@ function DisplayUpdateLoop(delta) {
     headingIndicator.value = dataObject.yaw;
 
     speedDisplay.groundSpeed = dataObject.gps_speed;
+    speedDisplay.staticPressure = dataObject.static_pressure;
+    speedDisplay.differentialPressure = dataObject.differential_pressure;
+    speedDisplay.indicatedTemperature = dataObject.temperature;
+    //console.log("Static P = " + dataObject.static_pressure + "| Diff P = " + dataObject.differential_pressure + "| Temp = " + dataObject.temperature);
     speedDisplay.update();
     
     tempTimeDisplay.temperature = dataObject.temperature;
