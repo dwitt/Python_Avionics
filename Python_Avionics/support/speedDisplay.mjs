@@ -256,11 +256,11 @@ export class SpeedDisplay {
     update() {
         if (this.displayItem == GS) {
             if (this.groundSpeedValue !== undefined) {
-                this.speedText.text = this.groundSpeedValue;
+                this.speedText.text = String(Math.round(this.groundSpeedValue));
             }
         }
         else if (this.displayItem == TAS) {
-            this.speedText.text = this.trueAirSpeedValue;
+            this.speedText.text = String(Math.round(this.trueAirSpeedValue));
         
         }
     }
@@ -270,7 +270,7 @@ export class SpeedDisplay {
     }
 
     set staticPressure(newValue) {
-        this.staticPressureValue = newValue;
+        this.staticPressureValue = newValue * 10;
     }
 
     set differentialPressure(newValue) {
@@ -278,27 +278,37 @@ export class SpeedDisplay {
         const CONSTANT1 = 2 / (GAMMA - 1);
         const CONSTANT2 = (GAMMA - 1) / GAMMA;
         
-        this.differentialPressureValue = newValue;
+        if (newValue >= 0) {
+            this.differentialPressureValue = newValue;
+        } else {
+            this.differentialPressureValue = 0;
+        }
 
         if (this.staticPressureValue > 0) {
             // Calculate Mach number
             this.mach = Math.sqrt(CONSTANT1 * (
                 Math.pow((this.differentialPressureValue / this.staticPressureValue) + 1, CONSTANT2) - 1));
+        } else {
+            this.mach = 0;
         }
+        //console.log("mach = " + this.mach)
     }
 
     set indicatedTemperature(newValue) {
         const CONVERTTOKELVIN = 273.15;  // add to celcius
         const RECOVERYFACTOR = 0.95;
+        const CONVERTMPSTOKNOTS = 1.943844
 
         const RAIR = 287.05;             // J / kg-K
         const GAMMA = 1.401;
-        const CONSTANT1 = Math.sqrt(GAMMA * RAIR);
+        const CONSTANT1 = Math.sqrt(GAMMA * RAIR) * CONVERTMPSTOKNOTS;
 
-        if (this.mach != 0) {
-            this.outsideAirTemperatureValue = (newValue + CONVERTTOKELVIN) / (1 + 0.2 * RECOVERYFACTOR * this.mach^2);
-            this.speedOfSoundValue = CONSTANT1 * Math.sqrt(this.outsideAirTemperatureValue);
-            this.trueAirSpeedValue = this.mach * this.speedOfSoundValue;
-        }
+        this.outsideAirTemperatureValue = (newValue + CONVERTTOKELVIN) / (1 + 0.2 * RECOVERYFACTOR * Math.pow(this.mach,2));
+        this.speedOfSoundValue = CONSTANT1 * Math.sqrt(this.outsideAirTemperatureValue);
+        this.trueAirSpeedValue = this.mach * this.speedOfSoundValue;
+
+
+        //console.log("temp = " + this.outsideAirTemperatureValue)
+        //console.log("C = " + this.speedOfSoundValue);
     }
 }

@@ -2,7 +2,7 @@
 # ~/.xinitrc
 
 
-xrandr --output HDMI-1 --mode 800x480
+xrandr --output DSI-1 --mode 800x480 --rotate left
 
 # disable energy star features
 xset -dpms

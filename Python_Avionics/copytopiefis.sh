@@ -4,7 +4,9 @@
 
 piefis_main_dir=/home/pi/Python_Avionics/
 piefis_support_dir=/home/pi/Python_Avionics/support/
-destination_server=piefis-4.local
+piefis_linux_dir=/home/pi/Python_Avionics/linux/
+
+destination_server=piefis-4-proto.local
 
 echo 'Copying main files to the Pi Efis'
 
@@ -32,5 +34,9 @@ rsync support/tempTimeDisplay.mjs pi@"$destination_server":"$piefis_support_dir"
 rsync support/airSpeedWheel.mjs pi@"$destination_server":"$piefis_support_dir"airSpeedWheel.mjs
 rsync support/altitudeWheel.mjs pi@"$destination_server":"$piefis_support_dir"altitudeWheel.mjs
 
+rsync ../linux/.bash_profile pi@"$destination_server":"$piefis_linux_dir".bash_profile
+rsync ../linux/.xinitrc pi@"$destination_server":"$piefis_linux_dir".xinitrc
+rsync ../linux/interface-can pi@"$destination_server":"$piefis_linux_dir"interface-can
+rsync ../linux/piefis.service pi@"$destination_server":"$piefis_linux_dir"piefis.service
 
 echo 'Done'
