@@ -60,7 +60,7 @@ def main():
     can_gps1_timestamp = 0
     can_gps2_timestamp = 0
     can_time_sync_timestamp = 0
-    
+
     gps_has_date = False
 
     # -----------------------------------------------------------------------------
@@ -218,7 +218,7 @@ def main():
                 hour = gps.timestamp_utc.tm_hour
                 minute = gps.timestamp_utc.tm_min
                 second = gps.timestamp_utc.tm_sec
-                
+
                 if month > 0 and day > 0:
                     gps_has_date = True
 

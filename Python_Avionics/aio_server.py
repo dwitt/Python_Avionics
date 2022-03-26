@@ -12,8 +12,11 @@ from aiohttp import web #pylint: disable=import-error
 import aiohttp #pylint: disable=import-error
 import can #pylint: disable=import-error
 
-import board #pylint: disable=import-error
+#import board #pylint: disable=import-error
+from adafruit_extended_bus import ExtendedI2C as I2C
 from adafruit_seesaw import seesaw, rotaryio, digitalio #pylint: disable=import-error
+
+from rpi_backlight import Backlight
 
 # Debugging constants
 DEBUG = False
@@ -113,6 +116,7 @@ class WebSocketResponse:
         self.data = None
         self.last_qnh = None
         self.can_qnh_timestamp = int(time.monotonic_ns() / 1000000)
+        self.backlight = Backlight()
 
     @property
     def web_socket(self):
@@ -148,7 +152,9 @@ class WebSocketResponse:
                         pass
                     #TODO: Handle no data
 
+                    # The efis-display.js will send json data prefixed with 'json'
                     if msg.data[0:4] == 'json':
+                        # process the json send from the efis-display.js
                         self.process_json_data(msg)
 
                 elif msg.type == aiohttp.WSMsgType.ERROR:
@@ -175,9 +181,15 @@ class WebSocketResponse:
                 if DEBUG_QNH:
                     print("QNH from json=", end = "")
                     print(dict_object['qnh'], end = "")
-
+                # process a qnh object
                 qnh = dict_object['qnh']
+                brightness = dict_object['brightness']
+                if DEBUG:
+                    print(f'Brightness: {brightness}')
                 self.process_qnh(qnh)
+                # process a brightness object
+                self.backlight.brightness = brightness
+
             except: # pylint: disable=bare-except
                 #data not recieved so ignore it
                 pass
@@ -383,10 +395,12 @@ def connect_to_rotary_encoder(addr=0x36):
     and the button.
     """
     # create seesaw connection to I2C
-    my_seesaw = seesaw.Seesaw(board.I2C(), addr)
+    #my_seesaw = seesaw.Seesaw(board.I2C(), addr)
+    my_seesaw = seesaw.Seesaw(I2C(5), addr)
 
     seesaw_product = (my_seesaw.get_version() >> 16) & 0xFFFF
-    #print("Found product {}".format(seesaw_product))
+    if DEBUG:
+        print("Found product {}".format(seesaw_product))
     if seesaw_product != 4991:
         print("Wrong firmware loaded?  Expected 4991")
 
