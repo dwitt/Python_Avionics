@@ -15,6 +15,7 @@ import { UserInput } from './userInput.mjs';
 import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
 import { AirspeedWheel } from './airSpeedWheel.mjs';
 import { AltitudeWheel } from './altitudeWheel.mjs';
+import { Brightness } from './brightness.mjs';
 
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
 
@@ -40,6 +41,7 @@ var Application = PIXI.Application,
 
 var CAN_QNH_PERIOD = 1000;   // time in milliseconds (1 second)
 var last_qnh = 29.92;
+var last_brightness = null;     // force a brightness change of first pass
 var can_qnh_timestamp = Date.now();
 var current_time_millis = Date.now();
 
@@ -142,6 +144,7 @@ var attitudeIndicator,
     speedDisplay,
     altitudeDisplay,
     tempTimeDisplay,
+    brightness,
     userInput;
 
     
@@ -194,14 +197,17 @@ function setup() {
 
     var aircraft = new AircraftIndicator(app);
 
-    slipBallIndicator = new SlipBallIndicator(app);
+    //slipBallIndicator = new SlipBallIndicator(app);
     headingIndicator = new HeadingIndicator(app, x );//- 260);
     //menu = new Interactions(app, x - 150, y - 40, 150, 40);
+
+    brightness = new Brightness(app);
 
     userInput = new UserInput(app);
 
     userInput.registerCallback(qnhDisplay);
     userInput.registerCallback(tempTimeDisplay);
+    userInput.registerCallback(brightness);
     userInput.registerCallback(speedDisplay);
     userInput.registerCallback(headingIndicator);
     userInput.registerCallback(altitudeDisplay);
@@ -231,9 +237,9 @@ function DisplayUpdateLoop(delta) {
     airspeedRibbon.value = dataObject.airspeed;
     vsiIndicator.value = dataObject.vsi;
 
-    slipBallIndicator.accZ = dataObject.accz;
-    slipBallIndicator.accY = dataObject.accy;
-    slipBallIndicator.update();
+    //slipBallIndicator.accZ = dataObject.accz;
+    //slipBallIndicator.accY = dataObject.accy;
+    //slipBallIndicator.update();
 
     headingIndicator.value = dataObject.yaw;
 
@@ -261,12 +267,15 @@ function DisplayUpdateLoop(delta) {
     // Send the qnh value out to python using the websocket and json
     current_time_millis = Date.now();
 
-    if (qnhDisplay.value != last_qnh || current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD) {
+    if (qnhDisplay.value != last_qnh || 
+        current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD ||
+        brightness.value != last_brightness) {
         
         last_qnh = qnhDisplay.value;
+        last_brightness = brightness.value;
         can_qnh_timestamp = current_time_millis;
 
-        var obj = {qnh: qnhDisplay.value, ticker: delta, position: dataObject.position};
+        var obj = {qnh: qnhDisplay.value, ticker: delta, position: dataObject.position, brightness: brightness.value};
 
         var json = JSON.stringify(obj);
         if (myWebSocket.readyState == 1) {
