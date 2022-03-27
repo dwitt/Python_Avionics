@@ -29,6 +29,7 @@ export class HeadingIndicator {
 
         // TODO: Create some consistency for the screen width variable
         this.displayWidth = app.screen.width;
+        this.displayHeight = app.screen.height;
         
         let height = 36;            // height of heading ribbon
 
@@ -42,6 +43,11 @@ export class HeadingIndicator {
 
 
         let verticalCharacterCentre = this.calculateCharacterVerticalCentre(magnifierFontSize);
+
+        /**********************************************************************
+         * Create a horizontal strip heading indicator at the top of the display
+         *
+         **********************************************************************/
 
         this.headingContainer = new Container();
 
@@ -238,6 +244,38 @@ export class HeadingIndicator {
          */
 
         app.stage.addChild(this.headingContainer);
+
+        /**********************************************************************
+         * Create a Circular heading Indicator at the bottome of the display
+         **********************************************************************/
+    
+        // find the smallest screen dimension and use it to determine the size 
+        // of all arcs
+
+        let minimum_screen = Math.min(app.screen.width, app.screen.height);
+        let radius = (minimum_screen / 2 ) - 0 ;    // duplicated in the drawing of the BankArc
+
+        this.headingCircularContainer = this.createCircularContainer(radius);
+
+        /**
+         * Create the background for the arc
+         */
+
+        let headingCircularBackground = this.createCircularBackground(radius);
+        this.headingCircularContainer.addChild(headingCircularBackground);
+
+        /**
+         * Create the foreground for the heading arc
+         */
+
+        let headingCircular = this.createCircularHeadingForeground(radius);
+        this.headingCircularContainer.addChild(headingCircular);
+
+        /**
+         * Add the container to the display
+         */
+
+         app.stage.addChild(this.headingCircularContainer);
 
     }
     /**
@@ -549,6 +587,123 @@ export class HeadingIndicator {
 
         this.headingRibbon.x = this.displayWidth/2 - this._value * this.pixelsPerDegree;
         this.positionHeadingBugOnRibbon(new_value);
+
+        /**
+         * Position circular heading indicator
+         */
         
+        this.headingCircularContainer.angle = - this._value;
+    }
+
+    createCircularContainer(radius){
+        let container = new Container();
+        container.x = this.displayWidth / 2 ;
+        container.y = this.displayHeight + .65 * radius;
+        return container;
+    }
+
+    createCircularBackground(radius){
+        // Set the background colours and styles
+        let graphics = new Graphics();
+
+        let backgroundColour = 0x000000;        // black
+        let backgroundAlpha = 0.50;             // 25%
+        let backgroundOutlineWidth = 1.0;       // 1px
+        let backgroundOutlineColour = 0x000000; // black
+        let backgroundOutlineAlpha = 0.25;      // 25%
+
+        graphics.lineStyle(backgroundOutlineWidth, 
+            backgroundOutlineColour, 
+            backgroundOutlineAlpha);
+
+        // Draw the darkened background
+        // Located it at 0,0 then move it to the correct position
+
+        graphics.beginFill(backgroundColour, backgroundAlpha);
+        graphics.drawCircle(0,0,radius);
+        graphics.endFill();
+
+        return graphics;
+    }
+
+    createCircularHeadingForeground(radius){
+
+        let graphics = new Graphics();
+
+        let lineineWidth = 2.0
+        let lineColour = 0xffffff;
+        let lineAlpha = 1.0;
+
+        graphics.lineStyle(lineineWidth,
+            lineColour,
+            lineAlpha);
+
+        let textStyle = new PIXI.TextStyle({
+            fontFamily: "Tahoma",
+            fontSize: 22,
+            fill: "#ffffff",
+            fontWeight: "normal"  
+        });
+
+        // Set the length of the various tick marks
+        let shortLength = 5;
+        let longLength = 15;
+        let midLength =10
+
+        // Declare variables
+        let startLength;
+        let angleRadians;
+        let x,y;
+        let degreesString;
+        let xStart, xFinish, yStart, yFinish;
+
+        for(let i = 0; i <= 360; i = i + 5) {
+            // Draw tick marks every 5 degrees
+            // Define 0 degrees as vertical up
+            if (i % 30 == 0) {
+                startLength = radius - longLength;
+            } else if ( i % 10 == 0 ){
+                startLength = radius - midLength;
+            } else {
+                startLength = radius - shortLength;
+            }
+            angleRadians = Math.PI * i / 180;
+
+            y = - Math.cos(angleRadians);
+            x = Math.sin(angleRadians); 
+
+            xStart = x * startLength;
+            yStart = y * startLength;
+
+            xFinish = x * radius;
+            yFinish = y * radius;
+
+            graphics.moveTo(xStart, yStart);
+            graphics.lineTo(xFinish, yFinish);
+
+            // Add text
+            if (i % 30 == 0) {
+                if (i % 90 == 0) {
+                    if (i == 90) {
+                        degreesString = "E";
+                    } else if (i == 180) {
+                        degreesString = "S";
+                    } else if (i == 270) {
+                        degreesString = "W";
+                    } else {
+                        degreesString = "N";
+                    }
+                } else {
+                    degreesString = String(i / 10);
+                }
+                let text = new Text(degreesString,textStyle);
+                text.anchor.set(0.5,0);
+                text.position.set(xStart,yStart);
+                text.rotation = angleRadians;
+
+                graphics.addChild(text);
+            }
+        }
+        return graphics;
     }
 }
