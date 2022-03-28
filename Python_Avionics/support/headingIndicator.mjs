@@ -254,8 +254,12 @@ export class HeadingIndicator {
 
         let minimum_screen = Math.min(app.screen.width, app.screen.height);
         let radius = (minimum_screen / 2 ) - 0 ;    // duplicated in the drawing of the BankArc
+        let xOrigin = this.displayWidth / 2 ;
+        let yOrigin = this.displayHeight + .65 * radius;
 
-        this.headingCircularContainer = this.createCircularContainer(radius);
+        this.headingCircularContainer = new Container();
+        this.headingCircularContainer.x = xOrigin;
+        this.headingCircularContainer.y = yOrigin;
 
         /**
          * Create the background for the arc
@@ -268,14 +272,35 @@ export class HeadingIndicator {
          * Create the foreground for the heading arc
          */
 
-        let headingCircular = this.createCircularHeadingForeground(radius);
-        this.headingCircularContainer.addChild(headingCircular);
+        let headingCircularForeground = this.createCircularHeadingForeground(radius);
+        this.headingCircularContainer.addChild(headingCircularForeground);
+
+        /**
+         * Create the heading bug for the cicular indicator
+         */
+
+        let circularBug = this.createCircularHeadingBug(radius);
+        this.headingCircularContainer.addChild(circularBug);
+
+        /**
+         * Create the heading pointer for the circular indicator
+         */
+
+        let circularPointer = this.createCircularHeadingPointer(radius);
+        //circularPointer.x = xOrigin;
+        //circularPointer.y = yOrigin;
+
+        let selectableCircularGraphics = this.createCircularSelectableGraphic(radius);
+        selectableCircularGraphics.x = xOrigin;
+        selectableCircularGraphics.y = yOrigin;
 
         /**
          * Add the container to the display
          */
 
          app.stage.addChild(this.headingCircularContainer);
+         app.stage.addChild(circularPointer);
+         app.stage.addChild(selectableCircularGraphics);
 
     }
     /**
@@ -595,12 +620,6 @@ export class HeadingIndicator {
         this.headingCircularContainer.angle = - this._value;
     }
 
-    createCircularContainer(radius){
-        let container = new Container();
-        container.x = this.displayWidth / 2 ;
-        container.y = this.displayHeight + .65 * radius;
-        return container;
-    }
 
     createCircularBackground(radius){
         // Set the background colours and styles
@@ -704,6 +723,119 @@ export class HeadingIndicator {
                 graphics.addChild(text);
             }
         }
+        return graphics;
+    }
+
+    createCircularHeadingBug(radius) {
+
+        var height = 10;             
+        var width = 30;
+        var lineColour = 0xFF0000; 
+        var outlineWidth = 0;
+        var outlineAlpha = 1;
+        var outlineAlignment = 1; // Inner
+        var fillColour = 0xFF0000;
+        var fillAlpha = 1;
+        var triangle = 9;
+    
+        // Create the Graphics
+
+        var graphics = new Graphics();
+
+        // Draw the bug clockwise at the 0 degreee position
+
+        graphics.lineStyle(outlineWidth, lineColour, outlineAlpha, outlineAlignment);
+
+        let halfAngle = Math.atan((width/2) / radius);
+        let xPrime, yPrime;
+        let x1, x2, x3, x4, x5;
+        let y1, y2, y3, y4, y5;
+
+        xPrime = Math.sin(halfAngle);
+        yPrime = Math.cos(halfAngle);
+
+        x1 = 0;
+        y1 = -radius;
+
+        x2 = -radius * xPrime;
+        y2 = -radius * yPrime;
+        
+        x3 = -(radius - height) * xPrime;
+        y3 = -(radius - height) * yPrime;
+
+        x4 = -triangle/2;
+        y4 = y3;
+
+        x5 = 0
+        y5 = -(radius - height + triangle);
+
+
+
+        graphics.moveTo(x1, y1);
+        graphics.beginFill(fillColour, fillAlpha);
+
+        graphics.lineTo(x2, y2);
+        graphics.lineTo(x3, y3);
+        graphics.lineTo(x4, y4);
+        graphics.lineTo(x5, y5);
+        graphics.lineTo(-x4, y4);
+        graphics.lineTo(-x3, y3);
+        graphics.lineTo(-x2, y2);
+        graphics.lineTo(-x1, y1);
+
+        graphics.endFill();
+
+        graphics.angle = -180;
+
+        return(graphics);
+    
+    }
+
+    createCircularHeadingPointer(radius){
+        let height = 30;             
+        let width = 20;
+        let lineColour = 0xFFFFFF; 
+        let outlineWidth = 2;
+        let outlineAlpha = 1;
+        let outlineAlignment = 0; // Inner
+        let fillColour = 0x000000;
+        let fillAlpha = 1;
+    
+        // Create the Graphics
+
+        var graphics = new Graphics();
+
+        // Draw the bug clockwise at the 0 degreee position
+
+        graphics.lineStyle(outlineWidth, lineColour, outlineAlpha, outlineAlignment);
+        graphics.moveTo(this.displayWidth/2 - width/2, this.displayHeight);
+        graphics.beginFill(fillColour, fillAlpha);
+        graphics.lineTo(this.displayWidth/2,(this.displayHeight - height));
+        graphics.lineTo(this.displayWidth/2 + width/2,this.displayHeight);
+        graphics.lineTo(this.displayWidth/2 - width/2, this.displayHeight);
+        graphics.endFill();
+
+
+        return(graphics);
+    }
+
+    createCircularSelectableGraphic(radius){
+        // Set the background colours and styles
+        let graphics = new Graphics();
+
+        let outlineWidth = 1.0;       // 1px
+        let outlineColour = 0xFF0000; // red
+        let outlineAlpha = 1.0;      // 100%%
+
+        graphics.lineStyle(outlineWidth, 
+            outlineColour, 
+            outlineAlpha);
+
+        // Draw the darkened background
+        // Located it at 0,0 then move it to the correct position
+
+        graphics.drawCircle(0,0,radius);
+
         return graphics;
     }
 }
