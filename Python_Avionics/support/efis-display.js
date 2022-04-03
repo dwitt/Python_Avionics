@@ -198,7 +198,7 @@ function setup() {
     var aircraft = new AircraftIndicator(app);
 
     //slipBallIndicator = new SlipBallIndicator(app);
-    headingIndicator = new HeadingIndicator(app, x );//- 260);
+    headingIndicator = new HeadingIndicator(app, x, false, true );//- 260);
     //menu = new Interactions(app, x - 150, y - 40, 150, 40);
 
     brightness = new Brightness(app);
