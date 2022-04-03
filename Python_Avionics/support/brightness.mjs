@@ -31,51 +31,155 @@ export class Brightness {
         this._lowerRangeValue = -100; 
         this._brightness = 100;
 
-        let positionFromBottom = 50; // pixels
-        this.ballDiameter = 20; // pixels
-
-
-        // Construct the brightness indicator
-        this.brightnessGraphics = new Graphics();
-
-        let bgColour = 0xFFFFFF; // white
-        let bgAlpha = 100;
-
-        let lineWidth = 1; // pixels
-        var lineColour = 0x000000; // black
-
-        this.brightnessGraphics.lineStyle(lineWidth, lineColour);
-        this.brightnessGraphics.beginFill(bgColour, this._brightness/100);
-
-        this.brightnessGraphics.drawCircle(0,0, this.ballDiameter/2);
-        this.brightnessGraphics.endFill()
-
-        // Construct the selected brightness indicator
-        this.selectedBrightnessGraphics = new Graphics();
-        lineColour = 0xff0000 // Red
-        this.selectedBrightnessGraphics.lineStyle(lineWidth, lineColour);
-        //this.selectedBrightnessGraphics.beginFill(bgColour,bgAlpha);
-        this.selectedBrightnessGraphics.drawCircle(0,0, this.ballDiameter/2);
-        //this.selectedBrightnessGraphics.endFill();
-
-        // Construct the changeing brightness indicator
-        this.changingBrightnessGraphics = new Graphics();
-        lineColour = 0x00ffff;
-        this.changingBrightnessGraphics.lineStyle(lineWidth, lineColour);
-        //this.changingBrightnessGraphics.beginFill(bgColour, this._brightness/100);
-        this.changingBrightnessGraphics.drawCircle(0,0, this.ballDiameter/2);
-        //this.changingBrightnessGraphics.endFill();
+        let positionFromBottom = 20; // pixels
+        this.ballDiameter = 10; // pixels
 
         this.brightnessContainer = new Container();
+
+        // Construct the brightness indicator
+        this.brightnessGraphics = this.createAdjustment();
+
+        // Construct the selected brightness indicator
+        this.selectedBrightnessGraphics = this.createSelectedBrightnessGraphics();
+
+        // Construct the changeing brightness indicator
+        this.changingBrightnessGraphics = this.createChangableBrightnessGraphics();
+
+
+
         // Add the graphics to the container
         this.brightnessContainer.addChild(this.brightnessGraphics);
+        //this.brightnessContainer.addChild(this.selectedBrightnessGraphics);
+        //this.brightnessContainer.addChild(this.changingBrightnessGraphics);
 
         // position the container
-        this.brightnessContainer.x = 15;
+        this.brightnessContainer.x = positionFromBottom;
         this.brightnessContainer.y = displayHeight - positionFromBottom;
 
         // add the container to the app
         app.stage.addChild(this.brightnessContainer);
+
+    }
+
+    createAdjustment(){
+        var graphics = new Graphics();
+
+        let backgroundColour = 0xFFFFFF; // white
+        let backgroundAlpha = 100;
+
+        let lineWidth = 1; // pixels
+        var lineColour = 0xffffff; // white
+
+        let radius = this.ballDiameter/2
+
+        graphics.lineStyle(lineWidth, lineColour);
+        graphics.beginFill(backgroundColour, this._brightness/100);
+
+        graphics.drawCircle(0,0, this.ballDiameter/2);
+        graphics.endFill()
+
+        let rayOffset = radius + 3;
+        let rayEnd = radius + 6;
+
+        for (let i = 0; i < 360; i = i + 45) {
+            let angle = i * Math.PI / 180
+            graphics.moveTo((rayOffset) * Math.sin(angle), (rayOffset) * Math.cos(angle));
+            graphics.lineTo((rayEnd) * Math.sin(angle), (rayEnd) * Math.cos(angle));
+        }
+
+        return (graphics);
+
+    }
+
+    createSelectedBrightnessGraphics(){
+        // Construct the selected brightness indicator
+        var graphics = new Graphics();
+        let lineWidth = 2;
+        let lineColour = 0xff0000 // Red
+
+        graphics.lineStyle(lineWidth, lineColour);
+        graphics.drawCircle(0,0, this.ballDiameter/2);
+
+        let radius = this.ballDiameter/2
+        let rayOffset = radius + 3;
+        let rayEnd = radius + 6;
+
+        for (let i = 0; i < 360; i = i + 45) {
+            let angle = i * Math.PI / 180
+            graphics.moveTo((rayOffset) * Math.sin(angle), (rayOffset) * Math.cos(angle));
+            graphics.lineTo((rayEnd) * Math.sin(angle), (rayEnd) * Math.cos(angle));
+        }
+
+        return(graphics);
+    }
+
+    createChangableBrightnessGraphics(){
+        // Construct the selected brightness indicator
+
+        let radius = this.ballDiameter/2
+        let rayOffset = radius + 3;
+        let rayEnd = radius + 6;
+        let lineWidth = 2;
+        let lineColour = 0x00ffff; // Cyan
+
+        var graphics = new Graphics();
+
+        graphics.lineStyle(lineWidth, lineColour);
+        graphics.drawCircle(0,0, this.ballDiameter/2);
+
+        graphics.lineStyle(lineWidth, lineColour);
+
+        for (let i = 0; i < 360; i = i + 45) {
+            let angle = i * Math.PI / 180
+            graphics.moveTo((rayOffset) * Math.sin(angle), (rayOffset) * Math.cos(angle));
+            graphics.lineTo((rayEnd) * Math.sin(angle), (rayEnd) * Math.cos(angle));
+        }
+
+        graphics.moveTo(radius + 10, 0);
+        graphics.lineTo(radius + 54, 0);
+
+        this.brightnessSlider = new Graphics();
+
+        this.brightnessSlider.lineStyle(4, lineColour);
+        this.brightnessSlider.moveTo(radius + 12,-radius);
+        this.brightnessSlider.lineTo(radius + 12,radius);
+
+        graphics.addChild(this.brightnessSlider);
+
+        return(graphics);
+    }
+
+    drawChangeableGraphic(graphics, alpha){
+
+        let radius = this.ballDiameter/2
+        let rayOffset = radius + 3;
+        let rayEnd = radius + 6;
+        let lineWidth = 2;
+        let lineColour = 0x00ffff; // Cyan
+        let bgColour = 0xFFFFFF; // White
+
+        graphics.lineStyle(lineWidth, lineColour);
+
+        graphics.beginFill(bgColour, alpha);
+        graphics.drawCircle(0,0, this.ballDiameter/2);
+        graphics.endFill();
+
+        graphics.lineStyle(lineWidth, lineColour);
+
+        for (let i = 0; i < 360; i = i + 45) {
+            let angle = i * Math.PI / 180
+            graphics.moveTo((rayOffset) * Math.sin(angle), (rayOffset) * Math.cos(angle));
+            graphics.lineTo((rayEnd) * Math.sin(angle), (rayEnd) * Math.cos(angle));
+        }
+
+        graphics.moveTo(radius + 10, 0);
+        graphics.lineTo(radius + 54, 0);
+
+        this.brightnessSlider = new Graphics();
+
+        this.brightnessSlider.lineStyle(4, lineColour);
+        this.brightnessSlider.moveTo(radius + 12,-radius);
+        this.brightnessSlider.lineTo(radius + 12,radius);
 
     }
 
@@ -197,20 +301,22 @@ export class Brightness {
 
             this._brightness = _value;
 
-            this.brightnessContainer.removeChild(this.brightnessGraphics);
-            this.brightnessGraphics.clear();
+            // this.brightnessContainer.removeChild(this.brightnessGraphics);
+            // this.brightnessGraphics.clear();
 
-            let bgColour = 0xFFFFFF; // white
-            let bgAlpha = this._brightness/100;
+            // let bgColour = 0xFFFFFF; // white
+            // let bgAlpha = this._brightness/100;
     
-            let lineWidth = 2; // pixels
-            var lineColour = 0x000000; // black
+            // let lineWidth = 1; // pixels
+            // var lineColour = 0xFFFFFF; // black
 
-            this.brightnessGraphics.lineStyle(lineWidth, lineColour);
-            this.brightnessGraphics.beginFill(bgColour, bgAlpha);
-            this.brightnessGraphics.drawCircle(0,0, this.ballDiameter/2);
-            this.brightnessGraphics.endFill();
-            this.brightnessContainer.addChild(this.brightnessGraphics);
+            // this.brightnessGraphics.lineStyle(lineWidth, lineColour);
+            // this.brightnessGraphics.beginFill(bgColour, bgAlpha);
+            // this.brightnessGraphics.drawCircle(0,0, this.ballDiameter/2);
+            // this.brightnessGraphics.endFill();
+
+            // this.brightnessContainer.addChild(this.brightnessGraphics);
+            this.brightnessSlider.x = this._brightness/2.5;
 
             //
             // ----------------------------------------------------------------
@@ -219,6 +325,7 @@ export class Brightness {
 
         } else if (this.changeableFirstPass) {
             // TODO: handle any first pasS requirements
+            this.brightnessSlider.x = this._brightness/2.5;
             this.changeableFirstPass = false;
         }
     }
