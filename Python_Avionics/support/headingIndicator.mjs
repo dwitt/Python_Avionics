@@ -4,13 +4,13 @@
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
-var Application = PIXI.Application,
-    loader = PIXI.Loader.shared,
-    resources = PIXI.Loader.shared.resources,
-    TextureCache = PIXI.utils.TextureCache,
-    Sprite = PIXI.Sprite,
-    Rectangle = PIXI.Rectangle,
-    Graphics = PIXI.Graphics,
+// var Application = PIXI.Application,
+//     loader = PIXI.Loader.shared,
+//     resources = PIXI.Loader.shared.resources,
+//     TextureCache = PIXI.utils.TextureCache,
+//     Sprite = PIXI.Sprite,
+//     Rectangle = PIXI.Rectangle,
+var Graphics = PIXI.Graphics,
     Container = PIXI.Container,
     Text = PIXI.Text;
 
@@ -23,9 +23,11 @@ export class HeadingIndicator {
     /**
      * 
      * @param {object} app Pixijs
-     * @param {number} width thw width of the screen
+     * @param {number} width thw width of the horizontal ribbont
+     * @param {boolean} horizontal True if a horizontal ribbon required
+     * @param {boolean} circular True if a circular ribbon required
      */
-    constructor(app, width) {
+    constructor(app, width, horizontal, circular ) {
 
         // TODO: Create some consistency for the screen width variable
         this.displayWidth = app.screen.width;
@@ -33,29 +35,110 @@ export class HeadingIndicator {
         
         let height = 36;            // height of heading ribbon
 
-        let magnifierFontSize = 28;          // font size for the magnifier 
-
         /** Internal variables variables for the heading value */
         this._value = 0;
         this._previous_value = 0;
-
         this._bugValue = 0;
 
-
-        let verticalCharacterCentre = this.calculateCharacterVerticalCentre(magnifierFontSize);
-
         /**********************************************************************
-         * Create a horizontal strip heading indicator at the top of the display
+         * Create the graphics required for the horizontal ribbon
          *
          **********************************************************************/
 
         this.headingContainer = new Container();
+        this.headingContainer.x = this.displayWidth/2;  // centre the container on the screen
+
+        let headingBackground = this.createHorizontalBackground(width, height);
+        let headingMask = this.createHorizontalMask(width, height);
+        this.headingContainer.mask = headingMask;
+
+        this.headingRibbon = this.createHorizontalRibbon(width, height);
+        let magnifierGraphics = this.createHorizontalMagnifierGraphics(height);
+
+        this.headingBugGraphics = this.createHeadingBug(height);
+
+        this.selectableGraphics = this.createSelectableGraphic(width, height);
+        [this.changableGraphics, this.bugText] = this.createChangableGraphic(width, height);
+        this.bugText.text = "0";
 
         /**********************************************************************
-         * create the background for the heading indicator
-         **********************************************************************/
+         * add the graphics to the container
+         * note that the mask needs to be rendered so it must also be added
+         * to the app somehow.
+         */
 
-        let headingBackground = new Graphics();
+        this.headingContainer.addChild(headingMask);
+        this.headingContainer.addChild(headingBackground);
+        this.headingContainer.addChild(this.headingRibbon);
+        this.headingContainer.addChild(this.headingBugGraphics);
+        this.headingContainer.addChild(magnifierGraphics);
+        /**********************************************************************
+         * add the container to the display
+         */
+
+        if (horizontal) { 
+            app.stage.addChild(this.headingContainer);
+        }
+
+        /**********************************************************************
+         * Create a Circular heading Indicator at the bottom of the display
+         **********************************************************************/
+    
+        // find the smallest screen dimension and use it to determine the size 
+        // of all arcs
+
+        let minimum_screen = Math.min(app.screen.width, app.screen.height);
+        let radius = (minimum_screen / 2 ) - 0 ;    // duplicated in the drawing of the BankArc
+        let xOrigin = this.displayWidth / 2 ;
+        let yOrigin = this.displayHeight  + .65 * radius;
+
+        /**
+         * Create the Circular Container and move it to its origin
+         */
+        this.headingCircularContainer = new Container();
+        this.headingCircularContainer.x = xOrigin;
+        this.headingCircularContainer.y = yOrigin;
+
+        /**
+         * Create the graphics
+         */
+
+        let headingCircularBackground = this.createCircularBackground(radius);
+        this.headingCircularForeground = this.createCircularHeadingForeground(radius);
+        this.circularBug = this.createCircularHeadingBug(radius);
+        let circularPointer = this.createCircularHeadingPointer(yOrigin);
+
+        this.selectedCircularGraphics = this.createCircularSelectableGraphic(radius);
+        [this.changeableCircularGraphics, this.circularBugText ] = this.createChangableCircularGraphic(radius);
+        this.circularBugText.text = "0";
+
+        /**
+         * Add the graphics to the container
+         */
+
+
+        this.headingCircularContainer.addChild(headingCircularBackground);
+        this.headingCircularContainer.addChild(this.headingCircularForeground);
+        this.headingCircularContainer.addChild(this.circularBug);
+        this.headingCircularContainer.addChild(circularPointer);
+
+        if (circular) {
+            app.stage.addChild(this.headingCircularContainer);
+        }
+
+
+    }
+
+    /**
+     * Create the horizontal background for the ribbon at the top of the screen
+     * 
+     * @param {number} width The width of the horizontal ribbon.
+     * @param {number} height The height of the horizontal ribbon.
+     * 
+     * @returns {object} A PixiJS Graphics object.
+     */
+    createHorizontalBackground(width, height){
+        var graphics = new Graphics();
 
         let backgroundColour = 0x000000;        // black
         let backgroundAlpha = 0.25;             // 25%
@@ -63,47 +146,54 @@ export class HeadingIndicator {
         let backgroundOutlineColour = 0x000000; // black
         let backgroundOutlineAlpha = 0.25;      // 25%
 
-        headingBackground.lineStyle(backgroundOutlineWidth, backgroundOutlineColour, backgroundOutlineAlpha);
+        graphics.lineStyle(backgroundOutlineWidth, backgroundOutlineColour, backgroundOutlineAlpha);
         
-        headingBackground.beginFill(backgroundColour, backgroundAlpha);
-        headingBackground.drawRect(-width/2, 0, width, height);
-        headingBackground.endFill();
+        graphics.beginFill(backgroundColour, backgroundAlpha);
+        graphics.drawRect(-width/2, 0, width, height);
+        graphics.endFill();
 
         // position the heading background
         //TODO: Remove positioning of the background and position the container
-        headingBackground.x = this.displayWidth / 2 ;
+        //graphics.x = this.displayWidth / 2 ;
 
-        /**********************************************************************
-         * Create a mask for the ribbon
-         **********************************************************************/
-
-        let headingMask = new Graphics();
+        return (graphics);
+    }
+    /**
+     * Create a mask for the space occupied by the ribbon at the top of the screen
+     * 
+     * @param {number} width The width of the mask.
+     * @param {number} height The height of the mask.
+     * @returns {object} A PixiJS Graphics object.
+     */
+    createHorizontalMask(width, height){
+        var graphics = new Graphics();
 
         let maskColour = 0xFF0000;              // red
 
-        headingMask.beginFill(maskColour);
-        headingMask.drawRect(-width/2, 0, width, height);
-        headingMask.endFill();
+        graphics.beginFill(maskColour);
+        graphics.drawRect(-width/2, 0, width, height);
+        graphics.endFill();
 
-        headingMask.x = this.displayWidth / 2;
+        return (graphics);
+    }
 
-        this.headingContainer.mask = headingMask;
-
-        /**********************************************************************
-         * Create the horizontal ribbon with tick marks and numbers.
-         * This needs to extend beyond 0 and 360 so that it fills the display
-         * when we are at 0/360 degrees.
-         * The amount to be extended will be based on the width requested. The 
-         * ribbon needs to include enough additional space at each end to fill
-         * the space left in the ribbon.
-         * This means that the extra is 1/2 the ribbon width
-         **********************************************************************/
-        this.headingRibbon = new Graphics();
+    /**
+     * Create a graphics object that is a horizontal ribbon to display the current
+     * heading.
+     * @param {number} width The width of the ribbon on the display.
+     * @param {number} height The height of the ribbon on the display.
+     * @returns {object} A PixiJS Graphics object
+     */
+    createHorizontalRibbon(width, height){
+        var graphics = new Graphics();
 
         let pixelsPerTenDegrees = 80; 
         let pixelsPerFiveDegrees = pixelsPerTenDegrees/2;
         this.pixelsPerDegree = pixelsPerTenDegrees/10;
 
+        // The ribbon needs to be long enough so that an extra half of the 
+        // width is available at each end so that the display is filled when
+        // indicating the lowest or highest value.
         let extraRibbonTenDegrees = Math.ceil((width/2)/pixelsPerTenDegrees);
         this.extraRibbonDegrees = extraRibbonTenDegrees * 10;
         let extraRibbonWidth = extraRibbonTenDegrees * pixelsPerTenDegrees;
@@ -125,10 +215,10 @@ export class HeadingIndicator {
         });
 
 
-        this.headingRibbon.lineStyle(lineWidth, lineColour);
+        graphics.lineStyle(lineWidth, lineColour);
 
         for(let i = RibbonStart; i <= RibbonEnd; i = i + this.pixelsPerDegree ){
-            this.headingRibbon.moveTo(i, height);
+            graphics.moveTo(i, height);
             if (i % pixelsPerTenDegrees == 0 ) {
                 let degrees = i/pixelsPerTenDegrees*10;
                 if (degrees < 0) {
@@ -146,58 +236,63 @@ export class HeadingIndicator {
                 let degreesText = new Text(degreesString,textStyle);
                 degreesText.anchor.set(0.5,.1);
                 degreesText.position.set(i,4);
-                this.headingRibbon.addChild(degreesText);
+                graphics.addChild(degreesText);
 
-                this.headingRibbon.lineTo(i, height - lineHeightTenDegree );
+                graphics.lineTo(i, height - lineHeightTenDegree );
             } else if (i% pixelsPerFiveDegrees == 0) {
-                this.headingRibbon.lineTo(i, height - lineHeightFiveDegree);
+                graphics.lineTo(i, height - lineHeightFiveDegree);
             } else {
-                this.headingRibbon.lineTo(i, height - lineHeightDegree);
+                graphics.lineTo(i, height - lineHeightDegree);
             }
         }
 
-        this.headingRibbon.x = this.displayWidth/2 - this._value * this.pixelsPerDegree;  
-
-        /**********************************************************************
-         * create the Ribbon Magnifier
-         */
-
-         let magnifierGraphics = new Graphics();
+        //graphics.x = this.displayWidth/2 - this._value * this.pixelsPerDegree;  
+        graphics.x = - this._value * this.pixelsPerDegree;  
+        return (graphics);
+    }
+    /**
+     * Create the magnifier on the horizontal ribbont that will display the 
+     * current heading. 
+     * @param {*} height The height of the ribbon the magnifier is placed on
+     * @returns 
+     */
+    createHorizontalMagnifierGraphics(height ){
+        let graphics = new Graphics();
 
         let magnifierWidth = 60;                // 60 pixels
         let magnifierHeight = 30;               // 35 pixel
         let magnifierOffset = 5 ;
 
-        lineWidth = 2;
-        lineColour = 0xBBBBBB;
+        let lineWidth = 2;
+        let lineColour = 0xBBBBBB;
         let lineAlpha = 1.0
         let lineAlignment = 0.5;
 
         let magnifierFillColour = 0x000000;     // Black
 
-        magnifierGraphics.beginFill(magnifierFillColour);
-        magnifierGraphics.drawRect(-magnifierWidth/2, -(magnifierHeight + magnifierOffset),
+        graphics.beginFill(magnifierFillColour);
+        graphics.drawRect(-magnifierWidth/2, -(magnifierHeight + magnifierOffset),
             magnifierWidth, magnifierHeight); 
-        magnifierGraphics.endFill();
-        magnifierGraphics.beginFill(magnifierFillColour);
-        magnifierGraphics.drawPolygon(
+        graphics.endFill();
+        graphics.beginFill(magnifierFillColour);
+        graphics.drawPolygon(
             5, -magnifierOffset,
             0, 5-magnifierOffset,
             -5,-magnifierOffset
         );
-        magnifierGraphics.endFill();
+        graphics.endFill();
 
-        magnifierGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
-        magnifierGraphics.moveTo(-magnifierWidth/2,-magnifierHeight-magnifierOffset);
-        magnifierGraphics.lineTo(magnifierWidth/2, -magnifierHeight-magnifierOffset);
-        magnifierGraphics.lineTo(magnifierWidth/2, -magnifierOffset);
-        magnifierGraphics.lineTo(5,-magnifierOffset);
-        magnifierGraphics.lineTo(0,5-magnifierOffset);
-        magnifierGraphics.lineTo(-5,-magnifierOffset);
-        magnifierGraphics.lineTo(-magnifierWidth/2, -magnifierOffset);
-        magnifierGraphics.closePath();
+        graphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
+        graphics.moveTo(-magnifierWidth/2,-magnifierHeight-magnifierOffset);
+        graphics.lineTo(magnifierWidth/2, -magnifierHeight-magnifierOffset);
+        graphics.lineTo(magnifierWidth/2, -magnifierOffset);
+        graphics.lineTo(5,-magnifierOffset);
+        graphics.lineTo(0,5-magnifierOffset);
+        graphics.lineTo(-5,-magnifierOffset);
+        graphics.lineTo(-magnifierWidth/2, -magnifierOffset);
+        graphics.closePath();
 
-        let magnifierTextStyle = new PIXI.TextStyle({
+        let textStyle = new PIXI.TextStyle({
             fontFamily: "Tahoma",
             fontSize: 28,
             fill: "white",
@@ -207,102 +302,20 @@ export class HeadingIndicator {
             
         });
 
-        this.headingText = new Text("0", magnifierTextStyle);
+        let verticalCharacterCentre = this.calculateCharacterVerticalCentre(28);
+        this.headingText = new Text("0", textStyle);
         this.headingText.anchor.set(0.5,verticalCharacterCentre );
         this.headingText.position.set(0, -magnifierHeight/2 - 5);
         
-        magnifierGraphics.addChild(this.headingText);
+        graphics.addChild(this.headingText);
 
-        magnifierGraphics.x = this.displayWidth/2;
-        magnifierGraphics.y = height;
+        //graphics.x = this.displayWidth/2;
+        graphics.y = height;
 
-        /**********************************************************************
-         * add the graphics to the container
-         */
-
-
-        this.headingContainer.addChild(headingMask);
-        this.headingContainer.addChild(headingBackground);
-        this.headingContainer.addChild(this.headingRibbon);
-
-        
-        // TODO: Temporaroy Code to draw the heading bug in the container. 
-        // The bug should be behind the magnifier
-        this.headingBugGraphics = this.createHeadingBug(height);
-        this.headingContainer.addChild(this.headingBugGraphics);
-
-        this.selectableGraphics = this.createSelectableGraphic(width, height);
-        //headingContainer.addChild(this.selectableGraphics);
-
-        [this.changableGraphics, this.bugText] = this.createChangableGraphic(width, height);
-        this.bugText.text = "000";
-        //headingContainer.addChild(this.changableGraphics);
-
-        this.headingContainer.addChild(magnifierGraphics);
-        /**********************************************************************
-         * add the container to the display
-         */
-
-        app.stage.addChild(this.headingContainer);
-
-        /**********************************************************************
-         * Create a Circular heading Indicator at the bottome of the display
-         **********************************************************************/
-    
-        // find the smallest screen dimension and use it to determine the size 
-        // of all arcs
-
-        let minimum_screen = Math.min(app.screen.width, app.screen.height);
-        let radius = (minimum_screen / 2 ) - 0 ;    // duplicated in the drawing of the BankArc
-        let xOrigin = this.displayWidth / 2 ;
-        let yOrigin = this.displayHeight + .65 * radius;
-
-        this.headingCircularContainer = new Container();
-        this.headingCircularContainer.x = xOrigin;
-        this.headingCircularContainer.y = yOrigin;
-
-        /**
-         * Create the background for the arc
-         */
-
-        let headingCircularBackground = this.createCircularBackground(radius);
-        this.headingCircularContainer.addChild(headingCircularBackground);
-
-        /**
-         * Create the foreground for the heading arc
-         */
-
-        let headingCircularForeground = this.createCircularHeadingForeground(radius);
-        this.headingCircularContainer.addChild(headingCircularForeground);
-
-        /**
-         * Create the heading bug for the cicular indicator
-         */
-
-        let circularBug = this.createCircularHeadingBug(radius);
-        this.headingCircularContainer.addChild(circularBug);
-
-        /**
-         * Create the heading pointer for the circular indicator
-         */
-
-        let circularPointer = this.createCircularHeadingPointer(radius);
-        //circularPointer.x = xOrigin;
-        //circularPointer.y = yOrigin;
-
-        let selectableCircularGraphics = this.createCircularSelectableGraphic(radius);
-        selectableCircularGraphics.x = xOrigin;
-        selectableCircularGraphics.y = yOrigin;
-
-        /**
-         * Add the container to the display
-         */
-
-         app.stage.addChild(this.headingCircularContainer);
-         app.stage.addChild(circularPointer);
-         app.stage.addChild(selectableCircularGraphics);
-
+        return (graphics);
     }
+
+
     /**
      * 
      * @param {number} fontSizeToMeasure The font size to measure in points
@@ -486,7 +499,7 @@ export class HeadingIndicator {
         var leaderAndBoxGraphics = new Graphics();
 
         // draw horizontal line in new colour
-        leaderAndBoxGraphics.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlineAlignment);
+        leaderAndBoxGraphics.lineStyle(leaderLineWidth, outlineColour, outlineAlpha, leaderLineAlignment);
 
         leaderAndBoxGraphics.moveTo(0, height - outlineWidth);
         leaderAndBoxGraphics.lineTo(width, height - outlineWidth);
@@ -534,6 +547,8 @@ export class HeadingIndicator {
      callback(selected, changable, value){
 
         // Process changeable first as it should be enabled last
+        // Assuming that were were last in selected state
+        // TODO: add checks for selected state???
         if (changable && !this.changable) {
             // we just became changable
             this.changable = true; // set the changable flag to true
@@ -541,32 +556,71 @@ export class HeadingIndicator {
 
             // clear the selected flag to allow detetion of a selected mode
             // when changable goes false
+            // TODO: *** We need to remove this as we changed the logic
             this.selected = false;
-
-            // indicate that the bug is adjustable
+            // ----------------------------------------------------------------
+            // TODO: Indicate that the element is CHANGEABLE
+            // TODO: We came from the SELECTED state
+            //
             this.headingContainer.addChild(this.changableGraphics);
+            this.headingCircularContainer.addChild(this.changeableCircularGraphics);
+            
+            // TODO: Remove SELECTED element as we won't know to do this latter
+            
+            this.headingCircularContainer.removeChild(this.selectedCircularGraphics);
+            //
+            // ----------------------------------------------------------------            
+        } //else REMOVED else if
 
-        } else if (!changable && this.changable){
+        if (!changable && this.changable){
             // we just left the changable state
             this.changable = false;
+            // ----------------------------------------------------------------
+            // TODO: Indicate that the element is NOT CHANGEABLE
+            //
             this.headingContainer.removeChild(this.changableGraphics);
+            this.headingCircularContainer.removeChild(this.changeableCircularGraphics);
+            //
+            // ----------------------------------------------------------------
+            if (selected) {
+                // we just left changeable but are still selected
+                // ------------------------------------------------------------
+                // TODO: Indcate that we are SELECTED after leaving changeable
+
+                this.headingCircularContainer.addChild(this.selectedCircularGraphics);
+                //
+                // ------------------------------------------------------------
+            }
         }
 
-        // check if selectied was just set while we are not changeable
-        // if changable is set we can ignor this
+        // check if selected was just set while we are not changeable
+        // if changable is set we can ignore this
         if (!changable && (selected && !this.selected)) {
-            // we just became selected or we just left the changable state
+            // we just became selected 
             this.selected = true;
 
-            // indicate that the bug is selectable
-            // Place a red line down the side of the 
+            // ----------------------------------------------------------------
+            // TODO: Indicate that the element is SELECTABLE
+            //
             this.headingContainer.addChild(this.selectableGraphics);
+            this.headingCircularContainer.addChild(this.selectedCircularGraphics);
+            
 
 
-        } else if (!selected && this.selected) {
+            //
+            // ----------------------------------------------------------------
+
+        } //else REMOVED else if
+
+        if (!selected && this.selected) {
             // we left the selected state
             this.selected = false;
+            // ----------------------------------------------------------------
+            // TODO: Indicate that the element is NOT SELECTABLE
+            // TODO: This should only occur when going to the NOT SELECTED and
+            //          NOT CHANGEABLE state
             this.headingContainer.removeChild(this.selectableGraphics);
+            this.headingCircularContainer.removeChild(this.selectedCircularGraphics);
         }
 
         if (!selected && !changable) {
@@ -575,6 +629,7 @@ export class HeadingIndicator {
             
         }
 
+        // ====================================================================
         // process the encoder value provided
         if (changable && !this.changeableFirstPass) {
 
@@ -584,7 +639,11 @@ export class HeadingIndicator {
                 this._bugValue = 360 + (value % 360);
             }
             this.bugText.text = this._bugValue.toString();
+
             this.positionHeadingBugOnRibbon(this._value);
+
+            this.circularBug.angle = - this._value + this._bugValue;
+            this.circularBugText.text = this._bugValue.toString();
 
             // TODO reposition the bug as the value changes
             //this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100) + " in";
@@ -610,14 +669,18 @@ export class HeadingIndicator {
         //TODO: Format this text properly
         this.headingText.text = String(this._value);
 
-        this.headingRibbon.x = this.displayWidth/2 - this._value * this.pixelsPerDegree;
+        //this.headingRibbon.x = this.displayWidth/2 - this._value * this.pixelsPerDegree;
+        this.headingRibbon.x = - this._value * this.pixelsPerDegree;
+        //TODO: check if new_value is required and remove it
         this.positionHeadingBugOnRibbon(new_value);
 
         /**
-         * Position circular heading indicator
+         * Position circular heading and bug indicator by rotation
          */
         
-        this.headingCircularContainer.angle = - this._value;
+        this.headingCircularForeground.angle = - this._value;
+        this.circularBug.angle = - this._value + this._bugValue;
+
     }
 
 
@@ -726,6 +789,11 @@ export class HeadingIndicator {
         return graphics;
     }
 
+    /**
+     * 
+     * @param {number} radius The radius of the heading indicator
+     * @returns 
+     */
     createCircularHeadingBug(radius) {
 
         var height = 10;             
@@ -742,7 +810,9 @@ export class HeadingIndicator {
 
         var graphics = new Graphics();
 
-        // Draw the bug clockwise at the 0 degreee position
+        // Draw the bug clockwise at the 0 degreee position.
+        // The centre of the indicator is at x=0, y=0. +ve is down and to the right
+        // 
 
         graphics.lineStyle(outlineWidth, lineColour, outlineAlpha, outlineAlignment);
 
@@ -785,13 +855,13 @@ export class HeadingIndicator {
 
         graphics.endFill();
 
-        graphics.angle = -180;
+        //graphics.angle = -180;
 
         return(graphics);
     
     }
 
-    createCircularHeadingPointer(radius){
+    createCircularHeadingPointer(yOrigin){
         let height = 30;             
         let width = 20;
         let lineColour = 0xFFFFFF; 
@@ -801,6 +871,7 @@ export class HeadingIndicator {
         let fillColour = 0x000000;
         let fillAlpha = 1;
     
+        let yDisplayBottom =  -(yOrigin - this.displayHeight);
         // Create the Graphics
 
         var graphics = new Graphics();
@@ -808,13 +879,12 @@ export class HeadingIndicator {
         // Draw the bug clockwise at the 0 degreee position
 
         graphics.lineStyle(outlineWidth, lineColour, outlineAlpha, outlineAlignment);
-        graphics.moveTo(this.displayWidth/2 - width/2, this.displayHeight);
+        graphics.moveTo(-width/2, yDisplayBottom);
         graphics.beginFill(fillColour, fillAlpha);
-        graphics.lineTo(this.displayWidth/2,(this.displayHeight - height));
-        graphics.lineTo(this.displayWidth/2 + width/2,this.displayHeight);
-        graphics.lineTo(this.displayWidth/2 - width/2, this.displayHeight);
+        graphics.lineTo(0,(yDisplayBottom - height));
+        graphics.lineTo(width/2, yDisplayBottom);
+        graphics.lineTo(-width/2, yDisplayBottom);
         graphics.endFill();
-
 
         return(graphics);
     }
@@ -826,10 +896,12 @@ export class HeadingIndicator {
         let outlineWidth = 1.0;       // 1px
         let outlineColour = 0xFF0000; // red
         let outlineAlpha = 1.0;      // 100%%
+        var outlineAlignment = 1; // inner
 
         graphics.lineStyle(outlineWidth, 
             outlineColour, 
-            outlineAlpha);
+            outlineAlpha,
+            outlineAlignment);
 
         // Draw the darkened background
         // Located it at 0,0 then move it to the correct position
@@ -837,5 +909,78 @@ export class HeadingIndicator {
         graphics.drawCircle(0,0,radius);
 
         return graphics;
+    }
+
+    /**
+     * Create a PixiJS Graphics object that draws a circle around
+     *      the heading indicator, a leader and a box displaying the
+     *      current heading bug setting to indicate the heading bug can be set
+     * @param {number} radius The radius of the heading indicator circle.
+     * @returns A PixiJS Graphics object that draws the changable graphics.
+     */
+     createChangableCircularGraphic(radius) {
+        
+        var outlineColour = 0x00FFFF;
+        var leaderLineWidth = 2;
+        var leaderLineAlignment = .5;
+        var outlineWidth = 2;
+        var outlineAlpha = 1;
+        var outlineAlignment = 1; // inner
+        var fillColour = 0x000000;
+        var fillAlpha = 1;
+        var boxHeight = 25;
+        var boxWidth = 40;
+        //var boxVerticalOffset = 5;
+        var boxCornerRadius = 7;
+
+        var bugValueTextStyle = new PIXI.TextStyle({
+            fontFamily: "Tahoma",
+            fontSize: 20,
+            fill: "aqua",
+            fontWeight: "normal"
+            
+        });
+
+        var yAnchor = this.calculateCharacterVerticalCentre(20);
+
+        var boxVerticalOffset = radius + 10;
+        
+        var container = new Container();
+        var graphics = new Graphics();
+
+        // draw circular  line in new colour
+        graphics.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlineAlignment);
+        graphics.drawCircle(0,0,radius);
+
+        // draw the leader line
+        graphics.lineStyle(leaderLineWidth, outlineColour, outlineAlpha, leaderLineAlignment);
+        graphics.moveTo(0, - radius);
+        graphics.lineTo(0, - boxVerticalOffset);
+
+
+
+        // draw the box
+        graphics.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlineAlignment);
+
+
+        let topLeftX = - boxWidth / 2;
+        let topLeftY = - boxVerticalOffset - boxHeight;
+        
+        
+        graphics.beginFill(fillColour, fillAlpha);
+        graphics.drawRoundedRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
+        graphics.endFill();
+
+        container.addChild(graphics);
+
+        var textX = boxWidth/2 - 3;
+        var textY = - boxVerticalOffset - (boxHeight / 2);
+        var bugText = new Text("260", bugValueTextStyle);
+        bugText.anchor.set(1, yAnchor);
+        bugText.position.set(textX, textY);
+
+        container.addChild(bugText);
+
+        return [container, bugText];
     }
 }
