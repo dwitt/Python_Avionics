@@ -33,7 +33,7 @@ import neopixel #pylint: disable=import-error
 
 
 from adafruit_bno08x.i2c import BNO08X_I2C
-#rom adafruit_bno08x.spi import BNO08X_SPI
+#from adafruit_bno08x.spi import BNO08X_SPI
 from adafruit_bno08x import (
     BNO_REPORT_ACCELEROMETER,
     BNO_REPORT_GAME_ROTATION_VECTOR,
