@@ -26,7 +26,7 @@ from kalman_filter import KalmanFilter
 
 # Constants
 DEBUG = False
-DEBUG_DIFFERENTIAL = True
+DEBUG_DIFFERENTIAL = False
 DEBUG_STATIC = False
 DEBUG_ALT = False
 DEBUG_VSI = False
@@ -55,10 +55,10 @@ CAN_AIR_MSG_ID = 0x028
 CAN_RAW_MSG_ID = 0x02B
 CAN_QNH_MSG_ID = 0x02E
 
-CAN_AIR_PERIOD = 100 # ms between messages
-CAN_RAW_PERIOD = 500 # ms between messages
+CAN_AIR_PERIOD = 100 # ms between messages (0.1 sec)
+CAN_RAW_PERIOD = 500 # ms between messages (0.5 sec)
 # change to 5 minutes from 6 seconds
-CAN_QNH_PERIOD = 300000 # ms between messages
+CAN_QNH_PERIOD = 300000 # ms between messages (5 min)
 
 # -----------------------------------------------------------------------------
 # --- VSI Storage Interval                                                  ---
@@ -112,7 +112,7 @@ def main():
     can = CAN(spi_bus=spi, cs_pin=chip_select, baudrate=500000)
 
     # MAX31865 RTD module -----------------------------------------------------
-    rtd_chip_select = digitalio.DigitalInOut(board.D5)
+    rtd_chip_select = digitalio.DigitalInOut(board.D24)
     rtd_sensor = adafruit_max31865.MAX31865(spi, rtd_chip_select,
                                             rtd_nominal=100,
                                             ref_resistor=430.0,
@@ -210,6 +210,10 @@ def main():
         # ---------------------------------------------------------------------
 
         temperature = rtd_sensor.temperature
+        if temperature < -127:
+            temperature = -127
+        if temperature > 127:
+            temperature = 128
         if DEBUG_RTD:
             print(f"temperature = {temperature}")
 
@@ -330,25 +334,41 @@ def main():
                                     int(vsi),
                                     0)
             message = canio.Message(id=CAN_AIR_MSG_ID, data=air_data)
-            can.send(message)
+            try:
+                can.send(message)
+            except RuntimeError as error:
+                print("Data send ",error)
             can_air_timestamp = current_time_millis
             #print("Can Air")
 
         # --- Send Raw pressure and temperature sensor data                 ---
-        # --- added Raw Differential pressure id Pa 
+        # --- added Raw Differential pressure in Pa
         if (current_time_millis > can_raw_timestamp + CAN_RAW_PERIOD +
             random.randint(0,50)):
 
-            raw_data = struct.pack("<hbhBBB",
-                                int(static_pressure_filtered / 10),
-                                int(temperature),
-                                int (differential_pressure_filtered),
-                                0,0,0)
-            message = canio.Message(id=CAN_RAW_MSG_ID, data=raw_data)
-            can.send(message)
-            can_raw_timestamp = current_time_millis
-            #print("Can Raw")
 
+            # --- < little endian
+            # --- h (short) integer 2 bytes
+            # --- b (signed char) integer 1 byte
+            # --- h (short) integer 2 bytes
+            # --- B (unsigned char) integer  1 byte
+            try:
+                raw_data = struct.pack("<hbhBBB",
+                                    int(static_pressure_filtered / 10),
+                                    int(temperature),
+                                    int(differential_pressure_filtered),
+                                    0,0,0)
+
+                message = canio.Message(id=CAN_RAW_MSG_ID, data=raw_data)
+                can.send(message)
+                can_raw_timestamp = current_time_millis
+                #print("Can Raw")
+            except OverflowError:
+                print("Unable to pack data")
+            except RuntimeError as error:
+                print("Raw data send ",error)
+            except: #pylint: disable=bare-except
+                print("Unexpected error")
         # --- Send the qnh value if it has not been updated. qnh is         ---
         # --- normally sent from the display (rPi) but if not received is   ---
         # --- rebroadcast in case something else needs it.                  ---
@@ -360,7 +380,12 @@ def main():
                                     int(qnh*4),
                                     0,0,0,0)
             message = canio.Message(id=CAN_QNH_MSG_ID, data=qnh_data)
-            can.send(message)
+            try:
+                can.send(message)
+            except RuntimeError as error:
+                print("QNH send ",error)
+            except: #pylint: disable=bare-except
+                print("Unexpected error")
             can_qnh_timestamp = current_time_millis
 
 if __name__ == '__main__':
