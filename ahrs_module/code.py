@@ -13,6 +13,8 @@ Implementation Notes
 
 * `Adafruit BNO08x Breakout <https:www.adafruit.com/products/4754>`_
 
+** Revisions **
+30-May-2023 - change import for can modules
 
 """
 # pyright: reportMissingImports=false
@@ -36,13 +38,13 @@ from adafruit_bno08x.i2c import BNO08X_I2C
 #from adafruit_bno08x.spi import BNO08X_SPI
 from adafruit_bno08x import (
     BNO_REPORT_ACCELEROMETER,
-    BNO_REPORT_GAME_ROTATION_VECTOR,
+    #BNO_REPORT_GAME_ROTATION_VECTOR,
     BNO_REPORT_GYROSCOPE,
     BNO_REPORT_MAGNETOMETER,
     BNO_REPORT_ROTATION_VECTOR,
-    CALIBRATION_REPORT_INTERVAL,
-    SYSTEM_ORIENTATION,
-    MAGNETOMETER_ORIENTATION
+    CALIBRATION_REPORT_INTERVAL#,
+    #SYSTEM_ORIENTATION,
+    #MAGNETOMETER_ORIENTATION
 )
 
 from quaternion import (
@@ -57,7 +59,9 @@ from micropython import const #pylint: disable=import-error
 if hasattr(board, "CAN_RX"):
     import canio #pylint: disable=import-error
 else:
-    import adafruit_mcp2515 #pylint: disable=import-error
+    #import adafruit_mcp2515 #pylint: disable=import-error
+    # TODO Consider using the import below and removing the one above
+    from adafruit_mcp2515 import MCP2515 as CAN #pylint: disable=no-name-in-module
     from adafruit_mcp2515 import canio #pylint: disable=import-error
 
 # -- Debugging Constants
@@ -91,8 +95,12 @@ def main():
     # --- Setup Communication buses for various peripherals                     ---
     # -----------------------------------------------------------------------------
 
+    # bno -------------------------------------------------------------------------
+
     bno_reset = digitalio.DigitalInOut(board.D11)
     bno_reset.direction = digitalio.Direction.OUTPUT
+
+    #TODO Consider moving this reset to later after the setup
 
     bno_reset.value = False # active low - reset the bno
     time.sleep(.1) # wait 100 ms second
@@ -101,8 +109,14 @@ def main():
 
     # i2c bus ---------------------------------------------------------------------
 
+    # i2c setup using busio so frequency and timeout can be set.
+    #     The long timeout was required to work around some issues
+
     i2c = busio.I2C(board.SCL, board.SDA, frequency=400000, timeout = 1000)
+
     #i2c = board.I2C()
+
+    # i2c bitbangio was used in early version for testing
     #i2c = bitbangio.I2C(board.SCL, board.SDA, frequency = 100000)
 
     # spi bus ---------------------------------------------------------------------
@@ -132,8 +146,10 @@ def main():
         # Use external can bus provided by mcp2515 on spi bus
         # documentation says the baud rate is based on 16Mhz but we have an 8Mhz
         # crystal so we need to double the baud rate to achieve 250000
-        can = adafruit_mcp2515.MCP2515(spi_bus=spi, cs_pin=can_cs, # pylint: disable=no-member
-                baudrate=500000)
+        #can = adafruit_mcp2515.MCP2515(spi_bus=spi, cs_pin=can_cs, # pylint: disable=no-member
+        #        baudrate=500000)
+        #TODO change to the following after changing the import
+        can = CAN(spi_bus=spi, cs_pin=can_cs, baudrate=500000)# pylint: disable=no-member
 
 
     # -----------------------------------------------------------------------------
@@ -230,7 +246,10 @@ def main():
                                     int(roll),
                                     int(turn_rate))
             message = canio.Message(id=CAN_EULER_MSG_ID, data=euler_data)
-            can.send(message)
+            try:
+                can.send(message)
+            except RuntimeError as error:
+                print("CAN send euler angles and turn rate", error)
             can_euler_timestamp = current_time_millis
 
         # send accelerations and calibration magnatometer accuracy status
@@ -242,7 +261,10 @@ def main():
                                 int(accel_z * 100),
                                 int(magnetometer_accuracy))
             message = canio.Message(id=CAN_ACC_MSG_ID, data=acc_data)
-            can.send(message)
+            try:
+                can.send(message)
+            except RuntimeError as error:
+                print("CAN send accelerations and accuracy", error)
             can_acc_timestamp = current_time_millis
 
         # -------------------------------------------------------------------------
