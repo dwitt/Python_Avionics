@@ -889,11 +889,17 @@ export class HeadingIndicator {
         return(graphics);
     }
 
+    /**
+     * Create a circular graphic that is coloured to indicate that the heading
+     * indicator bug can be selected to allow positioning of the bug.
+     * @param {number} radius 
+     * @returns PIXI.JS Graphics Object
+     */
     createCircularSelectableGraphic(radius){
         // Set the background colours and styles
         let graphics = new Graphics();
 
-        let outlineWidth = 1.0;       // 1px
+        let outlineWidth = 2.0;       // 1px
         let outlineColour = 0xFF0000; // red
         let outlineAlpha = 1.0;      // 100%%
         var outlineAlignment = 1; // inner
