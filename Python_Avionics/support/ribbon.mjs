@@ -9,8 +9,8 @@
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
 var Application = PIXI.Application,
-    loader = PIXI.Loader.shared,
-    resources = PIXI.Loader.shared.resources,
+    //loader = PIXI.Loader.shared,
+    //resources = PIXI.Loader.shared.resources,
     TextureCache = PIXI.utils.TextureCache,
     Sprite = PIXI.Sprite,
     Rectangle = PIXI.Rectangle,

@@ -97,7 +97,7 @@ def main():
 
     # i2c setup using busio so frequency and timeout can be set.
     #     The long timeout was required to work around some issues with
-    #     i2c communication with the bno. The frequency is set based on the 
+    #     i2c communication with the bno. The frequency is set based on the
     #     bno
 
     i2c = busio.I2C(board.SCL, board.SDA, frequency=400000, timeout = 1000)
@@ -114,7 +114,7 @@ def main():
     # Use external can bus provided by mcp2515 on spi bus
     # documentation says the baud rate is based on 16Mhz but we have an 8Mhz
     # crystal so we need to double the baud rate to achieve 250000
-    
+
     can = CAN(spi_bus=spi, cs_pin=can_cs, baudrate=500000)
 
     # -----------------------------------------------------------------------------
@@ -134,7 +134,7 @@ def main():
     # Testing enabling the calibration
     bno.begin_calibration()
     if DEBUG_CAL:
-       print("Sent begin calibration")
+        print("Sent begin calibration")
 
     # On board Neopixel
     pixel_pin = board.NEOPIXEL
@@ -215,7 +215,7 @@ def main():
             turn_rate = gyro_z * radians_to_degrees_multiplier # degress/second
 
             last_time_millis = current_time_millis
-                
+
         if (current_time_millis - last_time_mag_millis) > 10000:
             if DEBUG:
                 print("magnetometer")
@@ -223,8 +223,8 @@ def main():
 
             last_time_mag_millis = current_time_millis
         if DEBUG:
-            print("sample done")     
-        
+            print("sample done")
+
         # -------------------------------------------------------------------------
         # --- send CAN data                                                     ---
         # -------------------------------------------------------------------------
@@ -282,9 +282,14 @@ def main():
                         if DEBUG:
                             print(f'Unusual message length {len(data)}')
                         continue # jump out to the while loop
-                    (calibration_command, _, _, _, _, _, _, _) = struct.unpack(
-                        "<BBBBBBBB", data
-                    )
+                    (calibration_command,
+                     _,
+                     _,
+                     _,
+                     _,
+                     _,
+                     _,
+                     _) = struct.unpack("<BBBBBBBB", data) 
 
                     # bit 0 = true -> save calibration data
                     # bit 1 = true -> pause calibration efforts
