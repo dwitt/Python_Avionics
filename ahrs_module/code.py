@@ -58,7 +58,7 @@ from adafruit_mcp2515 import MCP2515 as CAN #pylint: disable=no-name-in-module
 from adafruit_mcp2515 import canio #pylint: disable=import-error
 
 # -- Debugging Constants
-DEBUG = True
+DEBUG = False
 DEBUG_CAL = True
 DEBUG_DISPLAY = True
 
@@ -132,9 +132,9 @@ def main():
     bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
     # Testing enabling the calibration
-    #bno.begin_calibration()
-    #if DEBUG_CAL:
-    #    print("Sent begin calibration")
+    bno.begin_calibration()
+    if DEBUG_CAL:
+       print("Sent begin calibration")
 
     # On board Neopixel
     pixel_pin = board.NEOPIXEL
@@ -171,6 +171,7 @@ def main():
     magnetometer_accuracy = 0
 
     last_time_millis = int(time.monotonic_ns() / 1000000)
+    last_time_mag_millis = int(time.monotonic_ns() / 1000000)
 
     # -----------------------------------------------------------------------------
     # --- Main Loop                                                             ---
@@ -189,7 +190,10 @@ def main():
         # save the current time for comparison
         current_time_millis = int(time.monotonic_ns() / 1000000)
         # sample data every 50ms
-        if current_time_millis - last_time_millis > 50:
+        # print(f"current {current_time_millis}")
+        # print(f"last {last_time_millis}")
+        # print(f"maf {last_time_mag_millis}")
+        if (current_time_millis - last_time_millis) > 50:
             if DEBUG:
                 print("Sampling Data")
                 print("quarternion")
@@ -207,14 +211,20 @@ def main():
                 ))
             # apply yaw correction
             yaw = yaw * -1 + 90
+
+            turn_rate = gyro_z * radians_to_degrees_multiplier # degress/second
+
+            last_time_millis = current_time_millis
+                
+        if (current_time_millis - last_time_mag_millis) > 10000:
             if DEBUG:
                 print("magnetometer")
             magnetometer_accuracy = bno.calibration_status
 
-            turn_rate = gyro_z * radians_to_degrees_multiplier # degress/second
-            if DEBUG:
-                print("Sampling Complete")
-
+            last_time_mag_millis = current_time_millis
+        if DEBUG:
+            print("sample done")     
+        
         # -------------------------------------------------------------------------
         # --- send CAN data                                                     ---
         # -------------------------------------------------------------------------
