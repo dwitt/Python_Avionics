@@ -41,8 +41,9 @@ from adafruit_bno08x import (
     #BNO_REPORT_GAME_ROTATION_VECTOR,
     BNO_REPORT_GYROSCOPE,
     BNO_REPORT_MAGNETOMETER,
-    BNO_REPORT_ROTATION_VECTOR,
-    CALIBRATION_REPORT_INTERVAL#,
+    BNO_REPORT_ROTATION_VECTOR#,
+    #TODO 28-DEC-2023 - Commented out CALIBRATION_REPORT_INTERVAL
+    #CALIBRATION_REPORT_INTERVAL#,
     #SYSTEM_ORIENTATION,
     #MAGNETOMETER_ORIENTATION
 )
@@ -60,7 +61,7 @@ if hasattr(board, "CAN_RX"):
     import canio #pylint: disable=import-error
 else:
     #import adafruit_mcp2515 #pylint: disable=import-error
-    # TODO Consider using the import below and removing the one above
+    #TODO Consider using the import below and removing the one above
     from adafruit_mcp2515 import MCP2515 as CAN #pylint: disable=no-name-in-module
     from adafruit_mcp2515 import canio #pylint: disable=import-error
 
@@ -163,7 +164,8 @@ def main():
 
     bno.enable_feature(BNO_REPORT_ACCELEROMETER)
     bno.enable_feature(BNO_REPORT_GYROSCOPE)
-    bno.enable_feature(BNO_REPORT_MAGNETOMETER, CALIBRATION_REPORT_INTERVAL)
+    #TODO 28-Dec-2023 - Commented out CALIBRATION_REPORT_INTERVAL
+    bno.enable_feature(BNO_REPORT_MAGNETOMETER)#, CALIBRATION_REPORT_INTERVAL)
     bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
     #bno.begin_calibration()
