@@ -15,6 +15,7 @@ Implementation Notes
 
 ** Revisions **
 30-May-2023 - change import for can modules
+29-Dec-2023 - Updated to Circuit Python 8.2.9 and the latest libraries
 
 """
 # pyright: reportMissingImports=false
@@ -32,18 +33,16 @@ import digitalio #pylint: disable=import-error
 import neopixel #pylint: disable=import-error
 #import bitbangio #pylint: disable=import-error
 
-
-
 from adafruit_bno08x.i2c import BNO08X_I2C
 #from adafruit_bno08x.spi import BNO08X_SPI
+
 from adafruit_bno08x import (
     BNO_REPORT_ACCELEROMETER,
     #BNO_REPORT_GAME_ROTATION_VECTOR,
     BNO_REPORT_GYROSCOPE,
     BNO_REPORT_MAGNETOMETER,
     BNO_REPORT_ROTATION_VECTOR#,
-    #TODO 28-DEC-2023 - Commented out CALIBRATION_REPORT_INTERVAL
-    #CALIBRATION_REPORT_INTERVAL#,
+    #CALIBRATION_REPORT_INTERVAL,
     #SYSTEM_ORIENTATION,
     #MAGNETOMETER_ORIENTATION
 )
@@ -55,20 +54,13 @@ from quaternion import (
 
 from micropython import const #pylint: disable=import-error
 
-# --- import based on board attribute -----------------------------------------
-
-if hasattr(board, "CAN_RX"):
-    import canio #pylint: disable=import-error
-else:
-    #import adafruit_mcp2515 #pylint: disable=import-error
-    #TODO Consider using the import below and removing the one above
-    from adafruit_mcp2515 import MCP2515 as CAN #pylint: disable=no-name-in-module
-    from adafruit_mcp2515 import canio #pylint: disable=import-error
+from adafruit_mcp2515 import MCP2515 as CAN #pylint: disable=no-name-in-module
+from adafruit_mcp2515 import canio #pylint: disable=import-error
 
 # -- Debugging Constants
-DEBUG = False
-DEBUG_CAL = False
-
+DEBUG = True
+DEBUG_CAL = True
+DEBUG_DISPLAY = True
 
 # --- CAN Message Constants ---
 
@@ -92,90 +84,64 @@ def main():
     # --- conversion constants
     radians_to_degrees_multiplier = 180 / math.pi
 
-    # -----------------------------------------------------------------------------
-    # --- Setup Communication buses for various peripherals                     ---
-    # -----------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # --- Setup Communication buses for various peripherals                 ---
+    # -------------------------------------------------------------------------
 
-    # bno -------------------------------------------------------------------------
+    # bno - reset pin ---------------------------------------------------------
 
     bno_reset = digitalio.DigitalInOut(board.D11)
-    bno_reset.direction = digitalio.Direction.OUTPUT
+    bno_reset.switch_to_output(True)
 
-    #TODO Consider moving this reset to later after the setup
-
-    bno_reset.value = False # active low - reset the bno
-    time.sleep(.1) # wait 100 ms second
-    bno_reset.value = True # release the reset
-    time.sleep(.2) # wait 200 ms for internal initialization and configuration
-
-    # i2c bus ---------------------------------------------------------------------
+    # i2c bus -----------------------------------------------------------------
 
     # i2c setup using busio so frequency and timeout can be set.
-    #     The long timeout was required to work around some issues
+    #     The long timeout was required to work around some issues with
+    #     i2c communication with the bno. The frequency is set based on the 
+    #     bno
 
     i2c = busio.I2C(board.SCL, board.SDA, frequency=400000, timeout = 1000)
 
-    #i2c = board.I2C()
+    # spi bus -----------------------------------------------------------------
 
-    # i2c bitbangio was used in early version for testing
-    #i2c = bitbangio.I2C(board.SCL, board.SDA, frequency = 100000)
-
-    # spi bus ---------------------------------------------------------------------
-
-    can_cs = digitalio.DigitalInOut(board.D25) # was 25 for RP2040 / 19 for M4
+    can_cs = digitalio.DigitalInOut(board.D25) # D25 for RP2040 / D19 for M4
     can_cs.direction = digitalio.Direction.OUTPUT
 
     spi = board.SPI()
 
-    # CAN bus (if built in) -------------------------------------------------------
-    if hasattr(board, 'CAN_STANDBY'):
-        standby = digitalio.DigitalInOut(board.CAN_STANDBY)
-        standby.switch_to_output(False)
-        if DEBUG:
+    # CAN Bus on spi interface ------------------------------------------------
 
-            print("Standby off")
-    if hasattr(board, 'BOOST_ENABLE'):
-        boost_enable = digitalio.DigitalInOut(board.BOOST_ENABLE)
-        boost_enable.switch_to_output(True)
-        if DEBUG:
-            print("Boost On")
-
-    if hasattr(board, 'CAN_RX'):
-        can = canio.CAN(rx=board.CAN_RX, tx=board.CAN_TX,
-                    baudrate=250_000, auto_restart=True)
-    else:
-        # Use external can bus provided by mcp2515 on spi bus
-        # documentation says the baud rate is based on 16Mhz but we have an 8Mhz
-        # crystal so we need to double the baud rate to achieve 250000
-        #can = adafruit_mcp2515.MCP2515(spi_bus=spi, cs_pin=can_cs, # pylint: disable=no-member
-        #        baudrate=500000)
-        #TODO change to the following after changing the import
-        can = CAN(spi_bus=spi, cs_pin=can_cs, baudrate=500000)# pylint: disable=no-member
-
+    # Use external can bus provided by mcp2515 on spi bus
+    # documentation says the baud rate is based on 16Mhz but we have an 8Mhz
+    # crystal so we need to double the baud rate to achieve 250000
+    
+    can = CAN(spi_bus=spi, cs_pin=can_cs, baudrate=500000)
 
     # -----------------------------------------------------------------------------
     # AHRS Module (BNO085)
     # -----------------------------------------------------------------------------
 
-    bno = BNO08X_I2C(i2c, debug=False)
+    bno = BNO08X_I2C(i2c_bus=i2c, reset=bno_reset, debug=False)
 
     if DEBUG:
         print("BNO Object created")
 
     bno.enable_feature(BNO_REPORT_ACCELEROMETER)
     bno.enable_feature(BNO_REPORT_GYROSCOPE)
-    #TODO 28-Dec-2023 - Commented out CALIBRATION_REPORT_INTERVAL
-    bno.enable_feature(BNO_REPORT_MAGNETOMETER)#, CALIBRATION_REPORT_INTERVAL)
+    bno.enable_feature(BNO_REPORT_MAGNETOMETER)
     bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
+    # Testing enabling the calibration
     #bno.begin_calibration()
+    #if DEBUG_CAL:
+    #    print("Sent begin calibration")
 
     # On board Neopixel
     pixel_pin = board.NEOPIXEL
     num_pixels = 1
 
     pixel = neopixel.NeoPixel(
-        pixel_pin, num_pixels, brightness=1.0, auto_write=False,
+        pixel_pin, num_pixels, brightness=1.0, auto_write=True,
         pixel_order=neopixel.GRB
     )
 
@@ -183,7 +149,7 @@ def main():
     #pixel_power.direction = digitalio.Direction.OUTPUT
 
     pixel[0]= 0x0000ff
-    pixel.brightness = .3
+    pixel.brightness = 1.0
 
     #pixel_power.value = False
 
@@ -224,17 +190,30 @@ def main():
         current_time_millis = int(time.monotonic_ns() / 1000000)
         # sample data every 50ms
         if current_time_millis - last_time_millis > 50:
+            if DEBUG:
+                print("Sampling Data")
+                print("quarternion")
             quat_i, quat_j, quat_k, quat_real = bno.quaternion
+            if DEBUG:
+                print("acceleration")
             accel_x, accel_y, accel_z = bno.acceleration
+            if DEBUG:
+                print("gyro")
             gyro_x, gyro_y, gyro_z = bno.gyro #pylint: disable=unused-variable
+            if DEBUG:
+                print("RPY")
             roll, pitch, yaw = radians_to_degrees(*euler_from_quaternion(
                 quat_real, quat_i, quat_j, quat_k
                 ))
             # apply yaw correction
             yaw = yaw * -1 + 90
+            if DEBUG:
+                print("magnetometer")
             magnetometer_accuracy = bno.calibration_status
 
             turn_rate = gyro_z * radians_to_degrees_multiplier # degress/second
+            if DEBUG:
+                print("Sampling Complete")
 
         # -------------------------------------------------------------------------
         # --- send CAN data                                                     ---
@@ -315,9 +294,9 @@ def main():
         # --- Debuging display                                                  ---
         # -------------------------------------------------------------------------
 
-        if DEBUG:
+        if DEBUG_DISPLAY:
             print(f"{count:d}: Roll: {roll:.1f}, Pitch: {pitch:.1f}," +
-                   "Yaw: {yaw:.1f}, Acc: {magnetometer_accuracy:1d}")
+                   f"Yaw: {yaw:.1f}, Acc: {magnetometer_accuracy:1d}")
             count = count+1
 
 
