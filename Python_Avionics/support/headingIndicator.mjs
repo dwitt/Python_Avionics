@@ -10,9 +10,9 @@
 //     TextureCache = PIXI.utils.TextureCache,
 //     Sprite = PIXI.Sprite,
 //     Rectangle = PIXI.Rectangle,
-var Graphics = PIXI.Graphics,
-    Container = PIXI.Container,
-    Text = PIXI.Text;
+// var Graphics = PIXI.Graphics,
+//     Container = PIXI.Container,
+//     Text = PIXI.Text;
 
 /**     
  * Class representing a Heading Indicator.

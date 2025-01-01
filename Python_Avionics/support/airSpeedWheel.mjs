@@ -7,8 +7,8 @@ import { NumericWheelDisplay } from "./numericWheelDisplay.mjs";
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
-var Graphics = PIXI.Graphics,
-    Text = PIXI.Text;
+// var Graphics = PIXI.Graphics,
+//     Text = PIXI.Text;
 
 /**     
  * Class representing an Airspeed Wheel Display.

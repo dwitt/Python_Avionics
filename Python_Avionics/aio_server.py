@@ -24,10 +24,12 @@ DEBUG_CAN = False
 DEBUG_JSON = False
 DEBUG_QNH = False
 DEBUG_GPS_TIME = False
+DEBUG_DISABLE_ENCODER = True
+DEBUG_DISABLE_CAN = True
 
 # Set constants for CAN bus use
 
-CAN_QNH_MSG_ID = 0x2E
+CAN_QNH_MSG_ID = 0x2
 CAN_QNH_PERIOD = 1000 # ms between messages (1 second between transmitting qnh)
 
 CAN_GPS1_MSG_ID = 0x63
@@ -420,7 +422,8 @@ async def main():
     be run asynchronously.
     """
     # --- Create the instance of the encoder and button
-    (encoder, button) = connect_to_rotary_encoder()
+    if not DEBUG_DISABLE_ENCODER:
+        (encoder, button) = connect_to_rotary_encoder()
 
     # --- Create the instance of the class to store the data in
     avionics_data = AvionicsData()
@@ -438,31 +441,34 @@ async def main():
     # --- create can bus interface
     # -------------------------------------------------------------------------
 
-    bus = can.Bus(bustype='socketcan', channel='can0', bitrate=250000)
-    # create a buffered reader
-    reader = can.AsyncBufferedReader()
-    # create a listener on the can bus
-    listeners = [reader]
-    # get the event loop
-    loop = asyncio.get_event_loop()
-    # create a notifier to let us know when messages arrive
-    #notifier =
-    can.Notifier(bus=bus, listeners=listeners, timeout=0.1,
-        loop=loop)
+    if not DEBUG_DISABLE_CAN:
+        bus = can.Bus(bustype='socketcan', channel='can0', bitrate=250000)
+        # create a buffered reader
+        reader = can.AsyncBufferedReader()
+        # create a listener on the can bus
+        listeners = [reader]
+        # get the event loop
+        loop = asyncio.get_event_loop()
+        # create a notifier to let us know when messages arrive
+        #notifier =
+        can.Notifier(bus=bus, listeners=listeners, timeout=0.1,
+            loop=loop)
 
-    # --- update the web socket response handler so that it can communicate
-    # --- with the CAN bus and see the avionics data
+        # --- update the web socket response handler so that it can communicate
+        # --- with the CAN bus and see the avionics data
 
-    web_socket_response.can_bus = bus
+        web_socket_response.can_bus = bus
+    
     web_socket_response.data = avionics_data
 
     # -------------------------------------------------------------------------
 
     # We should now be able to use the reader to get messages
 
-    await asyncio.gather(process_can_messages(reader,avionics_data),
-                         send_json(web_socket_response, avionics_data),
-                         read_input(encoder, button, avionics_data))
+    if not DEBUG_DISABLE_CAN and DEBUG_DISABLE_ENCODER:
+        await asyncio.gather(process_can_messages(reader,avionics_data),
+                            send_json(web_socket_response, avionics_data),
+                            read_input(encoder, button, avionics_data))
     while True:
         await asyncio.sleep(3600)     #sleep for an hour
 

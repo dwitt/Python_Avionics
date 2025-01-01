@@ -10,9 +10,9 @@ import { calculateCharacterVerticalCentre } from "./utilityFunctions.mjs";
 //     TextureCache = PIXI.utils.TextureCache,
 //     Sprite = PIXI.Sprite,
 //     Rectangle = PIXI.Rectangle,
-var Graphics = PIXI.Graphics,
-    Container = PIXI.Container,
-    Text = PIXI.Text;
+// var Graphics = PIXI.Graphics,
+//     Container = PIXI.Container,
+//     Text = PIXI.Text;
 
 /** \brief NumbericWheel object displays a rotating wheel style object similar
  *         to an odometer.
