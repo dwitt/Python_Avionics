@@ -1,4 +1,7 @@
-/*global PIXI */
+//global PIXI 
+//import { Application, Graphics } from './pixi.min.js';
+import { Application, Graphics, Container } from './pixi.min.mjs';
+
 import { Ribbon } from './ribbon.mjs';
 import { AirspeedRibbon } from './airspeedRibbon.mjs';
 import { VsiIndicator } from './vsi-indicator.mjs';
@@ -16,8 +19,15 @@ import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mj
 import { AirspeedWheel } from './airSpeedWheel.mjs';
 import { AltitudeWheel } from './altitudeWheel.mjs';
 import { Brightness } from './brightness.mjs';
+import { TemperatureGraph } from './temperatureGraph.mjs';
 
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
+
+//var websocket;
+
+// -->
+//(async () => {
+
 
 
 'use strict';
@@ -25,16 +35,16 @@ import { Brightness } from './brightness.mjs';
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
-var Application = PIXI.Application,
-    //loader = PIXI.Loader.shared,
-    //resources = PIXI.Loader.shared.resources,
-    TextureCache = PIXI.utils.TextureCache,
-    Sprite = PIXI.Sprite,
-    Rectangle = PIXI.Rectangle,
-    Graphics = PIXI.Graphics,
-    Container = PIXI.Container,
-    Text = PIXI.Text,
-    Polygon = PIXI.Polygon;
+// const Application = PIXI.Application,
+//     //loader = PIXI.Loader.shared,
+//     //resources = PIXI.Loader.shared.resources,
+//     //TextureCache = PIXI.utils.TextureCache,
+//     Sprite = PIXI.Sprite,
+//     Rectangle = PIXI.Rectangle,
+//     Graphics = PIXI.Graphics,
+//     Container = PIXI.Container,
+//     Text = PIXI.Text,
+//     Polygon = PIXI.Polygon;
 
 
 // ----------------------------------------------------------------------------
@@ -49,34 +59,39 @@ var current_time_millis = Date.now();
 // ----------------------------------------------------------------------------
 // ---Create a Pixi Application                                             ---
 // ----------------------------------------------------------------------------
-let app = new Application({
-    width: 480, 
-    height: 400,
-    antialias: true,
-    transparent: false,
-    resolution: 1
-    }
+// let app = new Application({
+//     width: 480, 
+//     height: 400,
+//     antialias: true,
+//     transparent: false,
+//     resolution: 1
+//     }
+// );
+const app = new Application();
+await app.init({width: 480,
+                height: 400
+                }
 );
 
 // ----------------------------------------------------------------------------
 // Create another application as a test
 // This sets up a second canvas for display. This is just a test canvas
 // TODO: Delete this section
-let app2 = new Application({
-    width: 480,
-    height: 400,
-    antialias: true,
-    transparent: false,
-    resolution:1
-    }
-);
+// let app2 = new Application({
+//     width: 480,
+//     height: 400,
+//     antialias: true,
+//     transparent: false,
+//     resolution:1
+//     }
+// );
 
 // ----------------------------------------------------------------------------
 // --- Add the canvas that Pixi automatically created for you to the HTML   ---
 // --- document                                                             ---
 // ----------------------------------------------------------------------------
-document.body.appendChild(app.view);
-document.body.appendChild(app2.view);
+document.body.appendChild(app.canvas);
+//document.body.appendChild(app2.view);
 
 // ----------------------------------------------------------------------------
 // --- Create a new object to hold the data object coming from the websocket---
@@ -145,12 +160,16 @@ var attitudeIndicator,
     altitudeDisplay,
     tempTimeDisplay,
     brightness,
+    egtGraph,
+    chtGraph,
     userInput;
 
     
 document.fonts.ready.then(function() {
     setup();
 });
+
+//})();
 
 // ****************************************************************************
 // ****************************************************************************
@@ -202,6 +221,9 @@ function setup() {
     //menu = new Interactions(app, x - 150, y - 40, 150, 40);
 
     brightness = new Brightness(app);
+
+    //egtGraph = new TemperatureGraph(app2, 0, 200, "EGT", 1100, 1500, 0, 1400, 1400);
+    //chtGraph = new TemperatureGraph(app2, 240, 200, "CHT", 100, 500, 200, 400, 450);
 
     userInput = new UserInput(app);
 

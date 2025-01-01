@@ -8,15 +8,15 @@
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
-var Application = PIXI.Application,
-    //loader = PIXI.Loader.shared,
-    //resources = PIXI.Loader.shared.resources,
-    TextureCache = PIXI.utils.TextureCache,
-    Sprite = PIXI.Sprite,
-    Rectangle = PIXI.Rectangle,
-    Graphics = PIXI.Graphics,
-    Container = PIXI.Container,
-    Text = PIXI.Text;
+// var Application = PIXI.Application,
+//     //loader = PIXI.Loader.shared,
+//     //resources = PIXI.Loader.shared.resources,
+//     //TextureCache = PIXI.utils.TextureCache,
+//     Sprite = PIXI.Sprite,
+//     Rectangle = PIXI.Rectangle,
+//     Graphics = PIXI.Graphics,
+//     Container = PIXI.Container,
+//     Text = PIXI.Text;
 
 
 /**
@@ -28,7 +28,7 @@ export class Ribbon {
 
     /**
      * 
-     * @param {PIXI.Application} app The current PixiJS application to place 
+     * @param {Application} app The current PixiJS application to place 
      *     the graphics objects in.
      * @param {number} x The horizontal position of the ribbon. The ribbon will be
      *     placed either right aligned or left aligned base on the 

@@ -1,17 +1,20 @@
 'use strict';
+
+import { Container, Graphics, TextStyle } from './pixi.min.mjs';
+
 // ----------------------------------------------------------------------------
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
-var Application = PIXI.Application,
-    //loader = PIXI.Loader.shared,
-    //resources = PIXI.Loader.shared.resources,
-    TextureCache = PIXI.utils.TextureCache,
-    Sprite = PIXI.Sprite,
-    Rectangle = PIXI.Rectangle,
-    Graphics = PIXI.Graphics,
-    Container = PIXI.Container,
-    Text = PIXI.Text;
+// var Application = PIXI.Application,
+//     //loader = PIXI.Loader.shared,
+//     //resources = PIXI.Loader.shared.resources,
+//     //TextureCache = PIXI.utils.TextureCache,
+//     Sprite = PIXI.Sprite,
+//     Rectangle = PIXI.Rectangle,
+//     Graphics = PIXI.Graphics,
+//     Container = PIXI.Container,
+//     Text = PIXI.Text;
 
 /******************************************************************************
  * Class representing a Attitude indicator.
@@ -123,7 +126,7 @@ export class AttitudeIndicator {
         let halfLength = length / 2;
         let offset = 2; // Text offset from line in pixels
 
-        let text_style = new PIXI.TextStyle({
+        let text_style = new TextStyle({
             fontFamily: "Tahoma",
             fontSize: 20,
             fill: "white",
@@ -134,7 +137,7 @@ export class AttitudeIndicator {
         });
 
 
-        let degreeGraphics = new Graphics(); // Container for attidude degrees
+        const degreeGraphics = new Graphics(); // Container for attidude degrees
 
         lineWidth = 2.0;
         degreeGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
@@ -144,14 +147,14 @@ export class AttitudeIndicator {
 
             if (i != 0) {
 
-                let textLeft = new Text(deg, text_style);
-                let textRight = new Text(deg, text_style);
+                const textLeft = new Text(deg, text_style);
+                const textRight = new Text(deg, text_style);
                 
-                textLeft.anchor.set(1,0.5);
-                textRight.anchor.set(0,0.5);
+                textLeft.anchor = (1, 0.5);
+                textRight.anchor = (0,0.5);
 
-                textLeft.position.set(-length - offset,i * this.pitchRatio);
-                textRight.position.set(length + offset,i * this.pitchRatio);
+                textLeft.position = (-length - offset,i * this.pitchRatio);
+                textRight.position = (length + offset,i * this.pitchRatio);
                 
                 degreeGraphics.addChild(textLeft);
                 degreeGraphics.addChild(textRight);
@@ -220,8 +223,9 @@ export class AttitudeIndicator {
 
         let triangleGraphics = new Graphics(); // Container for triangle
 
-        triangleGraphics.lineStyle(lineOptions);
-        
+        //triangleGraphics.lineStyle(lineOptions);
+        triangleGraphics.setStrpl
+
         triangleGraphics.beginFill(fillColour, 1);
         triangleGraphics.drawPolygon(0,-radius, this.triangleHeight/2, this.triangleHeight-radius, -this.triangleHeight/2, this.triangleHeight-radius);
         triangleGraphics.endFill();

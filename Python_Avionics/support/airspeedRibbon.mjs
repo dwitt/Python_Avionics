@@ -6,15 +6,15 @@ import { Ribbon, Colour_Bar } from './ribbon.mjs';
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
 // ----------------------------------------------------------------------------
-var Application = PIXI.Application,
-    //loader = PIXI.Loader.shared,
-    //resources = PIXI.Loader.shared.resources,
-    TextureCache = PIXI.utils.TextureCache,
-    Sprite = PIXI.Sprite,
-    Rectangle = PIXI.Rectangle,
-    Graphics = PIXI.Graphics,
-    Container = PIXI.Container,
-    Text = PIXI.Text;
+// var Application = PIXI.Application,
+//     //loader = PIXI.Loader.shared,
+//     //resources = PIXI.Loader.shared.resources,
+//     //TextureCache = PIXI.utils.TextureCache,
+//     Sprite = PIXI.Sprite,
+//     Rectangle = PIXI.Rectangle,
+//     Graphics = PIXI.Graphics,
+//     Container = PIXI.Container,
+//     Text = PIXI.Text;
 
 export class AirspeedRibbon extends Ribbon {
     constructor(app, x, y, height, width, rightSideMarks, 

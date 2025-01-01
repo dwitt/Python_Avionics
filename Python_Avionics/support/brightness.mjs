@@ -10,8 +10,8 @@
 //    TextureCache = PIXI.utils.TextureCache,
 //    Sprite = PIXI.Sprite,
 //    Rectangle = PIXI.Rectangle,
-var Graphics = PIXI.Graphics,
-    Container = PIXI.Container;
+// var Graphics = PIXI.Graphics,
+//     Container = PIXI.Container;
     //Text = PIXI.Text;
 
 /**     
