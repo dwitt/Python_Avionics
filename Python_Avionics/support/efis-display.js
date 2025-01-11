@@ -1,25 +1,28 @@
 //global PIXI 
+import { Application, Graphics } from './pixi.mjs';
 //import { Application, Graphics } from './pixi.min.js';
-import { Application, Graphics, Container } from './pixi.min.mjs';
+//import { Application, Graphics, Container } from './pixi.min.mjs';
 
-import { Ribbon } from './ribbon.mjs';
-import { AirspeedRibbon } from './airspeedRibbon.mjs';
-import { VsiIndicator } from './vsi-indicator.mjs';
+
+// Commented out the following lines to test
+//import { Ribbon } from './ribbon.mjs';
+// import { AirspeedRibbon } from './airspeedRibbon.mjs';
+// import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
-import { SlipBallIndicator } from './slipBall.mjs';
-import { HeadingIndicator } from './headingIndicator.mjs';
-import { Interactions } from './interaction.mjs';
-import { QNHDisplay } from './qnhdisplay.mjs';
-import { SpeedDisplay } from './speedDisplay.mjs';
-import { AltitudeDisplay } from './altitudeDisplay.mjs'
-import { TempTimeDisplay } from './tempTimeDisplay.mjs';
-import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
-import { UserInput } from './userInput.mjs';
-import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
-import { AirspeedWheel } from './airSpeedWheel.mjs';
-import { AltitudeWheel } from './altitudeWheel.mjs';
-import { Brightness } from './brightness.mjs';
-import { TemperatureGraph } from './temperatureGraph.mjs';
+// import { SlipBallIndicator } from './slipBall.mjs';
+// import { HeadingIndicator } from './headingIndicator.mjs';
+// import { Interactions } from './interaction.mjs';
+// import { QNHDisplay } from './qnhdisplay.mjs';
+// import { SpeedDisplay } from './speedDisplay.mjs';
+// import { AltitudeDisplay } from './altitudeDisplay.mjs'
+// import { TempTimeDisplay } from './tempTimeDisplay.mjs';
+// import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
+// import { UserInput } from './userInput.mjs';
+// import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
+// import { AirspeedWheel } from './airSpeedWheel.mjs';
+// import { AltitudeWheel } from './altitudeWheel.mjs';
+// import { Brightness } from './brightness.mjs';
+// import { TemperatureGraph } from './temperatureGraph.mjs';
 
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
 
@@ -200,40 +203,40 @@ function setup() {
 
     attitudeIndicator = new AttitudeIndicator(app);       
          
-    altimeter_ribbon = new Ribbon(app, x-35, y/2, y-130, 90, true, 100, 4, 5, true, undefined, undefined, true);
-    altitudeWheel = new AltitudeWheel(app) //, 755, 240);
-    qnhDisplay = new QNHDisplay(app, x - (35 + 90), y-130/2+25, 90, 25, 8);
-    altitudeDisplay = new AltitudeDisplay(app, x - (35 + 90), 130/2, 90, 25, 8); 
+    // altimeter_ribbon = new Ribbon(app, x-35, y/2, y-130, 90, true, 100, 4, 5, true, undefined, undefined, true);
+    // altitudeWheel = new AltitudeWheel(app) //, 755, 240);
+    // qnhDisplay = new QNHDisplay(app, x - (35 + 90), y-130/2+25, 90, 25, 8);
+    // altitudeDisplay = new AltitudeDisplay(app, x - (35 + 90), 130/2, 90, 25, 8); 
 
-    airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
-    airspeedWheel = new AirspeedWheel(app, 45, y/2);
-    speedDisplay = new SpeedDisplay(app, 35, 130/2, 90, 25, 8);
-    tempTimeDisplay = new TempTimeDisplay(app, 35, y-130/2+25, 90, 25, 8);
+    // airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
+    // airspeedWheel = new AirspeedWheel(app, 45, y/2);
+    // speedDisplay = new SpeedDisplay(app, 35, 130/2, 90, 25, 8);
+    // tempTimeDisplay = new TempTimeDisplay(app, 35, y-130/2+25, 90, 25, 8);
 
-    //tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
+    // //tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
 
-    vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
+    // vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
 
-    var aircraft = new AircraftIndicator(app);
+    // var aircraft = new AircraftIndicator(app);
 
-    //slipBallIndicator = new SlipBallIndicator(app);
-    headingIndicator = new HeadingIndicator(app, x, false, true );//- 260);
-    //menu = new Interactions(app, x - 150, y - 40, 150, 40);
+    // //slipBallIndicator = new SlipBallIndicator(app);
+    // headingIndicator = new HeadingIndicator(app, x, false, true );//- 260);
+    // //menu = new Interactions(app, x - 150, y - 40, 150, 40);
 
-    brightness = new Brightness(app);
+    // brightness = new Brightness(app);
 
-    //egtGraph = new TemperatureGraph(app2, 0, 200, "EGT", 1100, 1500, 0, 1400, 1400);
-    //chtGraph = new TemperatureGraph(app2, 240, 200, "CHT", 100, 500, 200, 400, 450);
+    // //egtGraph = new TemperatureGraph(app2, 0, 200, "EGT", 1100, 1500, 0, 1400, 1400);
+    // //chtGraph = new TemperatureGraph(app2, 240, 200, "CHT", 100, 500, 200, 400, 450);
 
-    userInput = new UserInput(app);
+    // userInput = new UserInput(app);
 
-    userInput.registerCallback(qnhDisplay);
-    userInput.registerCallback(tempTimeDisplay);
-    userInput.registerCallback(brightness);
-    userInput.registerCallback(speedDisplay);
-    userInput.registerCallback(headingIndicator);
-    userInput.registerCallback(altitudeDisplay);
-    userInput.registerCallback(altimeter_ribbon);
+    // userInput.registerCallback(qnhDisplay);
+    // userInput.registerCallback(tempTimeDisplay);
+    // userInput.registerCallback(brightness);
+    // userInput.registerCallback(speedDisplay);
+    // userInput.registerCallback(headingIndicator);
+    // userInput.registerCallback(altitudeDisplay);
+    // userInput.registerCallback(altimeter_ribbon);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -246,63 +249,63 @@ function setup() {
 function DisplayUpdateLoop(delta) {
 
     attitudeIndicator.pitch = dataObject.pitch;
-    attitudeIndicator.roll = dataObject.roll;
-    attitudeIndicator.accY = dataObject.accy;
-    attitudeIndicator.accZ = dataObject.accz;
-    attitudeIndicator.updateSlipSkid();
-    altitudeWheel.value = dataObject.altitude;
-    //qnhDisplay.value = globalThis.qnh; // dataObject.qnh; // Don't update from json
-    altimeter_ribbon.value = dataObject.altitude;
-    //vsiDisplay.value = dataObject.vsi;
-    //testAirspeedDisplay.value = dataObject.airspeed;
-    airspeedWheel.value = dataObject.airspeed;
-    airspeedRibbon.value = dataObject.airspeed;
-    vsiIndicator.value = dataObject.vsi;
+    // attitudeIndicator.roll = dataObject.roll;
+    // attitudeIndicator.accY = dataObject.accy;
+    // attitudeIndicator.accZ = dataObject.accz;
+    // attitudeIndicator.updateSlipSkid();
+    // altitudeWheel.value = dataObject.altitude;
+    // //qnhDisplay.value = globalThis.qnh; // dataObject.qnh; // Don't update from json
+    // altimeter_ribbon.value = dataObject.altitude;
+    // //vsiDisplay.value = dataObject.vsi;
+    // //testAirspeedDisplay.value = dataObject.airspeed;
+    // airspeedWheel.value = dataObject.airspeed;
+    // airspeedRibbon.value = dataObject.airspeed;
+    // vsiIndicator.value = dataObject.vsi;
 
-    //slipBallIndicator.accZ = dataObject.accz;
-    //slipBallIndicator.accY = dataObject.accy;
-    //slipBallIndicator.update();
+    // //slipBallIndicator.accZ = dataObject.accz;
+    // //slipBallIndicator.accY = dataObject.accy;
+    // //slipBallIndicator.update();
 
-    headingIndicator.value = dataObject.yaw;
+    // headingIndicator.value = dataObject.yaw;
 
-    speedDisplay.groundSpeed = dataObject.gps_speed;
-    speedDisplay.staticPressure = dataObject.static_pressure;
-    speedDisplay.differentialPressure = dataObject.differential_pressure;
-    speedDisplay.indicatedTemperature = dataObject.temperature;
-    //console.log("Static P = " + dataObject.static_pressure + "| Diff P = " + dataObject.differential_pressure + "| Temp = " + dataObject.temperature);
-    speedDisplay.update();
+    // speedDisplay.groundSpeed = dataObject.gps_speed;
+    // speedDisplay.staticPressure = dataObject.static_pressure;
+    // speedDisplay.differentialPressure = dataObject.differential_pressure;
+    // speedDisplay.indicatedTemperature = dataObject.temperature;
+    // //console.log("Static P = " + dataObject.static_pressure + "| Diff P = " + dataObject.differential_pressure + "| Temp = " + dataObject.temperature);
+    // speedDisplay.update();
     
-    tempTimeDisplay.temperature = dataObject.temperature;
-    tempTimeDisplay.timeHour = dataObject.tm_hour
-    tempTimeDisplay.timeMinute = dataObject.tm_min;
+    // tempTimeDisplay.temperature = dataObject.temperature;
+    // tempTimeDisplay.timeHour = dataObject.tm_hour
+    // tempTimeDisplay.timeMinute = dataObject.tm_min;
 
-    tempTimeDisplay.update();
+    // tempTimeDisplay.update();
 
-    altitudeDisplay.gpsAltitude = dataObject.gps_altitude;
-    altitudeDisplay.staticPressure = dataObject.static_pressure;
-    altitudeDisplay.temperature = dataObject.temperature;
-    altitudeDisplay.update();
+    // altitudeDisplay.gpsAltitude = dataObject.gps_altitude;
+    // altitudeDisplay.staticPressure = dataObject.static_pressure;
+    // altitudeDisplay.temperature = dataObject.temperature;
+    // altitudeDisplay.update();
 
-    // Process any change in the user input encoder
-    userInput.processState(dataObject.position, dataObject.pressed)
+    // // Process any change in the user input encoder
+    // userInput.processState(dataObject.position, dataObject.pressed)
 
-    // Send the qnh value out to python using the websocket and json
-    current_time_millis = Date.now();
+    // // Send the qnh value out to python using the websocket and json
+    // current_time_millis = Date.now();
 
-    if (qnhDisplay.value != last_qnh || 
-        current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD ||
-        brightness.value != last_brightness) {
+    // if (qnhDisplay.value != last_qnh || 
+    //     current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD ||
+    //     brightness.value != last_brightness) {
         
-        last_qnh = qnhDisplay.value;
-        last_brightness = brightness.value;
-        can_qnh_timestamp = current_time_millis;
+    //     last_qnh = qnhDisplay.value;
+    //     last_brightness = brightness.value;
+    //     can_qnh_timestamp = current_time_millis;
 
-        var obj = {qnh: qnhDisplay.value, ticker: delta, position: dataObject.position, brightness: brightness.value};
+    //     var obj = {qnh: qnhDisplay.value, ticker: delta, position: dataObject.position, brightness: brightness.value};
 
-        var json = JSON.stringify(obj);
-        if (myWebSocket.readyState == 1) {
-            myWebSocket.send("json" + json);}
-    }
+    //     var json = JSON.stringify(obj);
+    //     if (myWebSocket.readyState == 1) {
+    //         myWebSocket.send("json" + json);}
+    // }
 
 }
 
