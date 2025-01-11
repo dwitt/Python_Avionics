@@ -1,16 +1,25 @@
 [Unit]
-Description=PiEfis
+Description=Start the PiEfis webserver
 DefaultDependencies=false
 After=network.target
 
 [Service]
-Type=simple
-ExecStart=/usr/bin/python3 aio_server.py
-WorkingDirectory=/home/pi/Python_Avionics
+# The user and grouip under which the service will run
+User=david
+Group=david
+
+# The working directory of your application
+WorkingDirectory=/home/david/Python_Avionics
+
+# Specify the full path to your virtualenv’s python interpreter
+ExecStart=/home/david/Python_Avionics/bin/python /home/david/Python_Avionics/aio_server.py
+
+# If you want the service to automatically restart on failure:
+Restart=on-failure
+
+# If your app needs standard output/error logs saved somewhere:
 StandardOutput=inherit
 StandardError=inherit
-Restart=always
-User=root
 
 [Install]
 WantedBy=multi-user.target

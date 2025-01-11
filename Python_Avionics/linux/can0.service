@@ -1,0 +1,14 @@
+[Unit]
+Description=Bring up can0
+Wants=network.target
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/ip link set can0 up type can bitrate 250000
+ExecStart=/sbin/ifconfig can0 up
+ExecStop=/sbin/ifconfig can0 down
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

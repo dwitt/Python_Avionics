@@ -1,20 +1,6 @@
 'use strict';
 
-import { Container, Graphics, TextStyle } from './pixi.min.mjs';
-
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     //loader = PIXI.Loader.shared,
-//     //resources = PIXI.Loader.shared.resources,
-//     //TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-//     Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
+import { Container, Graphics, TextStyle, Text } from './pixi.mjs';
 
 /******************************************************************************
  * Class representing a Attitude indicator.
@@ -54,19 +40,93 @@ export class AttitudeIndicator {
         // in on direction either up or down
         let pitchDegrees = 25;
 
-        // calculated attitude sky and earth total height based on 90 degrees
-        // available up or down
-        // add pitchDegrees to this to allow for the display to be filled at 
-        // the extremes of pitch
-
         // pitchRatio equal number of pixels per degree of pitch
-        // TODO: base this on a square that is the minimum of either the
-        //          displayHeight and displayWidth
-        //          OR maybe not if the app screen is sized correctly
         this.pitchRatio = (this.displayHeight / 2) / pitchDegrees;
 
+        // find the smallest display dimension and use it to determine the size 
+        // of all arcs
+
+        let circularBorder = 55;    // pixel border
+        let minimum_screen = Math.min(this.displayWidth, this.displayHeight);
+        this.radius = (minimum_screen / 2 ) - circularBorder;    // duplicated in the drawing of the BankArc
+
+        this.triangleHeight = 25
+
+        /********************************************************************* 
+         * Create a container with the pitch grahpics background.            *
+         * Pass in a mask for the pitch degree bars and labels.              *
+         * The mask should be the diameter of the circle used for the roll   *
+         * display                                                           *
+         *********************************************************************/
+
+        let pitchMaskGraphics = this.createAttitudeMaskGraphics();
+        this.pitchContainer = this.createAttitudeBackgroundContainer(pitchMaskGraphics);
+        
+        // --------------------------------------------------------------------
+        // Create a roll container
+        // --------------------------------------------------------------------
+
+        this.rollContainer = new Container();
+        this.triangleGraphics = this.createRollTriangleGraphics();
+
+        // /********************************************************************* 
+        //  * Draw a slip skid indicator below the roll triangle                *
+        //  * This indicator needs to move back and forth                       *
+        //  *********************************************************************/
+
+        this.slipSkidGraphics = this.createSlipSkidGraphics();
+
+
+        // /*********************************************************************
+        //  * Draw a Red X for when the indicater is invalid                    *
+        //  *********************************************************************/
+
+        this.badDataGraphics = this.createBadDataGraphics();
+
+        // // Add the pitch container
+
+        this.rollContainer.addChild(this.pitchContainer);
+        this.rollContainer.addChild(pitchMaskGraphics);
+
+        this.rollContainer.addChild(this.createBankArcContainer(this.radius));
+
+        // // Position the pitch container in the center of the window
+        this.rollContainer.x = this.displayWidth / 2;
+        this.rollContainer.y = this.displayHeight / 2;
+
+        // // add the rollContainer to the stage as a child
+        app.stage.addChild(this.rollContainer);
+
+        app.stage.addChild(this.triangleGraphics);
+        app.stage.addChild(this.slipSkidGraphics);
+
+        app.stage.addChild(this.badDataGraphics);
+    }
+
+    /************************************************************************* 
+     * Create a container that holds the background for the attitude         *
+     * indicator.                                                            *
+     * Draw the sky and earth in a container where 0,0 is the center         *
+     * Add the pitch lines and label them                                    *
+    **************************************************************************/
+
+    createAttitudeBackgroundContainer(pitchMaskGraphics){
+
+        // --------------------------------------------------------------------
+        // Calculate the various values we need to draw the pitch portion of 
+        // the attitude indicator
+
+        // Set the maximum number of degrees of pitch the can be seen on the
+        // display up and down from the center (horizon when level)
+        let pitchDegrees = 25;
+
+        // Calculate pitchRatio as equal to the number of pixels per degree of 
+        // pitch
+        let pitchRatio = (this.displayHeight / 2) / pitchDegrees;
+
         // calculate the width of sky and earth to ensure it fills display
-        // when rolling
+        // when rolling. This should be the diagonal dimension of the display
+        // ensure the display remains filled
 
         let skyWidth = Math.sqrt(Math.pow(this.displayWidth,2) + Math.pow(this.displayHeight,2));
         let earthWidth = skyWidth;
@@ -78,50 +138,44 @@ export class AttitudeIndicator {
         let skyHeight = ((this.displayHeight / 2) / pitchDegrees * (90)) + skyWidth/2;
         let earthHeight = skyHeight;
 
-        // find the smallest screen dimension and use it to determine the size 
-        // of all arcs
+        // --------------------------------------------------------------------
+        
+        // Create a container for the background
+        let attitudeBackground = new Container(); 
 
-        let minimum_screen = Math.min(app.screen.width, app.screen.height);
+        // define the background colours
+        let skyColour = 0x0000C0;      // blue
+        let earthColour = 0x884400;    // brown
+        let lineColour = 0xFFFFFF;     // white 
 
-        let radius = (minimum_screen / 2 ) - 68;         // duplicated in the drawing of the BankArc
-
-        /********************************************************************* 
-         * Draw the sky and earth in a container where 0,0 is the center     *
-         *********************************************************************/
-        this.pitchContainer = new Container(); // Container for sky and earth
-
-        let skyColour = 0x0000C0;
-
+        // create the sky graphics 
         let skyGraphics = new Graphics();
-        skyGraphics.beginFill(skyColour);
-        skyGraphics.drawRect(-skyWidth/2, -skyHeight, skyWidth, skyHeight);
-        skyGraphics.endFill();
+        skyGraphics.rect(-skyWidth/2, -skyHeight, skyWidth, skyHeight);
+        skyGraphics.fill(skyColour);
 
-        let earthColour = 0x884400;
-
+        // create the earth graphics
         let earthGraphics = new Graphics();
-        earthGraphics.beginFill(earthColour);
-        earthGraphics.drawRect(-earthWidth/2, 0, earthWidth, earthHeight);
-        earthGraphics.endFill();
+        earthGraphics.rect(-earthWidth/2, 0, earthWidth, earthHeight);
+        earthGraphics.fill(earthColour);
 
         // Draw a horizon separator line
-
         let lineWidth = 1.0;
-        let lineColour = 0xFFFFFF;
-        let lineAlpha = 1
-        let lineAlignment = 0.5
+        let lineAlpha = 1;
+        let lineAlignment = 0.5;
 
         let horizonGraphics = new Graphics();
-        horizonGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
+        horizonGraphics.strokeStyle = {
+            alignment: lineAlignment,
+            alpha: lineAlpha,
+            color: lineColour,
+            width: lineWidth
+        };
         horizonGraphics.moveTo(-earthWidth/2,0);
         horizonGraphics.lineTo(earthWidth/2,0);
-        
-        //********************************************************************/
+        horizonGraphics.stroke();
 
-        // --------------------------------------------------------------------
-        // create 10 and 20 degree lines
-        // --------------------------------------------------------------------
-
+        // create the 5 and 10 degree of pitch lines
+        // and label them
         let length = this.displayWidth / 16;
         let halfLength = length / 2;
         let offset = 2; // Text offset from line in pixels
@@ -131,170 +185,130 @@ export class AttitudeIndicator {
             fontSize: 20,
             fill: "white",
             fontWeight: "normal",
-            stroke: "black",
-            strokeThickness: 2
-            
+            stroke: {
+                color: "black",
+                width: 3,
+            }//,
+            //strokeThickness: 2  
         });
 
-
-        const degreeGraphics = new Graphics(); // Container for attidude degrees
+        let degreeContainer = new Container;
+        let degreeGraphics = new Graphics(); // Container for attidude degrees
 
         lineWidth = 2.0;
-        degreeGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
+
+        degreeGraphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour, 
+            alpha: lineAlpha,
+            alignment: lineAlignment
+        };
+
         for (let i=-90; i <= 90; i = i + 10) {
             let sign = Math.sign(i);
             let deg = String(sign * -Math.abs(i));
 
             if (i != 0) {
 
-                const textLeft = new Text(deg, text_style);
-                const textRight = new Text(deg, text_style);
+                const textLeft = new Text({
+                    text: deg,
+                    style: text_style
+                });
+                const textRight = new Text({
+                    text: deg, 
+                    style: text_style
+                });
                 
-                textLeft.anchor = (1, 0.5);
-                textRight.anchor = (0,0.5);
+                textLeft.anchor.set(1, 0.55);
+                textRight.anchor.set(0,0.55);
 
-                textLeft.position = (-length - offset,i * this.pitchRatio);
-                textRight.position = (length + offset,i * this.pitchRatio);
+                textLeft.position.set(-length - offset,i * pitchRatio);
+                textRight.position.set(length + offset,i * pitchRatio);
                 
-                degreeGraphics.addChild(textLeft);
-                degreeGraphics.addChild(textRight);
+                degreeContainer.addChild(textLeft);
+                degreeContainer.addChild(textRight);
 
-            
+                degreeGraphics.moveTo(-halfLength,(i - sign * 5) * pitchRatio);
+                degreeGraphics.lineTo(halfLength,(i - sign * 5) * pitchRatio);
+                degreeGraphics.stroke();
 
-
-                degreeGraphics.moveTo(-halfLength,(i - sign * 5) * this.pitchRatio);
-                degreeGraphics.lineTo(halfLength,(i - sign * 5) * this.pitchRatio);
-
-                degreeGraphics.moveTo(-length,i * this.pitchRatio);    
-                degreeGraphics.lineTo(length,i * this.pitchRatio);            
+                degreeGraphics.moveTo(-length,i * pitchRatio);    
+                degreeGraphics.lineTo(length,i * pitchRatio);    
+                degreeGraphics.stroke();        
             }
         }
 
-        /*********************************************************************
-         * Create a mask for the degreeGraphics of the attitude indicator    *
-         *********************************************************************/
- 
+        degreeGraphics.mask = pitchMaskGraphics;
+        degreeContainer.mask = pitchMaskGraphics;
 
+
+        attitudeBackground.addChild(skyGraphics);
+        attitudeBackground.addChild(earthGraphics);
+        attitudeBackground.addChild(horizonGraphics);
+        attitudeBackground.addChild(degreeGraphics); // attitude degrees
+        attitudeBackground.addChild(degreeContainer);
+
+        return attitudeBackground;
+    }
+    /*************************************************************************
+     * Create a mask for the degreeGraphics of the attitude indicator         *
+     *************************************************************************/
+
+    createAttitudeMaskGraphics() {
         let maskGraphics = new Graphics();
+        let fillColour = 0xFF0000;          // red
+        maskGraphics.fillStyle = {
+            color: fillColour,
+        }
+        maskGraphics.circle(0,0, this.radius);
+        maskGraphics.fill();
+        return maskGraphics;
+    }
 
-        let fillColour = 0xFF0000;
-        maskGraphics.beginFill(fillColour);
-        maskGraphics.drawCircle(0,0,radius-10);
+    /*************************************************************************
+     * Draw the Roll triangle for the Arc                                    *
+     * This is the fixed triangle point up to the roll arc                   *
+     *************************************************************************/
 
-        degreeGraphics.mask = maskGraphics;
+    createRollTriangleGraphics(){
 
+        let triangleHeight = 25;
 
-
-
-
-
-        // Add the sky, earth and horizon to the pitch Container
-
-        this.pitchContainer.addChild(skyGraphics);
-        this.pitchContainer.addChild(earthGraphics);
-        this.pitchContainer.addChild(horizonGraphics);
-        this.pitchContainer.addChild(degreeGraphics); // attitude degrees
-        // TODO: move the mask for the degreeGraphics up here
-        
-        // --------------------------------------------------------------------
-        // Create a roll container
-        // --------------------------------------------------------------------
-
-        this.rollContainer = new Container();
-        
-        /*********************************************************************
-         * Draw the Roll triangle for the Arc                                *
-         * This is the fixed triangle point up to the roll arc               *
-         *********************************************************************/
-
-
-        this.triangleHeight = 25;
-
-        lineWidth = 2;
-        lineColour = 0x000000;
-        fillColour = 0xFFFF00; // Yellow
-
-        let lineOptions = new Object;
-        lineOptions.width = 1;
-        lineOptions.color = 0x000000;
-        lineOptions.alpha = 1;
-        lineOptions.alignment = 0;
-        lineOptions.cap = PIXI.LINE_CAP.ROUND;
+        let lineWidth = 2;
+        let lineColour = 0x000000; // black
+        let fillColour = 0xFFFF00; // Yellow
 
         let triangleGraphics = new Graphics(); // Container for triangle
 
-        //triangleGraphics.lineStyle(lineOptions);
-        triangleGraphics.setStrpl
+        triangleGraphics.strokeStyle = {
+            alignment: 1,
+            alpha: 1,
+            cap: "round",
+            color: lineColour,
+            width: lineWidth,   
+        }
 
-        triangleGraphics.beginFill(fillColour, 1);
-        triangleGraphics.drawPolygon(0,-radius, this.triangleHeight/2, this.triangleHeight-radius, -this.triangleHeight/2, this.triangleHeight-radius);
-        triangleGraphics.endFill();
+        triangleGraphics.fillStyle = {
+            alpha: 1,
+            color: fillColour,
+        }
+
+        const path = [
+            0, -this.radius, 
+            triangleHeight/2, triangleHeight-this.radius,
+            -triangleHeight/2, triangleHeight-this.radius
+        ];
+        triangleGraphics.poly(path);
+        triangleGraphics.fill(); 
+        triangleGraphics.stroke();
+
 
         triangleGraphics.x = this.displayWidth/2;
         triangleGraphics.y = this.displayHeight/2;
 
-        /********************************************************************* 
-         * Draw a slip skid indicator below the roll triangle                *
-         * This indicator needs to move back and forth                       *
-         *********************************************************************/
-
-        this.slipSkidGraphics = new Graphics(); // Container for indicator
-        let topPercent = 1.05;
-        let bottomPercent = 1.3;
-
-        this.slipSkidGraphics.lineStyle(lineOptions);
-
-        this.slipSkidGraphics.beginFill(fillColour, 1);
-        this.slipSkidGraphics.drawPolygon(
-            -topPercent * this.triangleHeight/2, -radius + topPercent * this.triangleHeight,
-            topPercent * this.triangleHeight/2, -radius + topPercent * this.triangleHeight,
-            bottomPercent * this.triangleHeight/2, -radius + bottomPercent * this.triangleHeight,
-            -bottomPercent * this.triangleHeight/2, -radius + bottomPercent * this.triangleHeight 
-        );
-        this.slipSkidGraphics.endFill;
-
-        // position the graphic based on the display centre
-        this.slipSkidGraphics.x = this.displayWidth/2;
-        this.slipSkidGraphics.y = this.displayHeight/2;
-
-        /*********************************************************************
-         * Draw a Red X for when the indicater is invalid                    *
-         *********************************************************************/
-
-        this.badDataGraphic = new Graphics();
-
-        lineWidth = 2;
-        lineColour = 0xFF0000; // Red
-        fillColour = 0xFF0000; // Yellow
-
-        this.badDataGraphic.lineStyle(lineWidth, lineColour);
-        this.badDataGraphic.moveTo(radius,radius);
-        this.badDataGraphic.lineTo(-radius, -radius);
-        this.badDataGraphic.moveTo(radius, -radius);
-        this.badDataGraphic.lineTo(-radius, radius);
-
-        this.badDataGraphic.x = this.displayWidth/2;
-        this.badDataGraphic.y = this.displayHeight/2;
-
-
-        // Add the pitch container
-
-        this.rollContainer.addChild(this.pitchContainer);
-        this.rollContainer.addChild(maskGraphics);
-
-        this.rollContainer.addChild(this.bankArc(radius));
-
-        // Position the pitch container in the center of the window
-        this.rollContainer.x = this.displayWidth / 2;
-        this.rollContainer.y = this.displayHeight / 2;
-
-        // add the rollContainer to the stage as a child
-        app.stage.addChild(this.rollContainer);
-
-        app.stage.addChild(triangleGraphics);
-        app.stage.addChild(this.slipSkidGraphics);
-
+        return triangleGraphics;
     }
+
     /**
      * Setter for the pitch display
      */
@@ -348,6 +362,9 @@ export class AttitudeIndicator {
             this._roll = newValue;
         }
     }
+
+
+
 
     /**
      * set a new value for acceleration in the y direction (slip / skid)
@@ -423,14 +440,13 @@ export class AttitudeIndicator {
         return this._smoothedY;
     }
 
-    /**
-     * Create the Bank Arc
-     */
+    /*************************************************************************
+     * Create the Bank Arc Container                                         *
+     *************************************************************************/
 
-    bankArc(radius) {
+    createBankArcContainer(radius) {
 
         // Parameters
-        //let radius = 180;
         let triangleHeight = 20; // This is a duplicate from the main class - fix
 
         let start_radians = 7 / 6 * Math.PI;   // 210 deg
@@ -451,21 +467,29 @@ export class AttitudeIndicator {
         let x, y, angle, unit_x, unit_y, x1, y1;
 
         /** Graphics for the arc */
-        let arc = new Graphics();
+        let arcGraphics = new Graphics();
 
         let lineWidth = 2
         let lineColour = 0xFFFFFF
 
         // Draw the Arc line
-        arc.lineStyle(lineWidth,lineColour);
-        arc.arc(0, 0, radius, start_radians, end_radians,false);
+        arcGraphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour
+        };
+        arcGraphics.arc(0, 0, radius, start_radians, end_radians,false);
+        arcGraphics.stroke();
 
         // Draw the Arc tick markings
 
         lineWidth = 3;
         
         // Major Tick marks (-60, -30, 30 ,60)
-        arc.lineStyle(lineWidth,lineColour);
+        arcGraphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour
+        }
+
         for (let i = 0; i < major_marks.length; i = i + 1) {
             angle = 2 * Math.PI - major_marks[i] * Math.PI; 
             unit_x = Math.cos(angle);
@@ -476,13 +500,18 @@ export class AttitudeIndicator {
             x1 = (radius + major_length) * unit_x;
             y1 = -(radius + major_length) * unit_y;
 
-            arc.moveTo(x,y);
-            arc.lineTo(x1,y1);
+            arcGraphics.moveTo(x,y);
+            arcGraphics.lineTo(x1,y1);
+            arcGraphics.stroke();
         }
 
         // Minor Tick marks (-45, -20, -10, 10, 20, 45)
         lineWidth = 2;
-        arc.lineStyle(lineWidth,lineColour);
+        arcGraphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour
+        };
+
         for (let i = 0; i < minor_marks.length; i = i + 1) {
             angle = 2 * Math.PI - minor_marks[i] * Math.PI; 
             unit_x = Math.cos(angle);
@@ -493,35 +522,118 @@ export class AttitudeIndicator {
             x1 = (radius + minor_length) * unit_x;
             y1 = -(radius + minor_length) * unit_y;
 
-            arc.moveTo(x,y);
-            arc.lineTo(x1,y1);
+            arcGraphics.moveTo(x,y);
+            arcGraphics.lineTo(x1,y1);
+            arcGraphics.stroke();
         }
 
         // Draw the 0 degree roll triangle
 
-        let fillColour = 0xFFFFFF;
+        let fillColour = 0xFFFFFF; 
 
-        let lineOptions = new Object;
-        lineOptions.width = 0;
-        lineOptions.color = 0x000000;
-        lineOptions.alpha = 1;
-        lineOptions.alignment = 0;
-        lineOptions.cap = PIXI.LINE_CAP.ROUND;
+        arcGraphics.strokeStyle = {
+            width: 2,
+            color: 0xFFFFFF,
+            alpha: 1,
+            alignment: 1,
+            cap: "round",
+        }
 
-        let triangleGraphics = new Graphics();
+        arcGraphics.fillStyle = {
+            color: fillColour,
+            alpha: 1,
+        }
 
-        arc.lineStyle(lineOptions);
-        
-        arc.beginFill(fillColour, 1);
-        arc.drawPolygon(0,-radius, triangleHeight/2, -triangleHeight-radius, -triangleHeight/2, -triangleHeight-radius);
-        arc.endFill();
+        const path = [
+            0, -this.radius, 
+            triangleHeight/2, -triangleHeight-this.radius, 
+            -triangleHeight/2, -triangleHeight-this.radius
+        ];
+        arcGraphics.poly(path);
+        //arcGraphics.stroke();
+        arcGraphics.fill();
 
+        arcGraphics.x = centreX;
+        arcGraphics.y = centreY;
 
-        arc.x = centreX;
-        arc.y = centreY;
         // Save the are in the container and display it
-        arcContainer.addChild(arc);
+        arcContainer.addChild(arcGraphics);
         return arcContainer;
 
+    }
+
+    /********************************************************************* 
+     * Draw a slip skid indicator below the roll triangle                *
+     * This indicator needs to move back and forth                       *
+     *********************************************************************/
+
+    createSlipSkidGraphics(){
+
+        let slipSkidGraphics = new Graphics(); // Container for indicator
+        
+        let topPercent = 1.05;
+        let bottomPercent = 1.3;
+
+        let lineColour = 0x000000;
+        let lineWidth = 2;
+        let fillColour = 0xffff00;
+
+        slipSkidGraphics.strokeStyle = {
+            alignment: 1,       // inside
+            alpha: 1,
+            cap: "round",
+            color: lineColour,
+            width: lineWidth,   
+        }
+
+        slipSkidGraphics.fillStyle = {
+            alpha: 1,
+            color: fillColour,
+        }
+
+        let path = [
+            -topPercent * this.triangleHeight/2, -this.radius + topPercent * this.triangleHeight,
+            topPercent * this.triangleHeight/2, -this.radius + topPercent * this.triangleHeight,
+            bottomPercent * this.triangleHeight/2, -this.radius + bottomPercent * this.triangleHeight,
+            -bottomPercent * this.triangleHeight/2, -this.radius + bottomPercent * this.triangleHeight 
+        ];
+
+        slipSkidGraphics.poly(path);
+        slipSkidGraphics.fill();
+        slipSkidGraphics.stroke();
+
+
+        // position the graphic based on the display centre
+        slipSkidGraphics.x = this.displayWidth/2;
+        slipSkidGraphics.y = this.displayHeight/2;
+
+        return slipSkidGraphics;
+    }
+
+    /*************************************************************************
+     * Draw a Red X for when the indicater is invalid                        *
+     *************************************************************************/
+
+    createBadDataGraphics() {
+        const badDataGraphics = new Graphics();
+
+        const lineWidth = 2;
+        const lineColour = 0xFF0000; // Red
+
+        badDataGraphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour,
+        }
+
+        badDataGraphics.moveTo(this.radius,this.radius);
+        badDataGraphics.lineTo(-this.radius, -this.radius);
+        badDataGraphics.moveTo(this.radius, -this.radius);
+        badDataGraphics.lineTo(-this.radius, this.radius);
+        badDataGraphics.stroke();
+
+        badDataGraphics.x = this.displayWidth/2;
+        badDataGraphics.y = this.displayHeight/2;
+
+        return badDataGraphics;
     }
 }
