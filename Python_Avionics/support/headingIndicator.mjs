@@ -1,65 +1,64 @@
-/*global PIXI */
 'use strict';
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     loader = PIXI.Loader.shared,
-//     resources = PIXI.Loader.shared.resources,
-//     TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-// var Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
 
-/**     
+import { Container, Graphics, TextStyle, Text, CanvasTextMetrics } from './pixi.mjs';
+
+/******************************************************************************     
  * Class representing a Heading Indicator.
  * The indicator is designed for a height of 40 pixels.
  * The indicator is positioned at the top of the display.
  */
 export class HeadingIndicator {
-    /**
-     * 
+    
+    /*************************************************************************
+     * Constructor
      * @param {object} app Pixijs
-     * @param {number} width thw width of the horizontal ribbont
-     * @param {boolean} horizontal True if a horizontal ribbon required
-     * @param {boolean} circular True if a circular ribbon required
-     */
-    constructor(app, width, horizontal, circular ) {
+     * @param {number} width the width of the horizontal ribbon
+     *************************************************************************/
+
+    constructor(app, width) {
 
         // TODO: Create some consistency for the screen width variable
+        // get the size of the canvas used by the app
         this.displayWidth = app.screen.width;
         this.displayHeight = app.screen.height;
         
-        let height = 36;            // height of heading ribbon
+        const height = 35;            // height of heading ribbon
 
-        /** Internal variables variables for the heading value */
+        /** Internal parameters for the heading value */
         this._value = 0;
         this._previous_value = 0;
-        this._bugValue = 0;
+        this._bugValue = 5;
 
-        /**********************************************************************
+        /*********************************************************************
          * Create the graphics required for the horizontal ribbon
          *
-         **********************************************************************/
-
+         *********************************************************************/
+        
         this.headingContainer = new Container();
-        this.headingContainer.x = this.displayWidth/2;  // centre the container on the screen
+        
+        // Centre the container on the screen horizontally
+        this.headingContainer.x = this.displayWidth/2;  
 
-        let headingBackground = this.createHorizontalBackground(width, height);
-        let headingMask = this.createHorizontalMask(width, height);
+        // Create the mask for the container so that everything behind only 
+        // the graphics in the mask area are displayed
+        const headingMask = this.createMaskGraphics(height);
         this.headingContainer.mask = headingMask;
 
-        this.headingRibbon = this.createHorizontalRibbon(width, height);
-        let magnifierGraphics = this.createHorizontalMagnifierGraphics(height);
+        // Create the container with the background for the ribbon
+        const headingBackground = this.createBackgroundGraphics(height);
 
-        this.headingBugGraphics = this.createHeadingBug(height);
+        // create the container with the ribbon (degree marks and labels)
+        // created as a property so we can manipulate it as required in
+        // other class functions
+        this.headingRibbon = this.createRibbonContainer(height);
 
-        this.selectableGraphics = this.createSelectableGraphic(width, height);
-        [this.changableGraphics, this.bugText] = this.createChangableGraphic(width, height);
-        this.bugText.text = "0";
+        const magnifierContainer = this.createMagnifierContainer(height);
+
+        this.headingBugContainer = this.createHeadingBugContainer(height);
+
+        //this.selectableGraphics = this.createSelectableGraphic(width, height);
+        //[this.changableGraphics, this.bugText] = this.createChangableGraphic(width, height);
+        //this.bugText.text = "0";
 
         /**********************************************************************
          * add the graphics to the container
@@ -67,165 +66,157 @@ export class HeadingIndicator {
          * to the app somehow.
          */
 
-        this.headingContainer.addChild(headingMask);
         this.headingContainer.addChild(headingBackground);
+        this.headingContainer.addChild(headingMask);
+
         this.headingContainer.addChild(this.headingRibbon);
-        this.headingContainer.addChild(this.headingBugGraphics);
-        this.headingContainer.addChild(magnifierGraphics);
+        this.headingContainer.addChild(this.headingBugContainer);
+        this.headingContainer.addChild(magnifierContainer);
         /**********************************************************************
          * add the container to the display
          */
 
-        if (horizontal) { 
-            app.stage.addChild(this.headingContainer);
-        }
-
-        /**********************************************************************
-         * Create a Circular heading Indicator at the bottom of the display
-         **********************************************************************/
-    
-        // find the smallest screen dimension and use it to determine the size 
-        // of all arcs
-
-        let minimum_screen = Math.min(app.screen.width, app.screen.height);
-        let radius = (minimum_screen / 2 ) - 0 ;    // duplicated in the drawing of the BankArc
-        let xOrigin = this.displayWidth / 2 ;
-        let yOrigin = this.displayHeight  + .65 * radius;
-
-        /**
-         * Create the Circular Container and move it to its origin
-         */
-        this.headingCircularContainer = new Container();
-        this.headingCircularContainer.x = xOrigin;
-        this.headingCircularContainer.y = yOrigin;
-
-        /**
-         * Create the graphics
-         */
-
-        let headingCircularBackground = this.createCircularBackground(radius);
-        this.headingCircularForeground = this.createCircularHeadingForeground(radius);
-        this.circularBug = this.createCircularHeadingBug(radius);
-        let circularPointer = this.createCircularHeadingPointer(yOrigin);
-
-        this.selectedCircularGraphics = this.createCircularSelectableGraphic(radius);
-        [this.changeableCircularGraphics, this.circularBugText ] = this.createChangableCircularGraphic(radius);
-        this.circularBugText.text = "0";
-
-        /**
-         * Add the graphics to the container
-         */
-
-
-        this.headingCircularContainer.addChild(headingCircularBackground);
-        this.headingCircularContainer.addChild(this.headingCircularForeground);
-        this.headingCircularContainer.addChild(this.circularBug);
-        this.headingCircularContainer.addChild(circularPointer);
-
-        if (circular) {
-            app.stage.addChild(this.headingCircularContainer);
-        }
-
-
+        app.stage.addChild(this.headingContainer);
     }
+    set value(new_value){
 
-    /**
-     * Create the horizontal background for the ribbon at the top of the screen
-     * 
-     * @param {number} width The width of the horizontal ribbon.
-     * @param {number} height The height of the horizontal ribbon.
-     * 
-     * @returns {object} A PixiJS Graphics object.
-     */
-    createHorizontalBackground(width, height){
-        var graphics = new Graphics();
+        if (new_value == this._previous_value) {
+            return;
+        }
+        this._previous_value = new_value;
+        new_value = new_value % 360;
 
-        let backgroundColour = 0x000000;        // black
-        let backgroundAlpha = 0.25;             // 25%
-        let backgroundOutlineWidth = 1.0;       // 1px
-        let backgroundOutlineColour = 0x000000; // black
-        let backgroundOutlineAlpha = 0.25;      // 25%
+        if (new_value < -0.5) {     // prevents 360 from being displayed
+            new_value = 360 + new_value;
+        }
+        this._value = new_value
 
-        graphics.lineStyle(backgroundOutlineWidth, backgroundOutlineColour, backgroundOutlineAlpha);
+        this.headingText.text = String(Math.round(this._value));
+
+        this.headingRibbon.x = - this._value * this.pixelsPerDegree;
         
-        graphics.beginFill(backgroundColour, backgroundAlpha);
-        graphics.drawRect(-width/2, 0, width, height);
-        graphics.endFill();
+        //TODO: check if new_value is required and remove it
+        this.positionHeadingBugOnRibbon();
 
-        // position the heading background
-        //TODO: Remove positioning of the background and position the container
-        //graphics.x = this.displayWidth / 2 ;
-
-        return (graphics);
     }
-    /**
-     * Create a mask for the space occupied by the ribbon at the top of the screen
+    /*************************************************************************
+     * Create the background for the ribbon at the top of the screen
+     * Start with a solid sky blue to obscure anything behind it, then add
+     * 25% black.
+     * 
+     * @param {number} height The height of the graphic.
+     * @returns {object} A PixiJS Graphics object.
+     *************************************************************************/
+    createBackgroundGraphics(height){
+        const backgroundContainer = new Container();
+        const backgroundGraphics = new Graphics();
+
+        backgroundGraphics.fillStyle = {
+            alpha: 1.0,         // 100%
+            color: 0x0000C0,    // skyColor
+        }
+
+        // Create rectangle. (upper left, size)
+        backgroundGraphics.rect(-this.displayWidth/2, 0,
+                                this.displayWidth, height);
+        backgroundGraphics.fill();
+
+        backgroundGraphics.fillStyle = {
+            alpha: 0.25,        // 25%
+            color: 0x000000,    // black
+        }
+
+        // Create rectangle. (upper left, size)
+        backgroundGraphics.rect(-this.displayWidth/2, 0,
+                                this.displayWidth, height);
+        backgroundGraphics.fill();
+
+        //backgroundContainer.addChild(backgroundGraphics);
+
+        return (backgroundGraphics);
+    }
+    /*************************************************************************
+     * Create a mask for the space occupied by the ribbon at the top of the
+     *  screen
      * 
      * @param {number} width The width of the mask.
-     * @param {number} height The height of the mask.
      * @returns {object} A PixiJS Graphics object.
-     */
-    createHorizontalMask(width, height){
-        var graphics = new Graphics();
+     *************************************************************************/
+    createMaskGraphics(height){
+        const maskGraphics = new Graphics();
 
-        let maskColour = 0xFF0000;              // red
+        maskGraphics.fillStyle = {
+            color: 0xff0000,    // red
+        }
 
-        graphics.beginFill(maskColour);
-        graphics.drawRect(-width/2, 0, width, height);
-        graphics.endFill();
+        maskGraphics.rect(-this.displayWidth/2, 0,
+                                     this.displayWidth, height);
+        maskGraphics.fill();
 
-        return (graphics);
+        return (maskGraphics);
     }
 
-    /**
-     * Create a graphics object that is a horizontal ribbon to display the current
-     * heading.
-     * @param {number} width The width of the ribbon on the display.
+    /*************************************************************************
+     * Create a graphics and container object that is a horizontal ribbon to 
+     * display the current heading.
+     * 
      * @param {number} height The height of the ribbon on the display.
-     * @returns {object} A PixiJS Graphics object
-     */
-    createHorizontalRibbon(width, height){
-        var graphics = new Graphics();
-
-        let pixelsPerTenDegrees = 80; 
-        let pixelsPerFiveDegrees = pixelsPerTenDegrees/2;
+     * @returns {object} A PixiJS Container object
+     *************************************************************************/
+    createRibbonContainer(height){
+        const horizontalRibbonContainer = new Container();
+        const horizontalRibbonGraphics = new Graphics();
+        
+        // TODO: make this related to screen width 
+        // Object parameter so it can be used elsewhere 
+        const pixelsPerTenDegrees = 80;     // ideally divisible evenly by 10  
+        const pixelsPerFiveDegrees = pixelsPerTenDegrees/2;
         this.pixelsPerDegree = pixelsPerTenDegrees/10;
 
         // The ribbon needs to be long enough so that an extra half of the 
         // width is available at each end so that the display is filled when
         // indicating the lowest or highest value.
-        let extraRibbonTenDegrees = Math.ceil((width/2)/pixelsPerTenDegrees);
-        this.extraRibbonDegrees = extraRibbonTenDegrees * 10;
-        let extraRibbonWidth = extraRibbonTenDegrees * pixelsPerTenDegrees;
-        
-        let RibbonStart = -extraRibbonWidth;
-        let RibbonEnd = (360 * pixelsPerTenDegrees + extraRibbonWidth);
-        
-        let lineWidth = 1;              // 1 pixel
-        let lineColour = 0xFFFFFF;      // white
-        let lineHeightDegree = 3;       // 5 pixels
-        let lineHeightFiveDegree = 6;   // 10 pixels;
-        let lineHeightTenDegree = 9;   // 15 pixels;
 
-        let textStyle = new PIXI.TextStyle({
+
+        const extraRibbonTenDegrees = Math.ceil((this.displayWidth/2)/pixelsPerTenDegrees);
+        this.extraRibbonDegrees = extraRibbonTenDegrees * 10;
+        const extraRibbonWidth = extraRibbonTenDegrees * pixelsPerTenDegrees;
+        
+        // The start and end of the ribbon in pixels.
+        const RibbonStart = -extraRibbonWidth;
+        const RibbonEnd = (360 * this.pixelsPerDegree + extraRibbonWidth);
+
+        const lineHeightDegree = 3;       // 3 pixels
+        const lineHeightFiveDegree = 6;   // 6 pixels;
+        const lineHeightTenDegree = 9;    // 9 pixels;
+
+        let textStyle = new TextStyle({
             fontFamily: "Tahoma",
             fontSize: 22,
-            fill: "#BBBBBB",
+            fill: 0xbbbbbb,             // gray
             fontWeight: "normal"  
         });
 
+        horizontalRibbonGraphics.strokeStyle = {
+            width: 1,           // 1 px
+            color: 0xffffff,    // white
+        }
 
-        graphics.lineStyle(lineWidth, lineColour);
-
+        // loop through all the pixels required to drawing the ribbon
+        // i is in pixels
         for(let i = RibbonStart; i <= RibbonEnd; i = i + this.pixelsPerDegree ){
-            graphics.moveTo(i, height);
+
+            horizontalRibbonGraphics.moveTo(i, height);
+            
             if (i % pixelsPerTenDegrees == 0 ) {
-                let degrees = i/pixelsPerTenDegrees*10;
+                let degrees = i / pixelsPerTenDegrees * 10;
+                // adjust degrees so that it is between 0 and 359
                 if (degrees < 0) {
                     degrees = degrees + 360;
                 } else if (degrees > 359) {
                     degrees = degrees - 360;
                 }
+                // add one or two zeros to the degree string
                 let degreesString = String(degrees);
                 if (degreesString.length == 1) {
                     degreesString = "00" + degreesString;
@@ -233,97 +224,110 @@ export class HeadingIndicator {
                     degreesString = "0" + degreesString;
                 }
 
-                let degreesText = new Text(degreesString,textStyle);
+                // Create Text to display each 10 degrees
+                const degreesText = new Text({
+                    text: degreesString,
+                    style: textStyle,
+                });
                 degreesText.anchor.set(0.5,.1);
                 degreesText.position.set(i,4);
-                graphics.addChild(degreesText);
+                horizontalRibbonContainer.addChild(degreesText);
 
-                graphics.lineTo(i, height - lineHeightTenDegree );
-            } else if (i% pixelsPerFiveDegrees == 0) {
-                graphics.lineTo(i, height - lineHeightFiveDegree);
+                horizontalRibbonGraphics.lineTo(i, height - lineHeightTenDegree );
+            
+            } else if (i % pixelsPerFiveDegrees == 0) {
+            
+                horizontalRibbonGraphics.lineTo(i, height - lineHeightFiveDegree);
+            
             } else {
-                graphics.lineTo(i, height - lineHeightDegree);
+            
+                horizontalRibbonGraphics.lineTo(i, height - lineHeightDegree);
+            
             }
         }
-
-        //graphics.x = this.displayWidth/2 - this._value * this.pixelsPerDegree;  
-        graphics.x = - this._value * this.pixelsPerDegree;  
-        return (graphics);
+        horizontalRibbonGraphics.stroke();
+ 
+        horizontalRibbonContainer.x = -this._value * this.pixelsPerDegree;
+        horizontalRibbonContainer.addChild(horizontalRibbonGraphics)  
+        return (horizontalRibbonContainer);
     }
-    /**
-     * Create the magnifier on the horizontal ribbont that will display the 
+
+    /*************************************************************************
+     * Create the magnifier on the horizontal ribbon that will display the 
      * current heading. 
+     * 
      * @param {*} height The height of the ribbon the magnifier is placed on
-     * @returns 
-     */
-    createHorizontalMagnifierGraphics(height ){
-        let graphics = new Graphics();
+     * @returns {object} A PixiJS Container object
+     *************************************************************************/
+    createMagnifierContainer(height){
+        const magnifierGraphics = new Graphics();
+        const magnifierContainer = new Container();
 
-        let magnifierWidth = 60;                // 60 pixels
-        let magnifierHeight = 30;               // 35 pixel
-        let magnifierOffset = 5 ;
+        const magnifierWidth = 60;    // 60 pixels
+        const magnifierHeight = 28;   // 28 pixel
+        const magnifierOffset = 6;    // 6 px up from bottom of ribbon
+        const lineWidth = 1;
 
-        let lineWidth = 2;
-        let lineColour = 0xBBBBBB;
-        let lineAlpha = 1.0
-        let lineAlignment = 0.5;
+        magnifierGraphics.strokeStyle = {
+            alignment: 0,       // inside
+            alpha: 1.0,         // 100%
+            color: 0xffffff,    // white
+            width: lineWidth,           // 2 px
+        }
 
-        let magnifierFillColour = 0x000000;     // Black
+        magnifierGraphics.fillStyle = {
+            color: 0x000000     // black
+        }
 
-        graphics.beginFill(magnifierFillColour);
-        graphics.drawRect(-magnifierWidth/2, -(magnifierHeight + magnifierOffset),
-            magnifierWidth, magnifierHeight); 
-        graphics.endFill();
-        graphics.beginFill(magnifierFillColour);
-        graphics.drawPolygon(
-            5, -magnifierOffset,
-            0, 5-magnifierOffset,
-            -5,-magnifierOffset
-        );
-        graphics.endFill();
+        magnifierGraphics.moveTo(-magnifierWidth/2,-magnifierHeight-magnifierOffset);
+        magnifierGraphics.lineTo(magnifierWidth/2, -magnifierHeight-magnifierOffset);
+        magnifierGraphics.lineTo(magnifierWidth/2, -magnifierOffset);
+        magnifierGraphics.lineTo(magnifierOffset-lineWidth,-magnifierOffset);
+        magnifierGraphics.lineTo(0,-lineWidth);
+        magnifierGraphics.lineTo(-magnifierOffset+lineWidth,-magnifierOffset);
+        magnifierGraphics.lineTo(-magnifierWidth/2, -magnifierOffset);
+        magnifierGraphics.closePath();
 
-        graphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
-        graphics.moveTo(-magnifierWidth/2,-magnifierHeight-magnifierOffset);
-        graphics.lineTo(magnifierWidth/2, -magnifierHeight-magnifierOffset);
-        graphics.lineTo(magnifierWidth/2, -magnifierOffset);
-        graphics.lineTo(5,-magnifierOffset);
-        graphics.lineTo(0,5-magnifierOffset);
-        graphics.lineTo(-5,-magnifierOffset);
-        graphics.lineTo(-magnifierWidth/2, -magnifierOffset);
-        graphics.closePath();
+        magnifierGraphics.stroke();
+        magnifierGraphics.fill();
 
-        let textStyle = new PIXI.TextStyle({
+        let textStyle = new TextStyle({
             fontFamily: "Tahoma",
             fontSize: 28,
             fill: "white",
-            fontWeight: "bold"//,
-            //stroke: "black",
-            //strokeThickness: 1
-            
+            fontWeight: "bold",
+            stroke: {
+                color: "black",
+                width: 1,
+            },
         });
 
         let verticalCharacterCentre = this.calculateCharacterVerticalCentre(28);
-        this.headingText = new Text("0", textStyle);
+        this.headingText = new Text({
+            text: "0",
+            style: textStyle,
+        });
         this.headingText.anchor.set(0.5,verticalCharacterCentre );
-        this.headingText.position.set(0, -magnifierHeight/2 - 5);
-        
-        graphics.addChild(this.headingText);
+        this.headingText.position.set(0, -magnifierHeight/2 - magnifierOffset);
 
-        //graphics.x = this.displayWidth/2;
-        graphics.y = height;
+        magnifierContainer.addChild(magnifierGraphics);
+        magnifierContainer.addChild(this.headingText);
 
-        return (graphics);
+        magnifierContainer.y = height;
+
+        return (magnifierContainer);
     }
 
 
-    /**
+    /*************************************************************************
      * 
      * @param {number} fontSizeToMeasure The font size to measure in points
      * @returns A ratio expressed as a number between 0 and 1 which which is 
      *    where the centre of the character is located vertically starting from
      *    the top. The value is used in an anchor setting to position the 
      *    characters vertically centered about a point
-     */
+     *************************************************************************/
+    
     calculateCharacterVerticalCentre(fontSizeToMeasure){
 
         let fontFamily = "Tahoma";          // font name for this indictor
@@ -340,14 +344,14 @@ export class HeadingIndicator {
         /**
          * Create a style to use when measuring the character sizes
          */
-        let measureTextStyle = new PIXI.TextStyle({
+        const measureTextStyle = new TextStyle({
             fontFamily: fontFamily,
             fontSize: String(fontSize)+"px",
-            fontWeight: fontWeight
+            fontWeight: fontWeight,
         });
 
         /** Get the character metrics */
-        let sampleMetrics = PIXI.TextMetrics.measureText("0123456789", measureTextStyle);
+        const sampleMetrics = CanvasTextMetrics.measureText("0123456789", measureTextStyle);
 
         let digitAscentDistance = sampleMetrics.fontProperties.ascent;
         let overallHeight = sampleMetrics.height; 
@@ -363,35 +367,44 @@ export class HeadingIndicator {
     }
 
 
-    /**
+    /*************************************************************************
      * Create a PixiJS Graphics that draws the heading bug. The bug is drawn
      *     with it's default position at 0,0.
      * @param {number} ribbonHeight The height of the ribbon in pixels
      * @returns A PixiJS Graphics object
-     */
-    createHeadingBug(ribbonHeight) {
+     *************************************************************************/
+    createHeadingBugContainer(ribbonHeight) {
 
-        var bugHeight = 7;             
-        var bugWidth = 26;
-        var bugLineColour = 0xFF0000; 
-        var bugOutlineWidth = 1;
-        var bugOutlineAlpha = 1;
-        var bugOutlineAlignment = 0; // Inner
-        var bugFillColour = 0xFF0000;
-        var bugFillAlpha = 1;
-        var bugTriangle = 7;
+        const bugHeight = 7;             
+        const bugWidth = 26;
+        const bugLineColour = 0xFF0000; 
+        const bugOutlineWidth = 1;
+        const bugOutlineAlpha = 1;
+        const bugOutlineAlignment = 0; // Inner
+        const bugFillColour = 0xFF0000;
+        const bugFillAlpha = 1;
+        const bugTriangle = 7;
     
         // Create the Graphics
 
-        var bugGraphics = new Graphics();
+        const bugGraphics = new Graphics();
+        const bugContainer = new Container();
 
         // Draw the bug clockwise
 
-        bugGraphics.lineStyle(bugOutlineWidth, bugLineColour, bugOutlineAlpha, bugOutlineAlignment);
+        bugGraphics.strokeStyle = {
+            alignment: bugOutlineAlignment,
+            alpha: bugOutlineAlpha,
+            color: bugLineColour,
+            width: bugOutlineWidth,
+        };
+
+        bugGraphics.fillStyle = {
+            alpha: bugFillAlpha,
+            color: bugFillColour,
+        };
 
         bugGraphics.moveTo(0, ribbonHeight);
-        bugGraphics.beginFill(bugFillColour, bugFillAlpha);
-
         bugGraphics.lineTo(-bugWidth/2, ribbonHeight);
         bugGraphics.lineTo(-bugWidth/2, ribbonHeight-bugHeight);
         bugGraphics.lineTo(-bugTriangle, ribbonHeight-bugHeight);
@@ -399,20 +412,22 @@ export class HeadingIndicator {
         bugGraphics.lineTo(bugTriangle, ribbonHeight-bugHeight);
         bugGraphics.lineTo(bugWidth/2, ribbonHeight-bugHeight);
         bugGraphics.lineTo(bugWidth/2, ribbonHeight);
-        bugGraphics.lineTo(0, ribbonHeight);
+        bugGraphics.closePath();
 
-        bugGraphics.endFill();
+        bugGraphics.stroke();
+        bugGraphics.fill();
 
-        return(bugGraphics);
+        bugContainer.addChild(bugGraphics);
+
+        return(bugContainer);
     }
 
-    /**
-     * Position the heading bug on the ribbon using the class properties _value
-     *    and _bugValue to locate the bug.
-     */
+    /*************************************************************************
+     * Position the heading bug on the ribbon using the class properties 
+     * _value and _bugValue to locate the bug.
+     *************************************************************************/
     positionHeadingBugOnRibbon(){
         var bugValue = this._bugValue;
-
 
         // check if we are displaying the extra bit of ribbon
         if (this._value < this.extraRibbonDegrees) {
@@ -430,7 +445,8 @@ export class HeadingIndicator {
                 bugValue = bugValue + 360;
             }
         }
-        this.headingBugGraphics.x = this.displayWidth/2 + (bugValue - this._value) * this.pixelsPerDegree
+
+        this.headingBugContainer.x =  (bugValue - this._value) * this.pixelsPerDegree;
     }
 
     /**
@@ -653,340 +669,5 @@ export class HeadingIndicator {
         }
     }
 
-    set value(new_value){
 
-        if (new_value == this._previous_value) {
-            return;
-        }
-        this._previous_value = new_value;
-        new_value = new_value % 360;
-
-        if (new_value < 0) {
-            new_value = 360 + new_value;
-        }
-        this._value = new_value
-
-        //TODO: Format this text properly
-        this.headingText.text = String(this._value);
-
-        //this.headingRibbon.x = this.displayWidth/2 - this._value * this.pixelsPerDegree;
-        this.headingRibbon.x = - this._value * this.pixelsPerDegree;
-        //TODO: check if new_value is required and remove it
-        this.positionHeadingBugOnRibbon(new_value);
-
-        /**
-         * Position circular heading and bug indicator by rotation
-         */
-        
-        this.headingCircularForeground.angle = - this._value;
-        this.circularBug.angle = - this._value + this._bugValue;
-
-    }
-
-
-    createCircularBackground(radius){
-        // Set the background colours and styles
-        let graphics = new Graphics();
-
-        let backgroundColour = 0x000000;        // black
-        let backgroundAlpha = 0.50;             // 25%
-        let backgroundOutlineWidth = 1.0;       // 1px
-        let backgroundOutlineColour = 0x000000; // black
-        let backgroundOutlineAlpha = 0.25;      // 25%
-
-        graphics.lineStyle(backgroundOutlineWidth, 
-            backgroundOutlineColour, 
-            backgroundOutlineAlpha);
-
-        // Draw the darkened background
-        // Located it at 0,0 then move it to the correct position
-
-        graphics.beginFill(backgroundColour, backgroundAlpha);
-        graphics.drawCircle(0,0,radius);
-        graphics.endFill();
-
-        return graphics;
-    }
-
-    createCircularHeadingForeground(radius){
-
-        let graphics = new Graphics();
-
-        let lineineWidth = 2.0
-        let lineColour = 0xffffff;
-        let lineAlpha = 1.0;
-
-        graphics.lineStyle(lineineWidth,
-            lineColour,
-            lineAlpha);
-
-        let textStyle = new PIXI.TextStyle({
-            fontFamily: "Tahoma",
-            fontSize: 22,
-            fill: "#ffffff",
-            fontWeight: "normal"  
-        });
-
-        // Set the length of the various tick marks
-        let shortLength = 5;
-        let longLength = 15;
-        let midLength =10
-
-        // Declare variables
-        let startLength;
-        let angleRadians;
-        let x,y;
-        let degreesString;
-        let xStart, xFinish, yStart, yFinish;
-
-        for(let i = 0; i <= 360; i = i + 5) {
-            // Draw tick marks every 5 degrees
-            // Define 0 degrees as vertical up
-            if (i % 30 == 0) {
-                startLength = radius - longLength;
-            } else if ( i % 10 == 0 ){
-                startLength = radius - midLength;
-            } else {
-                startLength = radius - shortLength;
-            }
-            angleRadians = Math.PI * i / 180;
-
-            y = - Math.cos(angleRadians);
-            x = Math.sin(angleRadians); 
-
-            xStart = x * startLength;
-            yStart = y * startLength;
-
-            xFinish = x * radius;
-            yFinish = y * radius;
-
-            graphics.moveTo(xStart, yStart);
-            graphics.lineTo(xFinish, yFinish);
-
-            // Add text
-            if (i % 30 == 0) {
-                if (i % 90 == 0) {
-                    if (i == 90) {
-                        degreesString = "E";
-                    } else if (i == 180) {
-                        degreesString = "S";
-                    } else if (i == 270) {
-                        degreesString = "W";
-                    } else {
-                        degreesString = "N";
-                    }
-                } else {
-                    degreesString = String(i / 10);
-                }
-                let text = new Text(degreesString,textStyle);
-                text.anchor.set(0.5,0);
-                text.position.set(xStart,yStart);
-                text.rotation = angleRadians;
-
-                graphics.addChild(text);
-            }
-        }
-        return graphics;
-    }
-
-    /**
-     * 
-     * @param {number} radius The radius of the heading indicator
-     * @returns 
-     */
-    createCircularHeadingBug(radius) {
-
-        var height = 10;             
-        var width = 30;
-        var lineColour = 0xFF0000; 
-        var outlineWidth = 0;
-        var outlineAlpha = 1;
-        var outlineAlignment = 1; // Inner
-        var fillColour = 0xFF0000;
-        var fillAlpha = 1;
-        var triangle = 9;
-    
-        // Create the Graphics
-
-        var graphics = new Graphics();
-
-        // Draw the bug clockwise at the 0 degreee position.
-        // The centre of the indicator is at x=0, y=0. +ve is down and to the right
-        // 
-
-        graphics.lineStyle(outlineWidth, lineColour, outlineAlpha, outlineAlignment);
-
-        let halfAngle = Math.atan((width/2) / radius);
-        let xPrime, yPrime;
-        let x1, x2, x3, x4, x5;
-        let y1, y2, y3, y4, y5;
-
-        xPrime = Math.sin(halfAngle);
-        yPrime = Math.cos(halfAngle);
-
-        x1 = 0;
-        y1 = -radius;
-
-        x2 = -radius * xPrime;
-        y2 = -radius * yPrime;
-        
-        x3 = -(radius - height) * xPrime;
-        y3 = -(radius - height) * yPrime;
-
-        x4 = -triangle/2;
-        y4 = y3;
-
-        x5 = 0
-        y5 = -(radius - height + triangle);
-
-
-
-        graphics.moveTo(x1, y1);
-        graphics.beginFill(fillColour, fillAlpha);
-
-        graphics.lineTo(x2, y2);
-        graphics.lineTo(x3, y3);
-        graphics.lineTo(x4, y4);
-        graphics.lineTo(x5, y5);
-        graphics.lineTo(-x4, y4);
-        graphics.lineTo(-x3, y3);
-        graphics.lineTo(-x2, y2);
-        graphics.lineTo(-x1, y1);
-
-        graphics.endFill();
-
-        //graphics.angle = -180;
-
-        return(graphics);
-    
-    }
-
-    createCircularHeadingPointer(yOrigin){
-        let height = 30;             
-        let width = 20;
-        let lineColour = 0xFFFFFF; 
-        let outlineWidth = 2;
-        let outlineAlpha = 1;
-        let outlineAlignment = 0; // Inner
-        let fillColour = 0x000000;
-        let fillAlpha = 1;
-    
-        let yDisplayBottom =  -(yOrigin - this.displayHeight);
-        // Create the Graphics
-
-        var graphics = new Graphics();
-
-        // Draw the bug clockwise at the 0 degreee position
-
-        graphics.lineStyle(outlineWidth, lineColour, outlineAlpha, outlineAlignment);
-        graphics.moveTo(-width/2, yDisplayBottom);
-        graphics.beginFill(fillColour, fillAlpha);
-        graphics.lineTo(0,(yDisplayBottom - height));
-        graphics.lineTo(width/2, yDisplayBottom);
-        graphics.lineTo(-width/2, yDisplayBottom);
-        graphics.endFill();
-
-        return(graphics);
-    }
-
-    /**
-     * Create a circular graphic that is coloured to indicate that the heading
-     * indicator bug can be selected to allow positioning of the bug.
-     * @param {number} radius 
-     * @returns PIXI.JS Graphics Object
-     */
-    createCircularSelectableGraphic(radius){
-        // Set the background colours and styles
-        let graphics = new Graphics();
-
-        let outlineWidth = 2.0;       // 1px
-        let outlineColour = 0xFF0000; // red
-        let outlineAlpha = 1.0;      // 100%%
-        var outlineAlignment = 1; // inner
-
-        graphics.lineStyle(outlineWidth, 
-            outlineColour, 
-            outlineAlpha,
-            outlineAlignment);
-
-        // Draw the darkened background
-        // Located it at 0,0 then move it to the correct position
-
-        graphics.drawCircle(0,0,radius);
-
-        return graphics;
-    }
-
-    /**
-     * Create a PixiJS Graphics object that draws a circle around
-     *      the heading indicator, a leader and a box displaying the
-     *      current heading bug setting to indicate the heading bug can be set
-     * @param {number} radius The radius of the heading indicator circle.
-     * @returns A PixiJS Graphics object that draws the changable graphics.
-     */
-     createChangableCircularGraphic(radius) {
-        
-        var outlineColour = 0x00FFFF;
-        var leaderLineWidth = 2;
-        var leaderLineAlignment = .5;
-        var outlineWidth = 2;
-        var outlineAlpha = 1;
-        var outlineAlignment = 1; // inner
-        var fillColour = 0x000000;
-        var fillAlpha = 1;
-        var boxHeight = 25;
-        var boxWidth = 40;
-        //var boxVerticalOffset = 5;
-        var boxCornerRadius = 7;
-
-        var bugValueTextStyle = new PIXI.TextStyle({
-            fontFamily: "Tahoma",
-            fontSize: 20,
-            fill: "aqua",
-            fontWeight: "normal"
-            
-        });
-
-        var yAnchor = this.calculateCharacterVerticalCentre(20);
-
-        var boxVerticalOffset = radius + 10;
-        
-        var container = new Container();
-        var graphics = new Graphics();
-
-        // draw circular  line in new colour
-        graphics.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlineAlignment);
-        graphics.drawCircle(0,0,radius);
-
-        // draw the leader line
-        graphics.lineStyle(leaderLineWidth, outlineColour, outlineAlpha, leaderLineAlignment);
-        graphics.moveTo(0, - radius);
-        graphics.lineTo(0, - boxVerticalOffset);
-
-
-
-        // draw the box
-        graphics.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlineAlignment);
-
-
-        let topLeftX = - boxWidth / 2;
-        let topLeftY = - boxVerticalOffset - boxHeight;
-        
-        
-        graphics.beginFill(fillColour, fillAlpha);
-        graphics.drawRoundedRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
-        graphics.endFill();
-
-        container.addChild(graphics);
-
-        var textX = boxWidth/2 - 3;
-        var textY = - boxVerticalOffset - (boxHeight / 2);
-        var bugText = new Text("260", bugValueTextStyle);
-        bugText.anchor.set(1, yAnchor);
-        bugText.position.set(textX, textY);
-
-        container.addChild(bugText);
-
-        return [container, bugText];
-    }
 }

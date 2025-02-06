@@ -36,72 +36,171 @@ export class AttitudeIndicator {
         this.displayWidth = app.screen.width;
         this.displayHeight = app.screen.height;
 
-        // the maximum number of degrees of pitch the can be seen on the display
-        // in on direction either up or down
-        let pitchDegrees = 25;
+        // The maximum number of degrees of pitch the can be seen on the
+        // display. Used to calculate the pitchRatio below.
+        let pitchDegrees = 50;      // 25 degrees above and below the horizon
 
         // pitchRatio equal number of pixels per degree of pitch
-        this.pitchRatio = (this.displayHeight / 2) / pitchDegrees;
+        this.pitchRatio = (this.displayHeight) / pitchDegrees;
 
         // find the smallest display dimension and use it to determine the size 
         // of all arcs
 
-        let circularBorder = 55;    // pixel border
+        let circularBorder = 55;    // pixel border outside or arc
         let minimum_screen = Math.min(this.displayWidth, this.displayHeight);
-        this.radius = (minimum_screen / 2 ) - circularBorder;    // duplicated in the drawing of the BankArc
+        this.radius = (minimum_screen / 2 ) - circularBorder;
 
         this.triangleHeight = 25
 
         /********************************************************************* 
-         * Create a container with the pitch grahpics background.            *
-         * Pass in a mask for the pitch degree bars and labels.              *
-         * The mask should be the diameter of the circle used for the roll   *
-         * display                                                           *
-         *********************************************************************/
+         * Create a container with the pitch grahpics background.
+         * Pass in a mask for the pitch degree bars and labels.
+         * The mask should be the diameter of the circle used for the roll
+         * display.
+         * The mask will be added to the to the Scene Graph later to that it is
+         * a parent to pitch container. The pitch container needs it so that it
+         * can be used as a mask for pitch lines and degree text.                                                      
+         */
 
-        let pitchMaskGraphics = this.createAttitudeMaskGraphics();
+        // create the mask
+        const pitchMaskGraphics = this.createAttitudeMaskGraphics();
+        // create the pitch container
         this.pitchContainer = this.createAttitudeBackgroundContainer(pitchMaskGraphics);
         
-        // --------------------------------------------------------------------
-        // Create a roll container
-        // --------------------------------------------------------------------
-
+        /*********************************************************************
+         * Create a container that will rotate to display the roll of the 
+         * aircraft. This container will be centered on the display but will 
+         * rotate with the roll of the aircraft.
+         * This container will have the pitch container as a child.
+         */
         this.rollContainer = new Container();
-        this.triangleGraphics = this.createRollTriangleGraphics();
 
-        // /********************************************************************* 
-        //  * Draw a slip skid indicator below the roll triangle                *
-        //  * This indicator needs to move back and forth                       *
-        //  *********************************************************************/
-
-        this.slipSkidGraphics = this.createSlipSkidGraphics();
-
-
-        // /*********************************************************************
-        //  * Draw a Red X for when the indicater is invalid                    *
-        //  *********************************************************************/
-
-        this.badDataGraphics = this.createBadDataGraphics();
-
-        // // Add the pitch container
-
-        this.rollContainer.addChild(this.pitchContainer);
+        // add the pitch mask to the roll container here so that pitch changes
+        // are masked so that only the center of the display shows the pitch
+        // markings
         this.rollContainer.addChild(pitchMaskGraphics);
 
+        // add the pitch container then add the mask so that it can be applied
+        // to the pitch container
+        this.rollContainer.addChild(this.pitchContainer);
+   
+        // add the bank arc container to the roll container
         this.rollContainer.addChild(this.createBankArcContainer(this.radius));
 
-        // // Position the pitch container in the center of the window
+        // Position the roll container in the center of the window
         this.rollContainer.x = this.displayWidth / 2;
         this.rollContainer.y = this.displayHeight / 2;
 
-        // // add the rollContainer to the stage as a child
-        app.stage.addChild(this.rollContainer);
+        /*********************************************************************
+         * Create the triangle graphic that represents the up direction of the
+         * aircraft. This triangle will not move on the display. It will point
+         * at the bank arc and show the bank angle of the aircraft.
+         */
+        this.triangleGraphics = this.createRollTriangleGraphics();
 
+        /********************************************************************* 
+         * Create a slip skid indicator below the roll triangle
+         * This indicator needs to move back and forth
+         */
+        this.slipSkidGraphics = this.createSlipSkidGraphics();
+
+        /*********************************************************************
+         * Create a red X to be display when the attitude info is not valid 
+         */
+        this.badDataGraphics = this.createBadDataGraphics();
+
+        // add the containers to the app stage
+        app.stage.addChild(this.rollContainer);
         app.stage.addChild(this.triangleGraphics);
         app.stage.addChild(this.slipSkidGraphics);
-
-        app.stage.addChild(this.badDataGraphics);
+        //app.stage.addChild(this.badDataGraphics);
     }
+
+    /**
+     * ***********************************************************************
+     * Setter for the pitch display
+     * @param {number | undefined} newValue
+     */
+    set pitch(newValue) {
+        // check if value changed
+        if (newValue == this._pitch) {
+            return;
+        }
+
+        // check if new value undefined
+        if (newValue === null && !this._pitchUndefined) {
+            // new value just changed to undefined
+            this._pitchUndefined = true
+            this.app.stage.addChild(this.badDataGraphics);  
+        } else if (newValue !== null && this._pitchUndefined ) {
+            // new value just changed to defined
+            this.app.stage.removeChild(this.badDataGraphics);
+            this._pitchUndefined = false
+        }
+
+        // the value should be a number of degrees and negative is up
+        //console.log(newValue);
+        if (!this._pitchUndefined) {
+            this.pitchContainer.y = newValue * this.pitchRatio;
+            this._pitch = newValue;
+        }
+
+    }
+
+    /**
+     * ************************************************************************
+     * Setter for the roll display
+     * @param {number | undefined} newValue
+     */
+    set roll(newValue) {
+        // check if value has changed
+        if (newValue == this._roll) {
+            return;
+        }
+
+        if (newValue === null && !this._rollUndefined) {
+            // new value just changed to undefined
+            this._rollUndefined = true
+            this.app.stage.addChild(this.badDataGraphics);
+        } else if (newValue !== null && this._rollUndefined){
+            this.app.stage.removeChild(this.badDataGraphics );
+            this._rollUndefined = false
+        }
+        if (newValue == this._roll) {
+            return;
+        }
+
+        if (!this._rollUndefined) {
+            this.rollContainer.angle = newValue;
+            this._roll = newValue;
+        }
+    }
+
+    /**
+     * ************************************************************************
+     * Setter for the acceleration in the Z direction
+     * @param {number} newValue
+     */
+    set accZ(newValue) {
+        if (isNaN(newValue)){ // check for NaN
+            newValue = 0;
+        }
+        //this._acc100Z = newValue;
+        this._accZ = this.smoothedValueZ(newValue/100)
+    }
+
+    /**
+     * ************************************************************************
+     * Setter for the acceleration in the Y direction
+     * @param {number} newValue
+     */
+    // set accY(newValue) {
+    //     if (isNaN(newValue)){ // check for NaN
+    //         newValue = 0;
+    //     }
+    //     //this._acc100Y = newValue;
+    //     this._accY = this.smoothedValueY(newValue/100)
+    // }
 
     /************************************************************************* 
      * Create a container that holds the background for the attitude         *
@@ -116,30 +215,22 @@ export class AttitudeIndicator {
         // Calculate the various values we need to draw the pitch portion of 
         // the attitude indicator
 
-        // Set the maximum number of degrees of pitch the can be seen on the
-        // display up and down from the center (horizon when level)
-        let pitchDegrees = 25;
-
-        // Calculate pitchRatio as equal to the number of pixels per degree of 
-        // pitch
-        let pitchRatio = (this.displayHeight / 2) / pitchDegrees;
-
         // calculate the width of sky and earth to ensure it fills display
         // when rolling. This should be the diagonal dimension of the display
         // ensure the display remains filled
 
-        let skyWidth = Math.sqrt(Math.pow(this.displayWidth,2) + Math.pow(this.displayHeight,2));
+        let skyWidth = Math.sqrt(Math.pow(this.displayWidth,2) 
+                                + Math.pow(this.displayHeight,2));
         let earthWidth = skyWidth;
 
-        // calculate the height of the sky and earth to accomodate 90 degrees plus
-        // enough additional pixels to prevent us from seeing black when rolling 
-        // at a pitch angle of 90 degrees
+        // calculate the height of the sky and earth to accomodate 90 degrees 
+        // plus enough additional pixels to prevent us from seeing black when 
+        // rolling at a pitch angle of 90 degrees
 
-        let skyHeight = ((this.displayHeight / 2) / pitchDegrees * (90)) + skyWidth/2;
+        let skyHeight = this.pitchRatio * 90 + skyWidth/2
         let earthHeight = skyHeight;
 
         // --------------------------------------------------------------------
-        
         // Create a container for the background
         let attitudeBackground = new Container(); 
 
@@ -204,9 +295,16 @@ export class AttitudeIndicator {
             alignment: lineAlignment
         };
 
-        for (let i=-90; i <= 90; i = i + 10) {
+        for (let i=-110; i <= 110; i = i + 10) {
             let sign = Math.sign(i);
-            let deg = String(sign * -Math.abs(i));
+            let absDeg = Math.abs(i);
+            let deg = 0
+            if (absDeg > 90) {
+                deg = String(-1 * sign * (90 - (absDeg - 90)));
+            } else {
+                deg = String(-i);
+            }
+
 
             if (i != 0) {
 
@@ -222,25 +320,24 @@ export class AttitudeIndicator {
                 textLeft.anchor.set(1, 0.55);
                 textRight.anchor.set(0,0.55);
 
-                textLeft.position.set(-length - offset,i * pitchRatio);
-                textRight.position.set(length + offset,i * pitchRatio);
+                textLeft.position.set(-length - offset,i * this.pitchRatio);
+                textRight.position.set(length + offset,i * this.pitchRatio);
                 
                 degreeContainer.addChild(textLeft);
                 degreeContainer.addChild(textRight);
 
-                degreeGraphics.moveTo(-halfLength,(i - sign * 5) * pitchRatio);
-                degreeGraphics.lineTo(halfLength,(i - sign * 5) * pitchRatio);
+                degreeGraphics.moveTo(-halfLength,(i - sign * 5) * this.pitchRatio);
+                degreeGraphics.lineTo(halfLength,(i - sign * 5) * this.pitchRatio);
                 degreeGraphics.stroke();
 
-                degreeGraphics.moveTo(-length,i * pitchRatio);    
-                degreeGraphics.lineTo(length,i * pitchRatio);    
+                degreeGraphics.moveTo(-length,i * this.pitchRatio);    
+                degreeGraphics.lineTo(length,i * this.pitchRatio);    
                 degreeGraphics.stroke();        
             }
         }
 
         degreeGraphics.mask = pitchMaskGraphics;
         degreeContainer.mask = pitchMaskGraphics;
-
 
         attitudeBackground.addChild(skyGraphics);
         attitudeBackground.addChild(earthGraphics);
@@ -309,93 +406,43 @@ export class AttitudeIndicator {
         return triangleGraphics;
     }
 
-    /**
-     * Setter for the pitch display
-     */
 
-    set pitch(newValue) {
-        // check if value changed
-        if (newValue == this._pitch) {
-            return;
-        }
 
-        // check if new value undefined
-        if (newValue === undefined && !this._pitchUndefined) {
-            // new value just changed to undefined
-            this._pitchUndefined = true
-            this.app.stage.addChild(this.badDataGraphic);  
-        } else if (newValue !== undefined && this._pitchUndefined ) {
-            // new value just changed to defined
-            this.app.stage.removeChild(this.badDataGraphic);
-            this._pitchUndefined = false
-        }
 
-        // the value should be a number of degrees and negative is up
-        //console.log(newValue);
-        if (!this._pitchUndefined) {
-            this.pitchContainer.y = -newValue * this.pitchRatio;
-            this._pitch = newValue;
-        }
 
-    }
 
-    set roll(newValue) {
-        // check if value has changed
-        if (newValue == this._roll) {
-            return;
-        }
-
-        if (newValue === undefined && !this._rollUndefined) {
-            // new value just changed to undefined
-            this._rollUndefined = true
-            this.app.stage.addChild(this.badDataGraphic);
-        } else if (newValue !== undefined && this._rollUndefined){
-            this.app.stage.removeChild(this.badDataGraphic);
-            this._rollUndefined = false
-        }
-        if (newValue == this._roll) {
-            return;
-        }
-
-        if (!this._rollUndefined) {
-            this.rollContainer.angle = -newValue;
-            this._roll = newValue;
-        }
-    }
 
 
 
 
     /**
      * set a new value for acceleration in the y direction (slip / skid)
+     * @param {number} newValue
      */
+    set accY(newValue) {
+        // check for NaN in order to protect the smoothing calculation
+        if (isNaN(newValue)){ // check for NaN
+            newValue = 0;
+        }
+        this._acc100 = newValue;
+        this._smooth = this.smoothedValueY(newValue/100);
 
-    // set accy(newValue) {
-    //     // check for NaN in order to protect the smoothing calculation
-    //     if (isNaN(newValue)){ // check for NaN
-    //         newValue = 0;
-    //     }
-    //     this._acc100 = newValue;
-    //     this._smooth = this.smoothedValue(newValue/100);
+        if (this._smooth == this._acc) {
+            return;
+        }
+        this._acc = this._smooth;
 
-    //     if (this._smooth == this._acc) {
-    //         return;
-    //     }
-    //     this._acc = this._smooth;
+        // caluclate effective angle of slip or skid
+        let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
+        let sign = Math.sign(angle);
 
-    //     // caluclate effective angle of slip or skid
-    //     let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
-    //     let sign = Math.sign(angle);
-
-    //     let horizontalPosition = Math.min(Math.abs(angle),this.slipSkidDegrees) * sign * this.triangleHeight / this.slipSkidDegrees;
-    //     this.slipSkidGraphics.x = horizontalPosition + this.displayWidth / 2;
+        let horizontalPosition = Math.min(Math.abs(angle),this.slipSkidDegrees) * sign * this.triangleHeight / this.slipSkidDegrees;
+        this.slipSkidGraphics.x = horizontalPosition + this.displayWidth / 2;
 
 
-    // }
+    }
 
     updateSlipSkid() {
-
-
         // caluclate effective angle of slip or skid
 
         // let angle = Math.asin(this._acc/9.81) * 180 / Math.PI;
@@ -406,22 +453,6 @@ export class AttitudeIndicator {
         this.slipSkidGraphics.x = horizontalPosition + this.displayWidth / 2;
 
 
-    }
-
-    set accZ(newValue) {
-        if (isNaN(newValue)){ // check for NaN
-            newValue = 0;
-        }
-        //this._acc100Z = newValue;
-        this._accZ = this.smoothedValueZ(newValue/100)
-    }
-
-    set accY(newValue) {
-        if (isNaN(newValue)){ // check for NaN
-            newValue = 0;
-        }
-        //this._acc100Y = newValue;
-        this._accY = this.smoothedValueY(newValue/100)
     }
 
     smoothedValueZ(newValue){

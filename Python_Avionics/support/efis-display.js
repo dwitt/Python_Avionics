@@ -10,7 +10,7 @@ import { Application, Graphics } from './pixi.mjs';
 // import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
 // import { SlipBallIndicator } from './slipBall.mjs';
-// import { HeadingIndicator } from './headingIndicator.mjs';
+import { HeadingIndicator } from './headingIndicator.mjs';
 // import { Interactions } from './interaction.mjs';
 // import { QNHDisplay } from './qnhdisplay.mjs';
 // import { SpeedDisplay } from './speedDisplay.mjs';
@@ -34,21 +34,6 @@ import { AttitudeIndicator } from './attitude-indicator.mjs';
 
 
 'use strict';
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// const Application = PIXI.Application,
-//     //loader = PIXI.Loader.shared,
-//     //resources = PIXI.Loader.shared.resources,
-//     //TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-//     Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text,
-//     Polygon = PIXI.Polygon;
-
 
 // ----------------------------------------------------------------------------
 
@@ -58,18 +43,10 @@ var last_brightness = null;     // force a brightness change of first pass
 var can_qnh_timestamp = Date.now();
 var current_time_millis = Date.now();
 
-
 // ----------------------------------------------------------------------------
 // ---Create a Pixi Application                                             ---
 // ----------------------------------------------------------------------------
-// let app = new Application({
-//     width: 480, 
-//     height: 400,
-//     antialias: true,
-//     transparent: false,
-//     resolution: 1
-//     }
-// );
+
 const app = new Application();
 await app.init({width: 480,
                 height: 400
@@ -112,8 +89,6 @@ dataObject.accy = 0;
 dataObject.yaw = 0;
 dataObject.position = 0;
 dataObject.pressed = false;
-
-
 
 // ----------------------------------------------------------------------------
 // --- Connect to the websocket to recieve the data from the can bus as     ---
@@ -172,26 +147,27 @@ document.fonts.ready.then(function() {
     setup();
 });
 
-//})();
+// ----------------------------------------------------------------------------
+// --- Assign a function to receive WebSocket Messages                      ===
+// ----------------------------------------------------------------------------
+
+myWebSocket.onmessage = RecieveWebSocketMessage;
 
 // ****************************************************************************
+// *** END OF SCRIPT - We should be event based from this point onward      ***
 // ****************************************************************************
-
-// ----------------------------------------------------------------------------
-// --- END OF SCRIPT - We should be event based from this point onward      ---
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
 
 
 // ----------------------------------------------------------------------------
 // --- Process messages received from the websocket connection              ---
 // ----------------------------------------------------------------------------
 
-myWebSocket.onmessage = function (event) {
+function RecieveWebSocketMessage(event) {
     // parse the event.data into a data object
     // this will contain the data from the CAN bus
     dataObject = JSON.parse(event.data);
 }
+
 
 // ----------------------------------------------------------------------------
 // This `setup` function will run when the image has loaded                 ---
@@ -217,10 +193,10 @@ function setup() {
 
     // vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
 
-    // var aircraft = new AircraftIndicator(app);
+     var aircraft = new AircraftIndicator(app);
 
     // //slipBallIndicator = new SlipBallIndicator(app);
-    // headingIndicator = new HeadingIndicator(app, x, false, true );//- 260);
+    headingIndicator = new HeadingIndicator(app, x);//- 260);
     // //menu = new Interactions(app, x - 150, y - 40, 150, 40);
 
     // brightness = new Brightness(app);
@@ -249,9 +225,9 @@ function setup() {
 function DisplayUpdateLoop(delta) {
 
     attitudeIndicator.pitch = dataObject.pitch;
-    // attitudeIndicator.roll = dataObject.roll;
-    // attitudeIndicator.accY = dataObject.accy;
-    // attitudeIndicator.accZ = dataObject.accz;
+    attitudeIndicator.roll = -dataObject.roll;
+    attitudeIndicator.accY = dataObject.accy;
+    attitudeIndicator.accZ = dataObject.accz;
     // attitudeIndicator.updateSlipSkid();
     // altitudeWheel.value = dataObject.altitude;
     // //qnhDisplay.value = globalThis.qnh; // dataObject.qnh; // Don't update from json
@@ -266,7 +242,7 @@ function DisplayUpdateLoop(delta) {
     // //slipBallIndicator.accY = dataObject.accy;
     // //slipBallIndicator.update();
 
-    // headingIndicator.value = dataObject.yaw;
+    headingIndicator.value = dataObject.yaw;
 
     // speedDisplay.groundSpeed = dataObject.gps_speed;
     // speedDisplay.staticPressure = dataObject.static_pressure;
@@ -326,80 +302,67 @@ function AircraftIndicator(app){
     let py1 = displayHeight/8;  // Not Used
     let py2 = displayHeight/40; // height of verticals
 
-    let lineOptions = new Object;
-    lineOptions.width = 8;
-    lineOptions.color = 0x000000;
-    lineOptions.alpha = 1;
-    lineOptions.alignment = 0.5;
-    lineOptions.cap = PIXI.LINE_CAP.ROUND;
-    lineOptions.join = PIXI.LINE_JOIN.ROUND;
-
     let aircraftGraphics = new Graphics();
 
-    // draw black background
-    aircraftGraphics.lineStyle(lineOptions);
-    // large horizontal
-    // aircraftGraphics.moveTo(-px1 + px2 , 0);
-    // aircraftGraphics.lineTo(-px1 , 0);
+    aircraftGraphics.strokeStyle = {
+        alignment: 0.5,
+        alpha: 1,
+        cap: "round",
+        join: "round",
+        color: 0x000000,
+        width: 8,
+    }
+
     // 90 on left
     aircraftGraphics.moveTo(-px1 , 0);
     aircraftGraphics.lineTo(-1.5 * px4, 0);
     aircraftGraphics.lineTo(-1.5 * px4, py2);
 
-    // large horizontal on right
-    // aircraftGraphics.moveTo(px1, 0);
-    // aircraftGraphics.lineTo(px1 - px2, 0);
     // 90 on right
     aircraftGraphics.moveTo(px1,0);//2 * px4 , 0);
     aircraftGraphics.lineTo(1.5 * px4, 0);
     aircraftGraphics.lineTo(1.5 * px4, py2);
 
+    aircraftGraphics.stroke();
 
     // draw yellow foreground
-    lineOptions.width = 4;
-    lineOptions.color = 0xFFFF00;
-
-    aircraftGraphics.lineStyle(lineOptions);
-
-    // aircraftGraphics.moveTo(-px1 + px2, 0);
-    // aircraftGraphics.lineTo(-px1, 0);
+    aircraftGraphics.strokeStyle = {
+        alignment: 0.5,
+        alpha: 1,
+        cap: "round",
+        join: "round",
+        color: 0xFFFF00,
+        width: 4,
+    }
 
     aircraftGraphics.moveTo(-px1 , 0);
     aircraftGraphics.lineTo(-1.5 * px4, 0);
     aircraftGraphics.lineTo(-1.5 * px4, py2);
 
-    // aircraftGraphics.moveTo(px1 , 0);
-    // aircraftGraphics.lineTo(px1 - px2, 0);
-
     aircraftGraphics.moveTo(px1, 0);
     aircraftGraphics.lineTo(1.5 * px4, 0);
     aircraftGraphics.lineTo(1.5 * px4, py2);
 
+    aircraftGraphics.stroke();
+
     // draw yellow Dot
-    lineOptions.width = 1;
-    lineOptions.color = 0x000000;
-    lineOptions.alignment = 1;
+    aircraftGraphics.strokeStyle = {
+        alignment: 0.0,
+        alpha: 1,
+        cap: "round",
+        join: "round",
+        color: 0x000000,
+        width: 2,
+    }
+    aircraftGraphics.fillStyle = {
+        alpha: 1,
+        color: 0xFFFF00,
+    }
 
-    aircraftGraphics.lineStyle(lineOptions);
+    aircraftGraphics.circle(0,0,3);
 
-    aircraftGraphics.beginFill(0xFFFF00,1);
-    aircraftGraphics.drawCircle(0,0,4);
-
-    // draw polygon
-    // let rightSidePolygon = new Polygon(0,0,px1-px2,py1,px1-px2-px3,py1);
-    // let leftSidePolygon = new Polygon(0,0,-px1+px2,py1,-px1+px2+px3,py1);
-    // lineOptions.color = 0x000000;
-    // lineOptions.width = 1;
-    // lineOptions.alignment = 1;
-    // aircraftGraphics.lineStyle(lineOptions);
-    // aircraftGraphics.beginFill(0xFFFF00);
-    // aircraftGraphics.drawPolygon(rightSidePolygon);
-    // // reverse the alignment due to reversal of drawing sequence, clockwise vs counter-clockwise
-    // // this puts the line on the correct side otherwise the shape gets too large
-    // lineOptions.alignment = 0;
-    // aircraftGraphics.lineStyle(lineOptions);
-
-    // aircraftGraphics.drawPolygon(leftSidePolygon);
+    aircraftGraphics.stroke();
+    aircraftGraphics.fill();
 
     aircraftGraphics.x = displayWidth/2;
     aircraftGraphics.y = displayHeight/2;

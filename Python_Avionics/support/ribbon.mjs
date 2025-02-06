@@ -1,23 +1,6 @@
-/*global PIXI */
-// ----------------------------------------------------------------------------
-// --- Generic Ribbon Display Class                                         ---
-// ----------------------------------------------------------------------------
 'use strict';
 
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     //loader = PIXI.Loader.shared,
-//     //resources = PIXI.Loader.shared.resources,
-//     //TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-//     Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
-
+import { Container, Graphics, Text, TextStyle } from './pixi.mjs'
 
 /**
  * Ribbon: 
@@ -108,18 +91,28 @@ export class Ribbon {
         let backgroundOutlineWidth = 1;
         let backgroundOutlineAlpha = .25;
 
+        this.ribbon_background.fillStyle = {
+            alpha: backgroundAlpha,
+            color: backgroundColour
+        };
 
-        this.ribbon_background.lineStyle(backgroundOutlineWidth,backgroundColour,backgroundOutlineAlpha,0);
-        this.ribbon_background.beginFill(backgroundColour, backgroundAlpha);
+        this.ribbon_background.strokeStyle = {
+            alignment: 0,   // inside
+            alpha: backgroundOutlineAlpha,
+            color: backgroundColour,
+            width: backgroundOutlineWidth,
+        };
+
         if (this.isRightAligned) {
-            this.ribbon_background.drawRect(-width,-height/2, width, height);
+            this.ribbon_background.rect(-width,-height/2, width, height);
         } else {
-            this.ribbon_background.drawRect(0, -height/2, width, height);
+            this.ribbon_background.rect(0, -height/2, width, height);
         }
 
         //console.log(height);
         
-        this.ribbon_background.endFill();
+        this.ribbon_background.stoke();
+        this.ribbon_background.fill();
 
 
 
@@ -136,6 +129,12 @@ export class Ribbon {
         let rulerColour = 0xBBBBBB;
 
         this.ruler.lineStyle(rulerLineWidth, rulerColour);
+        this.ruler.strokeStyle = {
+            alignment: 0,   // inside
+            alpha: 1.0,     // 100%
+            color: rullerColour,
+            width: rulerLineWidth,
+        };
 
         // calculate total number of tick marks required allowing for an 
         // additional major division at both the top and bottom of the ruler
@@ -173,6 +172,7 @@ export class Ribbon {
             } else {
                 this.ruler.lineTo(this.ribbonSideRight * smallTickMarkLength, i * this.ribbon_minor_interval_in_pixels );
             }
+            this.ruler.stroke()
         }
 
         // Draw vertical ruler line.
@@ -197,9 +197,14 @@ export class Ribbon {
         mask_y = y - (this.ribbonHeight/2 );
 
         this.ribbon_mask = new Graphics();
-        this.ribbon_mask.beginFill(0xFF0000);
+
+        this.ribbon_mask.fillStyle = {
+            alpha: 1.0,             // 100%
+            color: 0xff0000,        // red
+        };
+
         this.ribbon_mask.drawRect(mask_x,mask_y,this.ribbonWidth,this.ribbonHeight);
-        this.ribbon_mask.endFill();
+        this.ribbon_mask.fill();
 
  
         // --------------------------------------------------------------------
@@ -228,7 +233,7 @@ export class Ribbon {
         // --- and add them to container
         // --------------------------------------------------------------------
 
-        let text_style = new PIXI.TextStyle({
+        let text_style = new TextStyle({
             fontFamily: "Tahoma",
             fontSize: 22,
             fill: "#BBBBBB",

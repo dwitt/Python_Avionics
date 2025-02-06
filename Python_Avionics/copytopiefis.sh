@@ -23,7 +23,7 @@ rsync support/ribbon.mjs "$user"@"$destination_server":"$piefis_support_dir"ribb
 # rsync support/vsi-indicator.mjs "$user"@"$destination_server":"$piefis_support_dir"vsi-indicator.mjs
 rsync support/attitude-indicator.mjs "$user"@"$destination_server":"$piefis_support_dir"attitude-indicator.mjs
 # rsync support/slipBall.mjs "$user"@"$destination_server":"$piefis_support_dir"slipBall.mjs
-# rsync support/headingIndicator.mjs "$user"@"$destination_server":"$piefis_support_dir"headingIndicator.mjs
+rsync support/headingIndicator.mjs "$user"@"$destination_server":"$piefis_support_dir"headingIndicator.mjs
 # rsync support/interaction.mjs "$user"@"$destination_server":"$piefis_support_dir"interaction.mjs
 # rsync support/specialRectangle.mjs "$user"@"$destination_server":"$piefis_support_dir"specialRectangle.mjs
 # rsync support/qnhdisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"qnhdisplay.mjs
