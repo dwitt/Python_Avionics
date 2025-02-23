@@ -10,6 +10,9 @@ piefis_linux_dir=/home/david/Python_Avionics/linux/
 destination_server=pi-efis.local
 user=david
 
+# list of files in the support directory to be coppied
+supportfilelist="supportfilelist.txt"
+
 echo 'Copying main files to the Pi Efis'
 
 echo "$destination_server"
@@ -17,26 +20,44 @@ echo "$destination_server"
 rsync index.html "$user"@"$destination_server":"$piefis_main_dir"index.html
 rsync aio_server.py "$user"@"$destination_server":"$piefis_main_dir"aio_server.py
 
-rsync support/efis-display.js "$user"@"$destination_server":"$piefis_support_dir"efis-display.js
-rsync support/ribbon.mjs "$user"@"$destination_server":"$piefis_support_dir"ribbon.mjs
-# rsync support/airspeedRibbon.mjs "$user"@"$destination_server":"$piefis_support_dir"airspeedRibbon.mjs
-# rsync support/vsi-indicator.mjs "$user"@"$destination_server":"$piefis_support_dir"vsi-indicator.mjs
-rsync support/attitude-indicator.mjs "$user"@"$destination_server":"$piefis_support_dir"attitude-indicator.mjs
-# rsync support/slipBall.mjs "$user"@"$destination_server":"$piefis_support_dir"slipBall.mjs
-rsync support/headingIndicator.mjs "$user"@"$destination_server":"$piefis_support_dir"headingIndicator.mjs
-# rsync support/interaction.mjs "$user"@"$destination_server":"$piefis_support_dir"interaction.mjs
-# rsync support/specialRectangle.mjs "$user"@"$destination_server":"$piefis_support_dir"specialRectangle.mjs
-# rsync support/qnhdisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"qnhdisplay.mjs
-# rsync support/speedDisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"speedDisplay.mjs
-# rsync support/altitudeDisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"altitudeDisplay.mjs
+# Read the support files line by line
+while IFS= read -r line; do 
+    # Trim leading and trailing whitespace
+    line=$(echo "$line" | xargs)
+
+    # Skip empty lines and lines starting with '#'
+    if [[ -z "$line" || "$line" == \#* ]]; then
+        continue
+    fi
+
+    echo "copying $line"
+
+    rsync support/"$line" "$user"@"$destination_server":"$piefis_support_dir""$line"
+
+done < "./$supportfilelist"
+
+# rsync support/efis-display.js "$user"@"$destination_server":"$piefis_support_dir"efis-display.js
+# rsync support/ribbon.mjs "$user"@"$destination_server":"$piefis_support_dir"ribbon.mjs
+# # rsync support/airspeedRibbon.mjs "$user"@"$destination_server":"$piefis_support_dir"airspeedRibbon.mjs
+# # rsync support/vsi-indicator.mjs "$user"@"$destination_server":"$piefis_support_dir"vsi-indicator.mjs
+# rsync support/attitude-indicator.mjs "$user"@"$destination_server":"$piefis_support_dir"attitude-indicator.mjs
+# # rsync support/slipBall.mjs "$user"@"$destination_server":"$piefis_support_dir"slipBall.mjs
+# rsync support/headingIndicator.mjs "$user"@"$destination_server":"$piefis_support_dir"headingIndicator.mjs
+# # rsync support/interaction.mjs "$user"@"$destination_server":"$piefis_support_dir"interaction.mjs
+# # rsync support/specialRectangle.mjs "$user"@"$destination_server":"$piefis_support_dir"specialRectangle.mjs
+# # rsync support/qnhdisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"qnhdisplay.mjs
+# # rsync support/speedDisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"speedDisplay.mjs
+# # rsync support/altitudeDisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"altitudeDisplay.mjs
 # rsync support/userInput.mjs "$user"@"$destination_server":"$piefis_support_dir"userInput.mjs
-# rsync support/numericWheelDisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"numericWheelDisplay.mjs
-# rsync support/utilityFunctions.mjs "$user"@"$destination_server":"$piefis_support_dir"utilityFunctions.mjs
-# rsync support/tempTimeDisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"tempTimeDisplay.mjs
-# rsync support/airSpeedWheel.mjs "$user"@"$destination_server":"$piefis_support_dir"airSpeedWheel.mjs
-# rsync support/altitudeWheel.mjs "$user"@"$destination_server":"$piefis_support_dir"altitudeWheel.mjs
-# rsync support/brightness.mjs "$user"@"$destination_server":"$piefis_support_dir"brightness.mjs
-# rsync support/temperatureGraph.mjs "$user"@"$destination_server":"$piefis_support_dir"temperatureGraph.mjs
+# # rsync support/numericWheelDisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"numericWheelDisplay.mjs
+# # rsync support/utilityFunctions.mjs "$user"@"$destination_server":"$piefis_support_dir"utilityFunctions.mjs
+# # rsync support/tempTimeDisplay.mjs "$user"@"$destination_server":"$piefis_support_dir"tempTimeDisplay.mjs
+# # rsync support/airSpeedWheel.mjs "$user"@"$destination_server":"$piefis_support_dir"airSpeedWheel.mjs
+# # rsync support/altitudeWheel.mjs "$user"@"$destination_server":"$piefis_support_dir"altitudeWheel.mjs
+# # rsync support/brightness.mjs "$user"@"$destination_server":"$piefis_support_dir"brightness.mjs
+# # rsync support/temperatureGraph.mjs "$user"@"$destination_server":"$piefis_support_dir"temperatureGraph.mjs
+# rsync support/softButtons.mjs "$user"@"$destination_server":"$piefis_support_dir"softButtons.mjs
+# rsync support/softButtons.mjs "$user"@"$destination_server":"$piefis_support_dir"softButtons.mjs
 
 #rsync support/pixi.min-v8.1.5.mjs "$user"@"$destination_server":"$piefis_support_dir"pixi.min.mjs
 #rsync support/pixi.min-v8.1.5.mjs.map "$user"@"$destination_server":"$piefis_support_dir"pixi.min.mjs.map

@@ -25,7 +25,7 @@ DEBUG_CAN = False
 DEBUG_JSON = False
 DEBUG_QNH = False
 DEBUG_GPS_TIME = False
-DEBUG_DISABLE_ENCODER = True
+DEBUG_DISABLE_ENCODER = False
 DEBUG_DISABLE_CAN = False
 DEBUG_WEBSOCKET = False
 
@@ -37,11 +37,16 @@ CAN_QNH_PERIOD = 1000 # ms between messages (1 second between transmitting qnh)
 class CAN_MSG_ID(Enum):
     AHRS_ORIENT = 0x48
     AHRS_ACCEL = 0x49
+    ENCODER = 0x38
 
 CAN_AHRS_ORIENT_MSG_ID = 0x48
 CAN_AHRS_ACCEL_MSG_ID = 0x49
 CAN_GPS1_MSG_ID = 0x63
 CAN_GPS2_MSG_ID = 0x64
+
+CAN_MAGX_MSG_ID = 0x81
+CAN_MAGY_MSG_ID = 0x82
+CAN_MAGZ_MSG_ID = 0x83
 
 CAN_STATICP_MSG_ID = 0x2B
 CAN_TIME_SYNC_ID = 0x19
@@ -340,6 +345,14 @@ async def process_can_messages(reader, data, last_received_times):
             )
             last_received_times[CAN_MSG_ID.AHRS_ACCEL.value] = time.time()
 
+        # process encoder message
+        # elif msg.arbitration_id == CAN_MSG_ID.ENCODER.value:
+        #     if DEBUG_CAN:
+        #         print("encoder")
+        #     (data.position, data.pressed) = (
+        #         struct.unpack("<i?", msg.data)
+        #     )
+
         # process GPS1 message
         elif msg.arbitration_id == CAN_GPS1_MSG_ID:
             (latitude, longitude) = (
@@ -355,6 +368,22 @@ async def process_can_messages(reader, data, last_received_times):
             (data.gps_speed, data.gps_altitude, data.true_track, _) = (
                 struct.unpack("<hhhh", msg.data)
             )
+
+        # process MAG X message
+        # keep only the first element of the tuple returned
+        elif msg.arbitration_id == CAN_MAGX_MSG_ID:
+            data.magx = struct.unpack("<f", msg.data)[0]
+
+
+        # process MAG Y message
+        # keep only the first element of the tuple returned
+        elif msg.arbitration_id == CAN_MAGY_MSG_ID:
+            data.magy = struct.unpack("<f", msg.data)[0]
+
+        # process MAG Z message
+        elif msg.arbitration_id == CAN_MAGZ_MSG_ID:
+            # keep only the first element of the tuple returned
+            data.magz = struct.unpack("<f", msg.data)[0]
 
         # process Time Sync message
         elif msg.arbitration_id == CAN_TIME_SYNC_ID:
@@ -541,11 +570,11 @@ async def main():
 
     # We should now be able to use the reader to get messages
 
-    if not DEBUG_DISABLE_CAN and DEBUG_DISABLE_ENCODER:
-        await asyncio.gather(process_can_messages(reader,avionics_data, last_received_times),
-                             monitor_timeout(avionics_data, last_received_times),
-                             send_json(web_socket_response, avionics_data))#,
-                             #read_input(encoder, button, avionics_data))
+   
+    await asyncio.gather(process_can_messages(reader,avionics_data, last_received_times),
+                            monitor_timeout(avionics_data, last_received_times),
+                            send_json(web_socket_response, avionics_data),
+                            read_input(encoder, button, avionics_data))
     while True:
         await asyncio.sleep(3600)     #sleep for an hour
 

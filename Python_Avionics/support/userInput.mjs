@@ -1,39 +1,25 @@
-/*global PIXI */
 'use strict';
+import { Container, Graphics, TextStyle, Text, CanvasTextMetrics } from './pixi.mjs';
 
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     //loader = PIXI.Loader.shared,
-//     //resources = PIXI.Loader.shared.resources,
-//     //TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-//     Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
-
-    const DEBUG = false;
+const DEBUG = true;
 
 export class UserInput {
 
-
-
-    /**
-     * The UserInput class allows the user to select between various elements using
-     *     the rotary input and then provide new input to these elements. It allows 
-     *     each of the elements to register a call back. 
-     * 
-     *     The class has two modes of operation. In the first mode, rotation of the 
-     *     encoder will allow cycle through the registered call backs and indicate to 
-     *     the registered element that it is selected. If the user chooses to provide 
-     *     input to the element they depress the knob once and they enter a mode where
-     *     the rotation of the encoder will provide data to that element.
-     * @param {PIXI.Appliation} app The current application. This is used to 
-     *     allow debugging information to be displayed on the screen. This 
-     *     should be removed in production.
-     */
+/**
+ *     The UserInput class allows the user to select between various elements using
+ *     the rotary input and then provide new input to these elements. It allows 
+ *     each of the elements to register a call back. 
+ * 
+ *     The class has two modes of operation. In the first mode, rotation of the 
+ *     encoder will allow cycle through the registered call backs and indicate to 
+ *     the registered element that it is selected. If the user chooses to provide 
+ *     input to the element they depress the knob once and they enter a mode where
+ *     the rotation of the encoder will provide data to that element.
+ * 
+ *     @param {PIXI.Appliation} app The current application. This is used to 
+ *     allow debugging information to be displayed on the screen. This 
+ *     should be removed in production.
+ */
     constructor(app) {
 
         this.encoderPosition = 0;
@@ -80,14 +66,17 @@ export class UserInput {
      */
     createTextObjectAt(x, y) {
 
-        let textStyle = new PIXI.TextStyle({
+        let textStyle = new TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '20px',
             fill: "white",
             fontWeight: "normal"
         });
 
-        let textObject = new Text("0", textStyle);
+        let textObject = new Text({
+            text: "0",
+            stile: textStyle,
+        });
         textObject.anchor.set(0,1);
         textObject.position.set(x, y);
 
@@ -108,7 +97,7 @@ export class UserInput {
     processState(position, button) {
         var encoderPosition;
 
-        // Handle both thefirst time through and until there is a call back 
+        // Handle both the first time through and until there is a call back 
         //     registered.
         if (this.firstPass) {
             // Save the current encoder position into encoderAdjustment so that
@@ -118,8 +107,9 @@ export class UserInput {
             // TODO:     This needs debugging.
             this.encoderAdjustment = position;
             if (DEBUG) {
-                console.log("First Pass processing encoder");
-                console.log(this.encoderAdjustment);
+                //console.log("First Pass processing encoder");
+                //console.log(this.encoderAdjustment);
+                //console.log(button)
             }
 
             // check if we have any registered callbacks

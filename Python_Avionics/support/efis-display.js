@@ -17,7 +17,7 @@ import { HeadingIndicator } from './headingIndicator.mjs';
 // import { AltitudeDisplay } from './altitudeDisplay.mjs'
 // import { TempTimeDisplay } from './tempTimeDisplay.mjs';
 // import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
-// import { UserInput } from './userInput.mjs';
+import { UserInput } from './userInput.mjs';
 // import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
 // import { AirspeedWheel } from './airSpeedWheel.mjs';
 // import { AltitudeWheel } from './altitudeWheel.mjs';
@@ -25,6 +25,8 @@ import { HeadingIndicator } from './headingIndicator.mjs';
 // import { TemperatureGraph } from './temperatureGraph.mjs';
 
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
+import { SoftButtons } from './softButtons.mjs';
+import { MagnetometerCalibrate } from './magnetometerCalibrate.mjs';
 
 //var websocket;
 
@@ -89,6 +91,9 @@ dataObject.accy = 0;
 dataObject.yaw = 0;
 dataObject.position = 0;
 dataObject.pressed = false;
+dataObject.magx = 0.0;
+dataObject.magy = 0.0;
+dataObject.magz = 0.0;
 
 // ----------------------------------------------------------------------------
 // --- Connect to the websocket to recieve the data from the can bus as     ---
@@ -123,7 +128,7 @@ tahoma_bold_font.load().then(function(loaded_face){
 // --- Wait for the document to report the fonts are loaded then call setup ---
 // ----------------------------------------------------------------------------
 
-// declare global variables??
+// declare global variables
 
 var attitudeIndicator,
     altitudeWheel, 
@@ -140,7 +145,10 @@ var attitudeIndicator,
     brightness,
     egtGraph,
     chtGraph,
-    userInput;
+    userInput,
+    softButtons,
+    magnetometerCalibrate;
+    // add softButtons?
 
     
 document.fonts.ready.then(function() {
@@ -204,15 +212,18 @@ function setup() {
     // //egtGraph = new TemperatureGraph(app2, 0, 200, "EGT", 1100, 1500, 0, 1400, 1400);
     // //chtGraph = new TemperatureGraph(app2, 240, 200, "CHT", 100, 500, 200, 400, 450);
 
-    // userInput = new UserInput(app);
+    userInput = new UserInput(app);
+    magnetometerCalibrate = new MagnetometerCalibrate(app);
+    softButtons = new SoftButtons(app, magnetometerCalibrate);
 
     // userInput.registerCallback(qnhDisplay);
     // userInput.registerCallback(tempTimeDisplay);
     // userInput.registerCallback(brightness);
     // userInput.registerCallback(speedDisplay);
-    // userInput.registerCallback(headingIndicator);
+    userInput.registerCallback(headingIndicator);
     // userInput.registerCallback(altitudeDisplay);
     // userInput.registerCallback(altimeter_ribbon);
+    
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -262,8 +273,9 @@ function DisplayUpdateLoop(delta) {
     // altitudeDisplay.temperature = dataObject.temperature;
     // altitudeDisplay.update();
 
+    magnetometerCalibrate.plotPoint(dataObject.magx,dataObject.magy,dataObject.magz);
     // // Process any change in the user input encoder
-    // userInput.processState(dataObject.position, dataObject.pressed)
+    userInput.processState(dataObject.position, dataObject.pressed)
 
     // // Send the qnh value out to python using the websocket and json
     // current_time_millis = Date.now();

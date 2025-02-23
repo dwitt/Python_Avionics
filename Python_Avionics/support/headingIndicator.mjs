@@ -2,11 +2,11 @@
 
 import { Container, Graphics, TextStyle, Text, CanvasTextMetrics } from './pixi.mjs';
 
-/******************************************************************************     
+/*****************************************************************************     
  * Class representing a Heading Indicator.
  * The indicator is designed for a height of 40 pixels.
  * The indicator is positioned at the top of the display.
- */
+ *****************************************************************************/
 export class HeadingIndicator {
     
     /*************************************************************************
@@ -24,7 +24,7 @@ export class HeadingIndicator {
         
         const height = 35;            // height of heading ribbon
 
-        /** Internal parameters for the heading value */
+        // Internal parameters for the heading value
         this._value = 0;
         this._previous_value = 0;
         this._bugValue = 5;
@@ -51,20 +51,19 @@ export class HeadingIndicator {
         // created as a property so we can manipulate it as required in
         // other class functions
         this.headingRibbon = this.createRibbonContainer(height);
-
         const magnifierContainer = this.createMagnifierContainer(height);
-
         this.headingBugContainer = this.createHeadingBugContainer(height);
+        this.selectableGraphics = this.createSelectableGraphic(height);
+        
+        [this.changableGraphics, this.bugText] = this.createChangableGraphic(height);
+        
+        this.bugText.text = "0";
 
-        //this.selectableGraphics = this.createSelectableGraphic(width, height);
-        //[this.changableGraphics, this.bugText] = this.createChangableGraphic(width, height);
-        //this.bugText.text = "0";
-
-        /**********************************************************************
+        /*********************************************************************
          * add the graphics to the container
          * note that the mask needs to be rendered so it must also be added
-         * to the app somehow.
-         */
+         * to the app.
+         *********************************************************************/
 
         this.headingContainer.addChild(headingBackground);
         this.headingContainer.addChild(headingMask);
@@ -72,12 +71,17 @@ export class HeadingIndicator {
         this.headingContainer.addChild(this.headingRibbon);
         this.headingContainer.addChild(this.headingBugContainer);
         this.headingContainer.addChild(magnifierContainer);
-        /**********************************************************************
+
+        /*********************************************************************
          * add the container to the display
-         */
+         *********************************************************************/
 
         app.stage.addChild(this.headingContainer);
     }
+
+    /*************************************************************************
+     * Set the value of the heading indicator in degrees
+     *************************************************************************/
     set value(new_value){
 
         if (new_value == this._previous_value) {
@@ -89,13 +93,12 @@ export class HeadingIndicator {
         if (new_value < -0.5) {     // prevents 360 from being displayed
             new_value = 360 + new_value;
         }
-        this._value = new_value
+        this._value = new_value;
 
         this.headingText.text = String(Math.round(this._value));
 
         this.headingRibbon.x = - this._value * this.pixelsPerDegree;
         
-        //TODO: check if new_value is required and remove it
         this.positionHeadingBugOnRibbon();
 
     }
@@ -108,7 +111,6 @@ export class HeadingIndicator {
      * @returns {object} A PixiJS Graphics object.
      *************************************************************************/
     createBackgroundGraphics(height){
-        const backgroundContainer = new Container();
         const backgroundGraphics = new Graphics();
 
         backgroundGraphics.fillStyle = {
@@ -130,8 +132,6 @@ export class HeadingIndicator {
         backgroundGraphics.rect(-this.displayWidth/2, 0,
                                 this.displayWidth, height);
         backgroundGraphics.fill();
-
-        //backgroundContainer.addChild(backgroundGraphics);
 
         return (backgroundGraphics);
     }
@@ -375,15 +375,15 @@ export class HeadingIndicator {
      *************************************************************************/
     createHeadingBugContainer(ribbonHeight) {
 
-        const bugHeight = 7;             
-        const bugWidth = 26;
+        const bugHeight = 6;             
+        const bugWidth = 24;
         const bugLineColour = 0xFF0000; 
         const bugOutlineWidth = 1;
         const bugOutlineAlpha = 1;
         const bugOutlineAlignment = 0; // Inner
         const bugFillColour = 0xFF0000;
         const bugFillAlpha = 1;
-        const bugTriangle = 7;
+        const bugTriangle = 6;
     
         // Create the Graphics
 
@@ -404,14 +404,14 @@ export class HeadingIndicator {
             color: bugFillColour,
         };
 
-        bugGraphics.moveTo(0, ribbonHeight);
-        bugGraphics.lineTo(-bugWidth/2, ribbonHeight);
-        bugGraphics.lineTo(-bugWidth/2, ribbonHeight-bugHeight);
-        bugGraphics.lineTo(-bugTriangle, ribbonHeight-bugHeight);
-        bugGraphics.lineTo(0, ribbonHeight-(bugHeight-bugTriangle));
-        bugGraphics.lineTo(bugTriangle, ribbonHeight-bugHeight);
-        bugGraphics.lineTo(bugWidth/2, ribbonHeight-bugHeight);
-        bugGraphics.lineTo(bugWidth/2, ribbonHeight);
+        bugGraphics.moveTo(0, ribbonHeight-1);
+        bugGraphics.lineTo(-bugWidth/2, ribbonHeight-1);
+        bugGraphics.lineTo(-bugWidth/2, ribbonHeight-1-bugHeight);
+        bugGraphics.lineTo(-bugTriangle, ribbonHeight-1-bugHeight);
+        bugGraphics.lineTo(0, ribbonHeight-1-(bugHeight-bugTriangle));
+        bugGraphics.lineTo(bugTriangle, ribbonHeight-1-bugHeight);
+        bugGraphics.lineTo(bugWidth/2, ribbonHeight-1-bugHeight);
+        bugGraphics.lineTo(bugWidth/2, ribbonHeight-1);
         bugGraphics.closePath();
 
         bugGraphics.stroke();
@@ -449,125 +449,133 @@ export class HeadingIndicator {
         this.headingBugContainer.x =  (bugValue - this._value) * this.pixelsPerDegree;
     }
 
-    /**
+    /*************************************************************************
      * Create a PixiJS Graphics object that draws a horizontal line at the 
      *     bottom of the heading indicator to indicate the heading bug can
      *     be selected.
-     * @param {number} width The width of the heading indicator ribbon in pixels. 
      * @param {number} height The height of the heading indicator ribbon in pixels.
      * @returns A PixiJS Graphics object that draws the selectable indicator
-     */
-    createSelectableGraphic(width, height){
+     * 
+     *************************************************************************/
+    createSelectableGraphic(height){
 
-        var horizontalLineColour = 0xFF0000;
-        var horizontalLineWidth = 2;
-        var horizontalLineAlpha = 1;
-        var horizontalLineAlignment = 0; // inner
+        const selectableGraphics = new Graphics();
+        
+        const horizontalLineWidth = 2
 
-        var selectableGraphics = new Graphics();
+        selectableGraphics.strokeStyle = {
+            alignment: 0,               // inner
+            alpha: 1,                   // 100%
+            color: 0xff0000,            // red
+            width: horizontalLineWidth, // 2 px
+        };
 
-        selectableGraphics.lineStyle(horizontalLineWidth, horizontalLineColour, horizontalLineAlpha, horizontalLineAlignment);
-
-        selectableGraphics.moveTo(0, height - horizontalLineWidth);
-        selectableGraphics.lineTo(width, height - horizontalLineWidth);
+        selectableGraphics.moveTo(-this.displayWidth/2, height - horizontalLineWidth);
+        selectableGraphics.lineTo(this.displayWidth/2, height - horizontalLineWidth);
+        selectableGraphics.stroke()
     
         return selectableGraphics;
     }
 
-    /**
+    /*************************************************************************
      * Create a PixiJS Graphics object that draws a horizontal line at the
      *     bottom of the heading indicator, a leader and a box displaying the
      *     current heading bug setting to indicate the heading bug can be set
-     * @param {number} width The width of the heading indicator ribbon in pixels. 
      * @param {number} height The height of the heading indicator ribbon in pixels. 
      * @returns A PixiJS Graphics object that draws the changable graphics.
-     */
-    createChangableGraphic(width, height) {
+     *
+     *************************************************************************/
+    createChangableGraphic(height) {
         
-        var outlineColour = 0x00FFFF;
-        var leaderLineWidth = 4;
-        var leaderLineAlignment = .5;
-        var outlineWidth = 2;
-        var outlineAlpha = 1;
-        var outlineAlignment = 0; // inner
-        var fillColour = 0x000000;
-        var fillAlpha = 1;
-        var boxHorizontalOffset = 10;
-        var boxHeight = 25;
-        var boxWidth = 40;
-        //var boxVerticalOffset = 5;
-        var boxCornerRadius = 7;
+        const lineWidth = 2;              // 2px
+        const boxHorizontalOffset = 10;   // 10px from left
+        const boxHeight = 25;             // 25px
+        const boxWidth = 40;              // 40px
+        const boxCornerRadius = 5;        // 5px
+        const bugFontSize = 21;           // 21pt font
 
-        var bugValueTextStyle = new PIXI.TextStyle({
+        const yAnchor = this.calculateCharacterVerticalCentre(bugFontSize);
+        const boxVerticalOffset = (height - boxHeight) / 2;
+
+        var bugValueTextStyle = new TextStyle({
             fontFamily: "Tahoma",
-            fontSize: 20,
-            fill: "aqua",
-            fontWeight: "normal"
+            fontSize: bugFontSize,
+            fill: 0x00ffff,
+            fontWeight: "normal",
+            stroke: 0x00ffff,
             
         });
 
-        var yAnchor = this.calculateCharacterVerticalCentre(20);
+        this.changableGraphicsContainer = new Container();        
+        const leaderAndBoxGraphics = new Graphics();
 
-        let boxVerticalOffset = (height - boxHeight) / 2;
+        leaderAndBoxGraphics.strokeStyle = {
+            alignment: 0,               // 0% out (in)
+            alpha: 1,                   // 100%
+            color: 0x00ffff,            // cyan
+            width: lineWidth,           // 2 px
+        };
 
-        var changableGraphicsContainer = new Container();
-
-        var leaderAndBoxGraphics = new Graphics();
+        leaderAndBoxGraphics.fillStyle = {
+            alpha: 1,                   // 100%
+            color: 0x000000,            // Black
+        };
 
         // draw horizontal line in new colour
-        leaderAndBoxGraphics.lineStyle(leaderLineWidth, outlineColour, outlineAlpha, leaderLineAlignment);
-
-        leaderAndBoxGraphics.moveTo(0, height - outlineWidth);
-        leaderAndBoxGraphics.lineTo(width, height - outlineWidth);
+        leaderAndBoxGraphics.moveTo(-this.displayWidth/2, height - lineWidth);
+        leaderAndBoxGraphics.lineTo(this.displayWidth/2, height - lineWidth);
+        leaderAndBoxGraphics.stroke();
 
         // draw the leader line
-        leaderAndBoxGraphics.moveTo(width - (boxWidth / 2 + boxHorizontalOffset), height);
-        leaderAndBoxGraphics.lineTo(width - (boxWidth / 2 + boxHorizontalOffset), height - boxVerticalOffset);
+        leaderAndBoxGraphics.moveTo(this.displayWidth/2 - (boxWidth / 2 + boxHorizontalOffset), height);
+        leaderAndBoxGraphics.lineTo(this.displayWidth/2 - (boxWidth / 2 + boxHorizontalOffset), height - boxVerticalOffset);
+        leaderAndBoxGraphics.stroke();
 
         // draw the box
-        leaderAndBoxGraphics.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlineAlignment);
-
-
-        let topLeftX = width - (boxWidth + boxHorizontalOffset);
+        let topLeftX = this.displayWidth/2 - (boxWidth + boxHorizontalOffset);
         let topLeftY = height - (boxHeight + boxVerticalOffset);
         
-        
-        leaderAndBoxGraphics.beginFill(fillColour, fillAlpha);
-        leaderAndBoxGraphics.drawRoundedRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
-        leaderAndBoxGraphics.endFill();
+        leaderAndBoxGraphics.roundRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
 
-        changableGraphicsContainer.addChild(leaderAndBoxGraphics);
+        leaderAndBoxGraphics.stroke();
+        leaderAndBoxGraphics.fill();
 
-        let textX = width - (boxHorizontalOffset + 3);
+        this.changableGraphicsContainer.addChild(leaderAndBoxGraphics);
+
+        let textX = this.displayWidth/2 - (boxHorizontalOffset + 2);
         let textY = height / 2;
-        var bugText = new Text("260", bugValueTextStyle);
+        const bugText = new Text({
+            text: "260",
+            style: bugValueTextStyle,
+        });
+
         bugText.anchor.set(1, yAnchor);
         bugText.position.set(textX, textY);
 
-        changableGraphicsContainer.addChild(bugText);
+        this.changableGraphicsContainer.addChild(bugText);
 
-        return [changableGraphicsContainer, bugText];
+        return [this.changableGraphicsContainer, bugText];
     }
 
-    /**
+    /*************************************************************************
      * callback will be called based on the users input to the rotary control.
      * Handles a call back from the main line to deal with selecting and
      * changing the bug value. We expect to be selected first then have
      * the changable flag added to allow changes. The value should be 
-     *in sequence from where it was last.
+     * in sequence from where it was last.
      * @param {boolean} selected When true indicates this display element is selected 
      * @param {boolean} changable When true indicates this display element should 
      *     to the value parameter but only on the second pass through the function 
      * @param {*} value The value of the encoder when changeable is true
-     */
+     *************************************************************************/
      callback(selected, changable, value){
 
         // Process changeable first as it should be enabled last
         // Assuming that were were last in selected state
         // TODO: add checks for selected state???
         if (changable && !this.changable) {
-            // we just became changable
-            this.changable = true; // set the changable flag to true
+            // we just became changable - frist pass through the function
+            this.changable = true;          // set the changable flag to true
             this.changeableFirstPass = true; 
 
             // clear the selected flag to allow detetion of a selected mode
@@ -578,12 +586,12 @@ export class HeadingIndicator {
             // TODO: Indicate that the element is CHANGEABLE
             // TODO: We came from the SELECTED state
             //
-            this.headingContainer.addChild(this.changableGraphics);
-            this.headingCircularContainer.addChild(this.changeableCircularGraphics);
+            this.headingContainer.addChild(this.changableGraphicsContainer);
+            //this.headingCircularContainer.addChild(this.changeableCircularGraphics);
             
             // TODO: Remove SELECTED element as we won't know to do this latter
             
-            this.headingCircularContainer.removeChild(this.selectedCircularGraphics);
+            this.headingContainer.removeChild(this.selectableGraphics);
             //
             // ----------------------------------------------------------------            
         } //else REMOVED else if
@@ -594,8 +602,7 @@ export class HeadingIndicator {
             // ----------------------------------------------------------------
             // TODO: Indicate that the element is NOT CHANGEABLE
             //
-            this.headingContainer.removeChild(this.changableGraphics);
-            this.headingCircularContainer.removeChild(this.changeableCircularGraphics);
+            this.headingContainer.removeChild(this.changableGraphicsContainer);
             //
             // ----------------------------------------------------------------
             if (selected) {
@@ -603,7 +610,7 @@ export class HeadingIndicator {
                 // ------------------------------------------------------------
                 // TODO: Indcate that we are SELECTED after leaving changeable
 
-                this.headingCircularContainer.addChild(this.selectedCircularGraphics);
+                this.headingContainer.addChild(this.selectableGraphics);
                 //
                 // ------------------------------------------------------------
             }
@@ -619,7 +626,7 @@ export class HeadingIndicator {
             // TODO: Indicate that the element is SELECTABLE
             //
             this.headingContainer.addChild(this.selectableGraphics);
-            this.headingCircularContainer.addChild(this.selectedCircularGraphics);
+
             
 
 
@@ -636,7 +643,7 @@ export class HeadingIndicator {
             // TODO: This should only occur when going to the NOT SELECTED and
             //          NOT CHANGEABLE state
             this.headingContainer.removeChild(this.selectableGraphics);
-            this.headingCircularContainer.removeChild(this.selectedCircularGraphics);
+
         }
 
         if (!selected && !changable) {
@@ -657,9 +664,6 @@ export class HeadingIndicator {
             this.bugText.text = this._bugValue.toString();
 
             this.positionHeadingBugOnRibbon(this._value);
-
-            this.circularBug.angle = - this._value + this._bugValue;
-            this.circularBugText.text = this._bugValue.toString();
 
             // TODO reposition the bug as the value changes
             //this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100) + " in";
