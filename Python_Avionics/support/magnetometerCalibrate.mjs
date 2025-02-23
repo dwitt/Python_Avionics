@@ -80,6 +80,7 @@ export class MagnetometerCalibrate {
     createAxisContainer() {
 
         const axisContainer = new Container();
+        const magneticFieldStrengh = 65; // uTeslas
 
         // Determine if the axis will be scaled by the display height or the
         // display width
@@ -94,12 +95,13 @@ export class MagnetometerCalibrate {
         // tan(30) = 1 / root3
 
 
-        // We want to create and isometric set of axis driven by either
+        // We want to create an isometric set of axis driven by either
         // the display width or height
         // Check if the display width or display height should drive graph
         // axis
         if (this.displayHeight / 2 > this.displayWidth / root3 ) {
-            // base the display on the screen width
+            // base the display on the screen width as there is more 
+            // height availalbe compared to the width we require
             quarterHeight = this.displayWidth / (2 * root3);
             halfWidth = this.displayWidth / 2;
 
@@ -144,6 +146,8 @@ export class MagnetometerCalibrate {
         this.xzGraphics.x = halfWidth / 2;
         this.xzGraphics.y = - quarterHeight + halfWidth/2/root3;
         this.xzGraphics.skew.y = Math.PI / 6;
+        this.xzGraphics.scale.x = (quarterHeight) / magneticFieldStrengh;
+        this.xzGraphics.scale.y = (quarterHeight) / magneticFieldStrengh;
 
         this.xzGraphics.strokeStyle = {
             alignment: .5,
@@ -152,7 +156,7 @@ export class MagnetometerCalibrate {
             width: 1,
         };
 
-        this.xzGraphics.circle(0,0,quarterHeight);
+        this.xzGraphics.circle(0,0,magneticFieldStrengh);
 
         this.xzGraphics.stroke();
 
@@ -160,6 +164,9 @@ export class MagnetometerCalibrate {
         this.yzGraphics.x = -halfWidth / 2;
         this.yzGraphics.y = - quarterHeight + halfWidth/2/root3;
         this.yzGraphics.skew.y = - Math.PI / 6;
+        this.yzGraphics.scale.x = quarterHeight / magneticFieldStrengh;
+        this.yzGraphics.scale.y = quarterHeight / magneticFieldStrengh;
+        
 
         this.yzGraphics.strokeStyle = {
             alignment: .5,
@@ -168,7 +175,7 @@ export class MagnetometerCalibrate {
             width: 1,
         };
 
-        this.yzGraphics.circle(0,0,quarterHeight);
+        this.yzGraphics.circle(0,0,magneticFieldStrengh);
 
         this.yzGraphics.stroke();
 
@@ -177,6 +184,8 @@ export class MagnetometerCalibrate {
         this.xyGraphics.y = + quarterHeight; // + halfWidth/2/root3;
         this.xyGraphics.rotation = 2*Math.PI /6;
         this.xyGraphics.skew.y = - Math.PI / 6;
+        this.xyGraphics.scale.x = quarterHeight / magneticFieldStrengh;
+        this.xyGraphics.scale.y = quarterHeight / magneticFieldStrengh;
 
         this.xyGraphics.strokeStyle = {
             alignment: .5,
@@ -185,7 +194,7 @@ export class MagnetometerCalibrate {
             width: 1,
         };
 
-        this.xyGraphics.circle(0,0,quarterHeight);
+        this.xyGraphics.circle(0,0,magneticFieldStrengh);
 
         this.xyGraphics.stroke();
 
