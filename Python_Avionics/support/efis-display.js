@@ -1,4 +1,5 @@
-//global PIXI 
+'use strict';
+
 import { Application, Graphics } from './pixi.mjs';
 //import { Application, Graphics } from './pixi.min.js';
 //import { Application, Graphics, Container } from './pixi.min.mjs';
@@ -30,12 +31,6 @@ import { MagnetometerCalibrate } from './magnetometerCalibrate.mjs';
 
 //var websocket;
 
-// -->
-//(async () => {
-
-
-
-'use strict';
 
 // ----------------------------------------------------------------------------
 
@@ -148,7 +143,6 @@ var attitudeIndicator,
     userInput,
     softButtons,
     magnetometerCalibrate;
-    // add softButtons?
 
     
 document.fonts.ready.then(function() {

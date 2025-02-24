@@ -164,6 +164,8 @@ class MyWebSocketResponse:
                 # process a brightness object
                 self.backlight.brightness = brightness
 
+                # 
+
             except: # pylint: disable=bare-except
                 #data not recieved so ignore it
                 pass
