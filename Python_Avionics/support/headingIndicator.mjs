@@ -22,7 +22,7 @@ export class HeadingIndicator {
         this.displayWidth = app.screen.width;
         this.displayHeight = app.screen.height;
         
-        const height = 35;            // height of heading ribbon
+        const height = 40;            // height of heading ribbon
 
         // Internal parameters for the heading value
         this._value = 0;
@@ -263,10 +263,11 @@ export class HeadingIndicator {
         const magnifierGraphics = new Graphics();
         const magnifierContainer = new Container();
 
-        const magnifierWidth = 60;    // 60 pixels
-        const magnifierHeight = 28;   // 28 pixel
-        const magnifierOffset = 6;    // 6 px up from bottom of ribbon
         const lineWidth = 1;
+        const magnifierWidth = 60;    // 60 pixels
+        const magnifierHeight = height - 10;   // 35 pixel
+        const magnifierOffset = 10 - lineWidth ;    // 8 px up from bottom of ribbon
+
 
         magnifierGraphics.strokeStyle = {
             alignment: 0,       // inside
@@ -279,12 +280,14 @@ export class HeadingIndicator {
             color: 0x000000     // black
         }
 
-        magnifierGraphics.moveTo(-magnifierWidth/2,-magnifierHeight-magnifierOffset);
-        magnifierGraphics.lineTo(magnifierWidth/2, -magnifierHeight-magnifierOffset);
-        magnifierGraphics.lineTo(magnifierWidth/2, -magnifierOffset);
-        magnifierGraphics.lineTo(magnifierOffset-lineWidth,-magnifierOffset);
-        magnifierGraphics.lineTo(0,-lineWidth);
-        magnifierGraphics.lineTo(-magnifierOffset+lineWidth,-magnifierOffset);
+        magnifierGraphics.moveTo(-magnifierWidth/2,-magnifierHeight-magnifierOffset); // top left
+        magnifierGraphics.lineTo(magnifierWidth/2, -magnifierHeight-magnifierOffset); // top right
+        magnifierGraphics.lineTo(magnifierWidth/2, -magnifierOffset); // bottom right
+        magnifierGraphics.lineTo(magnifierOffset-2*lineWidth,-magnifierOffset);
+        //magnifierGraphics.lineTo(magnifierOffset,-magnifierOffset);
+        magnifierGraphics.lineTo(0,-2*lineWidth);
+        magnifierGraphics.lineTo(-magnifierOffset+2*lineWidth,-magnifierOffset);
+        //magnifierGraphics.lineTo(-magnifierOffset,-magnifierOffset);
         magnifierGraphics.lineTo(-magnifierWidth/2, -magnifierOffset);
         magnifierGraphics.closePath();
 
@@ -404,14 +407,15 @@ export class HeadingIndicator {
             color: bugFillColour,
         };
 
-        bugGraphics.moveTo(0, ribbonHeight-1);
-        bugGraphics.lineTo(-bugWidth/2, ribbonHeight-1);
-        bugGraphics.lineTo(-bugWidth/2, ribbonHeight-1-bugHeight);
-        bugGraphics.lineTo(-bugTriangle, ribbonHeight-1-bugHeight);
-        bugGraphics.lineTo(0, ribbonHeight-1-(bugHeight-bugTriangle));
-        bugGraphics.lineTo(bugTriangle, ribbonHeight-1-bugHeight);
-        bugGraphics.lineTo(bugWidth/2, ribbonHeight-1-bugHeight);
-        bugGraphics.lineTo(bugWidth/2, ribbonHeight-1);
+        const adjustBug = 0;
+        bugGraphics.moveTo(0, ribbonHeight-adjustBug);
+        bugGraphics.lineTo(-bugWidth/2, ribbonHeight-adjustBug);
+        bugGraphics.lineTo(-bugWidth/2, ribbonHeight-adjustBug-bugHeight);
+        bugGraphics.lineTo(-bugTriangle, ribbonHeight-adjustBug-bugHeight);
+        bugGraphics.lineTo(0, ribbonHeight-adjustBug-(bugHeight-bugTriangle));
+        bugGraphics.lineTo(bugTriangle, ribbonHeight-adjustBug-bugHeight);
+        bugGraphics.lineTo(bugWidth/2, ribbonHeight-adjustBug-bugHeight);
+        bugGraphics.lineTo(bugWidth/2, ribbonHeight-adjustBug);
         bugGraphics.closePath();
 
         bugGraphics.stroke();

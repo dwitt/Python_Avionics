@@ -46,7 +46,7 @@ export class AttitudeIndicator {
         // find the smallest display dimension and use it to determine the size 
         // of all arcs
 
-        let circularBorder = 55;    // pixel border outside or arc
+        let circularBorder = 60;    // pixel border outside or arc
         let minimum_screen = Math.min(this.displayWidth, this.displayHeight);
         this.radius = (minimum_screen / 2 ) - circularBorder;
 

@@ -325,6 +325,11 @@ async def process_can_messages(reader, data, last_received_times):
                 print(data.can_qnh)
 
         # process heading message
+        # The roll, pitch and yaw are expected to correspond as follows:
+        # Roll - X axis forward
+        # Pitch - Y axis to the right (of forward)
+        # Yaw - Z axis pointing down
+
         elif msg.arbitration_id == CAN_MSG_ID.AHRS_ORIENT.value:
             if DEBUG_CAN:
                 print("orient")
@@ -332,8 +337,14 @@ async def process_can_messages(reader, data, last_received_times):
             (data.yaw, data.pitch, data.roll, data.turn_rate) = (
                 struct.unpack("<hhhh", msg.data)
             )
-            data.yaw = data.yaw / 10
-            data.pitch = data.pitch / 10
+            # Data received from Adafruit ISM330DHCX + LIS3MDL oriented
+            # Roll - X axis forward
+            # Pitch - Y axis to the left (of forward)
+            # Yaw - Z axis is pointing up
+            # Correction for axis orientation applied to data below
+
+            data.yaw = 360-data.yaw/10 # adjust for data received
+            data.pitch = -data.pitch / 10  # adjust for data received
             data.roll = data.roll / 10
             last_received_times[CAN_MSG_ID.AHRS_ORIENT.value] = time.time()
 

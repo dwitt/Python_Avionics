@@ -26,8 +26,8 @@ import { UserInput } from './userInput.mjs';
 // import { TemperatureGraph } from './temperatureGraph.mjs';
 
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
-import { SoftButtons } from './softButtons.mjs';
-import { MagnetometerCalibrate } from './magnetometerCalibrate.mjs';
+//import { SoftButtons } from './softButtons.mjs';
+//import { MagnetometerCalibrate } from './magnetometerCalibrate.mjs';
 
 //var websocket;
 
@@ -207,8 +207,8 @@ function setup() {
     // //chtGraph = new TemperatureGraph(app2, 240, 200, "CHT", 100, 500, 200, 400, 450);
 
     userInput = new UserInput(app);
-    magnetometerCalibrate = new MagnetometerCalibrate(app);
-    softButtons = new SoftButtons(app, magnetometerCalibrate);
+    //magnetometerCalibrate = new MagnetometerCalibrate(app);
+    //softButtons = new SoftButtons(app, magnetometerCalibrate);
 
     // userInput.registerCallback(qnhDisplay);
     // userInput.registerCallback(tempTimeDisplay);
@@ -267,7 +267,7 @@ function DisplayUpdateLoop(delta) {
     // altitudeDisplay.temperature = dataObject.temperature;
     // altitudeDisplay.update();
 
-    magnetometerCalibrate.plotPoint(dataObject.magx,dataObject.magy,dataObject.magz);
+    //magnetometerCalibrate.plotPoint(dataObject.magx,dataObject.magy,dataObject.magz);
     // // Process any change in the user input encoder
     userInput.processState(dataObject.position, dataObject.pressed)
 
