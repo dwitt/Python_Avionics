@@ -1,5 +1,6 @@
-/*global PIXI */
+// 4-May-2025 - Updated for PixiJS 8.6.6
 'use strict';
+import { Container, Graphics, TextStyle, Text, CanvasTextMetrics } from './pixi.mjs';
 
 /**
  * Calculate the vertical anchor that is the centre of the text character
@@ -22,14 +23,14 @@ export function calculateCharacterVerticalCentre(fontFamilyName,
                                                 {
 
     /** Create a style to use when measuring the character sizes */
-    let measureTextStyle = new PIXI.TextStyle({
+    let measureTextStyle = new TextStyle({
         fontFamily: fontFamilyName,
         fontSize: String(fontSize)+"px",
         fontWeight: fontWeight
     });
 
     /** Get the character metrics */
-    let sampleMetrics = PIXI.TextMetrics.measureText(textToMeasure, measureTextStyle);
+    let sampleMetrics = CanvasTextMetrics.measureText(textToMeasure, measureTextStyle);
 
     let digitAscentDistance = sampleMetrics.fontProperties.ascent;
     let overallHeight = sampleMetrics.height; 
