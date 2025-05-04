@@ -1,6 +1,6 @@
 // 4-May-2025 - Updated for PixiJS 8.6.6
 'use strict';
-import { Container, Graphics, TextStyle, Text, CanvasTextMetrics } from './pixi.mjs';
+import { TextStyle, CanvasTextMetrics } from './pixi.mjs';
 
 /**
  * Calculate the vertical anchor that is the centre of the text character
