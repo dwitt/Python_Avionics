@@ -1,6 +1,6 @@
 'use strict';
 
-import { Container, Graphics, Text, TextStyle } from './pixi.mjs'
+import { Container, Graphics, Text, TextStyle, Matrix } from './pixi.mjs'
 
 /*****************************************************************************
  * Class representing a vertical Ribbon Indicator 
@@ -750,7 +750,7 @@ export class Colour_Bar {
         this.graphics = new Graphics();
         
         this.matrix = new Matrix(1,0,0,-1 * this.bar_scale,0,0);
-        this.graphics.setMatrix(this.matrix);
+        this.graphics.setTransform(this.matrix);
         
         let i;
         let length = colours.length;

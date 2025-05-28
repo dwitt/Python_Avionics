@@ -20,7 +20,7 @@ import { Application, Graphics } from './pixi.mjs';
 
 import { Ribbon } from './ribbon.mjs';  // Altitude Ribbon
 
-// import { AirspeedRibbon } from './airspeedRibbon.mjs';
+import { AirspeedRibbon } from './airspeedRibbon.mjs';
 // import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
 // import { SlipBallIndicator } from './slipBall.mjs';
@@ -245,7 +245,7 @@ function setup() {
         90, 25,                 // width and height of the box
         8);                     // radius of the box's top corners
 
-    // airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
+    airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
     // airspeedWheel = new AirspeedWheel(app, 45, y/2);
     // speedDisplay = new SpeedDisplay(app, 35, 130/2, 90, 25, 8);
     // tempTimeDisplay = new TempTimeDisplay(app, 35, y-130/2+25, 90, 25, 8);
