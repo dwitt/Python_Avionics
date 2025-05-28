@@ -1,20 +1,9 @@
 'use strict';
-/*global PIXI */
+
 import { drawSpecialRectangle } from './specialRectangle.mjs';
 import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs'
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     loader = PIXI.Loader.shared,
-//     resources = PIXI.Loader.shared.resources,
-//     TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-// var Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
+import { Container, Graphics, TextStyle, Text} from './pixi.mjs';
+
 
 /**     
  * Class representing the QNH display.
@@ -58,15 +47,16 @@ export class QNHDisplay {
         this.QNHRectangle.zIndex = 1;
 
         this.QNHSelectedRectangle = this.selectedRectangle(x, y, width, height, radius);
-        this.QNHSelectedRectangle.zIndex = 2;
+        this.QNHSelectedRectangle.zIndex = 1;
 
         this.QNHChangingRectangle = this.changingRectangle(x, y, width, height, radius);
-        this.QNHChangingRectangle.zIndex = 3;
+        this.QNHChangingRectangle.zIndex = 1;
     
         // Add the DisplayObject to the Container
-        this.QNHContainer.addChild(this.QNHRectangle);
+        //this.QNHContainer.addChild(this.QNHRectangle);
         this.QNHContainer.addChild(this.QNHText);
         this.QNHContainer.addChild(this.QNHUnitText);
+        this.QNHContainer.addChild(this.QNHRectangle);
 
         // Add the Container to the Stage
         app.stage.addChild(this.QNHContainer);
@@ -76,7 +66,7 @@ export class QNHDisplay {
         let unitStyle, unitVerticalCentre, text, unitText;
 
 
-        unitStyle = new PIXI.TextStyle({
+        unitStyle = new TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '12px',
             fill: "aqua",
@@ -86,7 +76,10 @@ export class QNHDisplay {
         unitVerticalCentre = calculateCharacterVerticalCentre('Tahoma', 12, 'normal');
 
         text = "inHg";
-        unitText = new Text(text, unitStyle);
+        unitText = new Text({
+            text: text,
+            style: unitStyle,
+            });
         unitText.anchor.set(0, unitVerticalCentre);
         unitText.position.set(x + width*2/3+3, y - height/2);
 
@@ -96,7 +89,7 @@ export class QNHDisplay {
     createQNHText(x, y, width, height) {
         let textVerticalCentre;
         // Create a style to be used for the qnh characters
-        this.style = new PIXI.TextStyle({
+        this.style = new TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '18px',
             fill: "aqua",
@@ -108,7 +101,10 @@ export class QNHDisplay {
         this.QNHFormat = new Intl.NumberFormat('en-US',{minimumFractionDigits: 2});
         let text = this.QNHFormat.format(29.92);
     
-        var QNHText = new Text(text, this.style);
+        var QNHText = new Text({
+            text: text,
+            style: this.style
+            });
         QNHText.anchor.set(1.0,textVerticalCentre);
         QNHText.position.set(x + width*2/3 , y - height/2);
 
@@ -118,47 +114,57 @@ export class QNHDisplay {
     regularRectangle(x, y, width, height, radius){
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
-        let fillAlpha = 0.35;       // 35% 
-        let lineColour = 0x000000;  // black
+        let fillAlpha = 0.25;       // 35% 
+        let lineColour = 0xFFFFFF;  // black
         let lineThickness = 1;      // 1 pixel
-        let lineAlpha = 0.25;       // 25%
-        let linePosition = 0;       // 
+        let lineAlpha = 1.0;       // 25%
+        let linePosition = 1;       // inside
 
 
         var QNHRectangle = new Graphics();
-        QNHRectangle.beginFill(fillColour, fillAlpha); 
-        QNHRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
-    
+        QNHRectangle.fillStyle = {
+            alpha: fillAlpha,
+            color: fillColour,    
+        };
+        QNHRectangle.strokeStyle = {
+            alignment: linePosition,
+            alpha: lineAlpha,
+            color: lineColour,
+            width: lineThickness,
+        };
+
         drawSpecialRectangle(QNHRectangle, x, y - height, width, height, radius, false, false, true, true);
-    
-        QNHRectangle.endFill();
-    
+        QNHRectangle.stroke();
+        QNHRectangle.fill();
+
         return(QNHRectangle);
     }
 
     selectedRectangle(x, y, width, height, radius){
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
-        let fillAlpha = 0.35;       // 25% 
+        let fillAlpha = 0.25;       // 25% 
         let lineColour = 0xFF0000;  // red
         let lineThickness = 2;      // 2 pixel
-        let lineAlpha = 1.00;       // 100%
-        let linePosition = 0.5;       // middle
+        let lineAlpha = 1.0;       // 100%
+        let linePosition = 0.5;       // outside
 
         var QNHRectangle = new Graphics();
-        QNHRectangle.beginFill(fillColour, fillAlpha); 
-        QNHRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
+        QNHRectangle.fillStyle = {
+            alpha: fillAlpha,
+            color: fillColour,    
+        };
+        QNHRectangle.strokeStyle = {
+            alignment: linePosition,
+            alpha: lineAlpha,
+            color: lineColour,
+            width: lineThickness,
+        };
     
         drawSpecialRectangle(QNHRectangle, x, y - height, width, height, radius, false, false, true, true);
-    
-        QNHRectangle.endFill();
-    
+        QNHRectangle.stroke();
+        QNHRectangle.fill();
+
         return(QNHRectangle);
     }
 
@@ -168,20 +174,25 @@ export class QNHDisplay {
         let fillAlpha = 0.75;       // 75% 
         let lineColour = 0x00FFFF;  // cyan???
         let lineThickness = 2;      // 1 pixel
-        let lineAlpha = .50;       // 100%
-        let linePosition = 0;       // middle
+        let lineAlpha = 1.0;          // 100%
+        let linePosition = 0.5;       // outside
 
         var QNHRectangle = new Graphics();
-        QNHRectangle.beginFill(fillColour, fillAlpha); 
-        QNHRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
+        QNHRectangle.fillStyle = {
+            alpha: fillAlpha,
+            color: fillColour,    
+        };
+        QNHRectangle.strokeStyle = {
+            alignment: linePosition,
+            alpha: lineAlpha,
+            color: lineColour,
+            width: lineThickness,
+        };
     
         drawSpecialRectangle(QNHRectangle, x, y - height, width, height, radius, false, false, true, true);
-    
-        QNHRectangle.endFill();
-    
+        QNHRectangle.stroke();
+        QNHRectangle.fill();
+
         return(QNHRectangle);
     }  
     
@@ -191,42 +202,36 @@ export class QNHDisplay {
         // the changable flag added to allow changes. The value should be 
         // in sequence from where it was last.
 
-        // Process changeable first as it should be enabled last
+        //---------------------------------------------------------------------
+        // Process changes in the selected and changeable status
+        // --------------------------------------------------------------------
+        if (selected && !this.selected) {
+            this.selected = true;
+            this.QNHContainer.removeChild(this.QNHRectangle);
+            this.QNHContainer.addChild(this.QNHSelectedRectangle);
+        }
+        
         if (changable && !this.changable) {
-            // we just became changable
-            this.changable = true; // set the changable flag to true
-            this.changeableFirstPass = true; 
-
-            // clear the selected flag to allow detetion of a selected mode
-            // when changable goes false
-            this.selected = false;
-
-            // Change to a changeable Container
+            this.changable = true;
             this.QNHContainer.removeChild(this.QNHSelectedRectangle);
             this.QNHContainer.addChild(this.QNHChangingRectangle);
-
-        } else if (!changable && this.changable){
-            this.changable = false;
         }
 
-        // check if the selected parameter has changed or if changable state
-        // changed to false
-        if (selected && !this.selected && !changable) {
-            // we just became selected
-            this.selected = true;
-
-            // Change to a selected Container
+        if (!changable && this.changable) {
+            this.changable = false;
             this.QNHContainer.removeChild(this.QNHChangingRectangle);
             this.QNHContainer.addChild(this.QNHSelectedRectangle);
-            //this.container.addChild(this.QNHText);
+        }
 
-        } else if (!selected && this.selected) {
+        if (!selected && this.selected) {
             this.selected = false;
             this.QNHContainer.removeChild(this.QNHSelectedRectangle);
-            this.QNHContainer.addChild(this.QNHRectangle)
+            this.QNHContainer.addChild(this.QNHRectangle);
         }
 
         // process the encoder value provided
+        // The preceding code was changed and setting this.changeableFirstPass
+        // was removed. It may need to be added again. <<< REVIEW
         if (changable && !this.changeableFirstPass) {
             this.my_value = 2992 + value;
 

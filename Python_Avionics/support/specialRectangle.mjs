@@ -56,5 +56,6 @@ export function drawSpecialRectangle(graphic, x, y, width, height, radius,
         graphic.lineTo(x,y);
     }
 
+    graphic.closePath();
         
 }

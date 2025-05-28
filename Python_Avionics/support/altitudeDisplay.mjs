@@ -1,19 +1,9 @@
+/** Enable strict mode for enhanced error checking */
 'use strict';
-/* global PIXI */
+
 import { drawSpecialRectangle } from './specialRectangle.mjs';
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     loader = PIXI.Loader.shared,
-//     resources = PIXI.Loader.shared.resources,
-//     TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-// var Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
+import { Container, Graphics, TextStyle, Text} from './pixi.mjs';
+
 
 /**     
  * Class representing the altitude display.
@@ -45,14 +35,14 @@ export class AltitudeDisplay {
         this.displayItem = GPS;
     
         // Create a style to be used for the altitude characters
-        this.style = new PIXI.TextStyle({
+        this.style = new TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '18px',
             fill: this.colour,
             fontWeight: "normal"
         });
 
-        this.unitsStyle = new PIXI.TextStyle({
+        this.unitsStyle = new TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '12px',
             fill: this.colour,
@@ -64,15 +54,24 @@ export class AltitudeDisplay {
         let legendText = "GPS"
         let unitsText = "ft" 
     
-        this.altitudeText = new Text(valueText, this.style);
+        this.altitudeText = new Text({
+            text: valueText, 
+            style: this.style
+            });
         this.altitudeText.anchor.set(1,.5);
         this.altitudeText.position.set(x + width*2/3 , y - height/2);
 
-        this.altitudeLegend = new Text(legendText, this.unitsStyle);
+        this.altitudeLegend = new Text({
+            text: legendText,
+            style: this.unitsStyle,
+            });
         this.altitudeLegend.anchor.set(0,.87);
         this.altitudeLegend.position.set(x + width * 2/3 + 5, y - height / 2);
 
-        this.altitudeUnits = new Text(unitsText, this.unitsStyle);
+        this.altitudeUnits = new Text({
+            text: unitsText, 
+            style: this.unitsStyle
+            });
         this.altitudeUnits.anchor.set(0,.17);
         this.altitudeUnits.position.set(x + width * 2/3 + 5, y - height / 2);
     
@@ -91,23 +90,31 @@ export class AltitudeDisplay {
     regularRectangle(x, y, width, height, radius){
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
-        let fillAlpha = 0.35;       // 35% 
+        let fillAlpha = 0.25;       // 25% 
         let lineColour = 0x000000;  // Black
         let lineThickness = 1;      // 1 pixel
         let lineAlpha = 0.25;       // 25%
-        let linePosition = 0;       // 
+        let linePosition = 1;       // inside
 
 
         var altitudeRectangle = new Graphics();
-        altitudeRectangle.beginFill(fillColour, fillAlpha); 
-        altitudeRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
+
+        altitudeRectangle.fillStyle = {
+            color: fillColour,
+            alpha: fillAlpha
+        }
+
+        altitudeRectangle.strokeStyle = {
+            width: lineThickness,
+            color: lineColour,
+            alpha: lineAlpha,
+            alignment: linePosition,
+        }
     
         drawSpecialRectangle(altitudeRectangle, x, y - height, width, height, radius, true, true, false, false);
-    
-        altitudeRectangle.endFill();
+        altitudeRectangle.fill();
+        altitudeRectangle.stroke();
+
     
         return(altitudeRectangle);
     }
@@ -119,18 +126,26 @@ export class AltitudeDisplay {
         let lineColour = 0xFF0000;  // red
         let lineThickness = 2;      // 2 pixel
         let lineAlpha = 1.00;       // 100%
-        let linePosition = 0.5;     // middle
+        let linePosition = 0;       // outside
 
         var altitudeRectangle = new Graphics();
-        altitudeRectangle.beginFill(fillColour, fillAlpha); 
-        altitudeRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
+
+        altitudeRectangle.fillStyle = {
+            color: fillColour,
+            alpha: fillAlpha
+        }
+
+        altitudeRectangle.strokeStyle = {
+            width: lineThickness,
+            color: lineColour,
+            alpha: lineAlpha,
+            alignment: linePosition,
+        }
     
         drawSpecialRectangle(altitudeRectangle, x, y - height, width, height, radius, true, true, false, false);
-    
-        altitudeRectangle.endFill();
+        altitudeRectangle.fill();
+        altitudeRectangle.stroke();
+
     
         return(altitudeRectangle);
     }
@@ -140,20 +155,28 @@ export class AltitudeDisplay {
         let fillColour = 0x000000;  // black
         let fillAlpha = 0.75;       // 75% 
         let lineColour = 0x7FFF00;  // chartreuse 
-        let lineThickness = 2;      // 1 pixel
-        let lineAlpha = .50;       // 100%
-        let linePosition = 0;       // middle
+        let lineThickness = 1;      // 1 pixel
+        let lineAlpha = 1.0;        // 100%
+        let linePosition = 0;       // outside
 
         var altitudeRectangle = new Graphics();
-        altitudeRectangle.beginFill(fillColour, fillAlpha); 
-        altitudeRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
+
+        altitudeRectangle.fillStyle = {
+            color: fillColour,
+            alpha: fillAlpha
+        }
+
+        altitudeRectangle.strokeStyle = {
+            width: lineThickness,
+            color: lineColour,
+            alpha: lineAlpha,
+            alignment: linePosition,
+        }
     
         drawSpecialRectangle(altitudeRectangle, x, y - height, width, height, radius, true, true, false, false);
-    
-        altitudeRectangle.endFill();
+        altitudeRectangle.fill();
+        altitudeRectangle.stroke();
+
     
         return(altitudeRectangle);
     }  

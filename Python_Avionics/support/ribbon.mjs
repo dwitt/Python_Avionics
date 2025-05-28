@@ -2,14 +2,15 @@
 
 import { Container, Graphics, Text, TextStyle } from './pixi.mjs'
 
-/**
- * Ribbon: 
+/*****************************************************************************
+ * Class representing a vertical Ribbon Indicator 
  * Present a verticl ribbon on the screen that will scroll up or down based on
  * the value value parameter of the object.
- */    
+ *****************************************************************************/    
 export class Ribbon {
 
-    /**
+    /*************************************************************************
+     * Constructor
      * 
      * @param {Application} app The current PixiJS application to place 
      *     the graphics objects in.
@@ -32,7 +33,8 @@ export class Ribbon {
      * @param {*} colour_bar2 
      * @param {boolean} hasBug Tue indicates the ribbon should have an adjustable
      *     bug for the pilot to see a target value 
-     */
+     *************************************************************************/
+    
     constructor(app, x, y, height, width, rightSideMarks,
         majorIntervalSize = 100, majorIntervals = 4, minorIntervals = 4, 
         allowNegative, colour_bar1, colour_bar2, hasBug = false ) {
@@ -41,7 +43,7 @@ export class Ribbon {
 
         this.ribbonHeight = height;                        // height in pixels
         this.ribbonWidth = width;                          // width in pixels
-        this.isRightAligned = rightSideMarks;               // position the ribbon relative to it's right edge
+        this.isRightAligned = rightSideMarks;              // position the ribbon relative to it's right edge
 
         this.ribbon_major_interval_size = majorIntervalSize;
         this.ribbon_major_intervals = majorIntervals;
@@ -111,7 +113,7 @@ export class Ribbon {
 
         //console.log(height);
         
-        this.ribbon_background.stoke();
+        this.ribbon_background.stroke();
         this.ribbon_background.fill();
 
 
@@ -128,11 +130,11 @@ export class Ribbon {
         let rulerLineWidth = 2;
         let rulerColour = 0xBBBBBB;
 
-        this.ruler.lineStyle(rulerLineWidth, rulerColour);
+        //this.ruler.lineStyle(rulerLineWidth, rulerColour);
         this.ruler.strokeStyle = {
             alignment: 0,   // inside
             alpha: 1.0,     // 100%
-            color: rullerColour,
+            color: rulerColour,
             width: rulerLineWidth,
         };
 
@@ -203,7 +205,7 @@ export class Ribbon {
             color: 0xff0000,        // red
         };
 
-        this.ribbon_mask.drawRect(mask_x,mask_y,this.ribbonWidth,this.ribbonHeight);
+        this.ribbon_mask.rect(mask_x,mask_y,this.ribbonWidth,this.ribbonHeight);
         this.ribbon_mask.fill();
 
  
@@ -248,7 +250,10 @@ export class Ribbon {
 
         // Create text objects 
         for (i = 0; i < (this.ribbon_major_intervals + 1); i = i + 1) {
-            this.text_stack[i] = new Text(String((i - halfMajorIntervals)*this.ribbon_major_interval_size), text_style);
+            this.text_stack[i] = new Text({
+                text: String((i - halfMajorIntervals)*this.ribbon_major_interval_size),
+                style: text_style
+                });
             if (this.isRightAligned) {
                 this.text_stack[i].anchor.set(1,.5);
             } else {
@@ -281,7 +286,13 @@ export class Ribbon {
 
         this.badDataGraphic = new Graphics();
 
-        this.badDataGraphic.lineStyle(2, 0xFF0000, 1,0);
+        //this.badDataGraphic.lineStyle(2, 0xFF0000, 1,0);
+        this.badDataGraphic.strokeStyle = {
+            alignment: 0,       // inside
+            alpha: 1.0,         // 100%
+            color: 0xff0000,    // read
+            width: 2,           // 2 pixels
+        };
     
         if (this.isRightAligned) {
             this.badDataGraphic.moveTo(-width,-height/2);
@@ -294,6 +305,7 @@ export class Ribbon {
             this.badDataGraphic.moveTo(width, -height/2);
             this.badDataGraphic.lineTo(0, height/2);
         }     
+        this.badDataGraphic.fill();
 
         
         // this._value = 0;
@@ -327,8 +339,15 @@ export class Ribbon {
  
         var bugGraphic = new Graphics();
 
-        bugGraphic.lineStyle(bugOutlineWidth, bugLineColour, bugOutlineAlpha, bugOutlinePosition);
-        bugGraphic.beginFill(bugFillColour, bugFillAlpha);
+        //bugGraphic.lineStyle(bugOutlineWidth, bugLineColour, bugOutlineAlpha, bugOutlinePosition);
+        bugGraphic.strokeStyle = {
+            alignment: bugOutlinePosition,       // inside
+            alpha: bugOutlineAlpha,         // 100%
+            color: bugLineColour,    // read
+            width: bugOutlineWidth,           // 2 pixels
+        };
+        
+        //bugGraphic.beginFill(bugFillColour, bugFillAlpha);
 
         /**
          * Draw the bug clockwise assuming it is right aligned. The bug
@@ -345,7 +364,7 @@ export class Ribbon {
         bugGraphic.lineTo(0, -bugHeight/2);                        // top right
         bugGraphic.lineTo(0,0);                                    // back to origin
 
-        bugGraphic.endFill();
+        bugGraphic.fill();
 
         return bugGraphic;
     }
@@ -390,7 +409,14 @@ export class Ribbon {
         var lineAndBoxGraphic = new Graphics();
 
         // Draw vertical line
-        lineAndBoxGraphic.lineStyle(outlineWidth, verticallineColour, outlineAlpha, outlinePosition);
+        //lineAndBoxGraphic.lineStyle(outlineWidth, verticallineColour, outlineAlpha, outlinePosition);
+        lineAndBoxGraphic.strokeStyle = {
+            alignment: outlinePosition,       // inside
+            alpha: outlineAlpha,         // 100%
+            color: verticallineColour,    // read
+            width: outlineWidth,           // 2 pixels
+        };
+
 
         // Draw the line in from the edge to allow the width of the line to show
         lineAndBoxGraphic.moveTo(alignment * 2, ribbonHeight/2);
@@ -435,7 +461,7 @@ export class Ribbon {
             alignment = 1;
         }
 
-        var bugTextStyle = new PIXI.TextStyle({
+        var bugTextStyle = new TextStyle({
             fontFamily: "Tahoma",
             fontSize: 20,
             fill: "aqua",
@@ -448,34 +474,59 @@ export class Ribbon {
         var leaderAndBoxGraphic = new Graphics();
 
         // Draw vertical line in new colour
-        leaderAndBoxGraphic.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlinePosition);
+        //leaderAndBoxGraphic.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlinePosition);
+        leaderAndBoxGraphic.strokeStyle = {
+            width: outlineWidth,
+            color: outlineColour,
+            alpha: outlineAlpha,
+            alignment: outlinePosition,
+        }
 
         // Draw the line in from the edge to allow the width of the line to show
         leaderAndBoxGraphic.moveTo(alignment * 2, ribbonHeight/2);
         leaderAndBoxGraphic.lineTo(alignment * 2 , - ribbonHeight/2);
 
         // Draw leader line to the box
-        leaderAndBoxGraphic.lineStyle(leaderLineWidth, outlineColour, outlineAlpha, leaderLinePosition);
+        //leaderAndBoxGraphic.lineStyle(leaderLineWidth, outlineColour, outlineAlpha, leaderLinePosition);
+        leaderAndBoxGraphic.strokeStyle = {
+            width: leaderLineWidth,
+            color: outlineColour,
+            alpha: outlineAlpha,
+            alignment: leaderLinePosition,
+        }
 
         leaderAndBoxGraphic.moveTo(alignment * 2, ribbonHeight/2 - (boxVerticalOffset + boxHeight/2));
         leaderAndBoxGraphic.lineTo(alignment * boxHorizontalOffset, ribbonHeight/2 - (boxVerticalOffset + boxHeight/2));
 
         // Draw the box
-        leaderAndBoxGraphic.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlinePosition);
+        //leaderAndBoxGraphic.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlinePosition);
+        leaderAndBoxGraphic.strokeStyle = {
+            width: outlineWidth,
+            color: outlineColour,
+            alpha: outlineAlpha,
+            alignment: outlinePosition,
+        }
 
         let topLeftX = alignment * (ribbonWidth - boxHorizontalOffset);
         let topLeftY = ribbonHeight/2 - (boxVerticalOffset + boxHeight);
         let boxWidth = ribbonWidth - (2 * boxHorizontalOffset)
         
-        leaderAndBoxGraphic.beginFill(fillColour, fillAlpha);
-        leaderAndBoxGraphic.drawRoundedRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
-        leaderAndBoxGraphic.endFill();
+        //leaderAndBoxGraphic.beginFill(fillColour, fillAlpha);
+        leaderAndBoxGraphic.fillStyle = {
+            color: fillColour,
+            alpha: fillAlpha,
+        }
+        leaderAndBoxGraphic.roundRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
+        leaderAndBoxGraphic.fill();
 
         changableGraphicsContainer.addChild(leaderAndBoxGraphic);
 
         let textBottomRightX = alignment * (boxHorizontalOffset + 3);
         let textBottomRightY = ribbonHeight/2 - (boxVerticalOffset + 2);
-        var bugText = new Text("10000", bugTextStyle);
+        var bugText = new Text({
+            text: "10000", 
+            style: bugTextStyle,
+            });
         bugText.anchor.set(1, 1);
         bugText.position.set(textBottomRightX, textBottomRightY);
 
@@ -698,7 +749,7 @@ export class Colour_Bar {
         // Create a new graphics object to hold the colour bar
         this.graphics = new Graphics();
         
-        this.matrix = new PIXI.Matrix(1,0,0,-1 * this.bar_scale,0,0);
+        this.matrix = new Matrix(1,0,0,-1 * this.bar_scale,0,0);
         this.graphics.setMatrix(this.matrix);
         
         let i;

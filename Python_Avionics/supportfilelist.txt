@@ -2,6 +2,10 @@ efis-display.js
 ribbon.mjs
 attitude-indicator.mjs
 headingIndicator.mjs
+qnhdisplay.mjs
 userInput.mjs
-softButtons.mjs
-magnetometerCalibrate.mjs
+altitudeDisplay.mjs
+altitudeWheel.mjs
+numericWheelDisplay.mjs
+utilityFunctions.mjs
+specialRectangle.mjs

@@ -1,56 +1,51 @@
-/*global PIXI */
+// 4-May-2025 - Started Update for PixiJS 8.6.6
 'use strict';
+
 import { calculateCharacterVerticalCentre } from "./utilityFunctions.mjs";
+import { Container, Graphics, TextStyle, Text} from './pixi.mjs';
 
-/** Aliases - Allows for changes in PIXI.JScapital_height */
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     loader = PIXI.Loader.shared,
-//     resources = PIXI.Loader.shared.resources,
-//     TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-// var Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
-
-/** \brief NumbericWheel object displays a rotating wheel style object similar
- *         to an odometer.
-*/
+/***************************************************************************** 
+ * Class representing a NumbericWheel object 
+ * It displays a rotating wheel style object similar to an odometer.
+ *****************************************************************************/
 
 export class NumericWheelDisplay{
-    /**
-     * 
+
+    /*************************************************************************
+     * Constructor
      * @param {string} fontName The name of the font family.
      * @param {number} fontSize The size of the font in pixels.
-     * @param {number} capitalHeightRatio The ration of the hight of a capital divided by the em square
+     * @param {number} capitalHeightRatio The ratio of the hight of a capital divided by the em square
      * @param {number} digitDisplayAreaHeight The height in pixels of the display area
-     * @param {number} digitPositionInWheel 
+     * @param {number} digitPositionInWheel digit number from left (0 based)
      * @param {boolean} displayNegativeSymbol Display negative symbol if true
      * @param {number} windowHeight The number of pixels to expand the display both above and below.
      * @param {boolean} resolutionTens If true display the first digit in tens instead of ones.
      * @param {boolean} alignRight If true the display is right aligned.
      * @param {number} x The x position wheel taking into account the alignment.
      * @param {number} y The y position of the center of the wheel vertically.
-     */
+     *************************************************************************/
+    
     constructor(fontName, fontSize, capitalHeightRatio, digitDisplayAreaHeight, digitPositionInWheel, displayNegativeSymbol, windowHeight, resolutionTens, alignRight, x ,y){
         
         let digits, i ,fontSizePxString, additionalWindowHeight, maskRectangle;
         
+        // Internal parameters
         this._digitPositionInWheel = digitPositionInWheel;
         this._displayNegativeSymbol = displayNegativeSymbol;
-        this._digitDisplayAreaHeight = digitDisplayAreaHeight;       // pixels
-        this._resolutionTens = resolutionTens; // boolean
+        this._digitDisplayAreaHeight = digitDisplayAreaHeight;  // pixels
+        this._resolutionTens = resolutionTens;                  // boolean
         
-        additionalWindowHeight = windowHeight;     // pixels greater than height
-        fontSizePxString = String(fontSize) + "px";             // string
+        additionalWindowHeight = windowHeight;          // pixels greater than height
+        fontSizePxString = String(fontSize) + "px";     // string
 
-        /** Set an internal flag that indicates if this particular wheel should
+        /********************************************************************* 
+         * Set an internal flag that indicates if this particular wheel should
          *  show a zero digit when the value is set to zero. This hides leading
          *  zeros in the wheel. The flag is set if this is the first digit on 
-         *  the right of the display. It could be either the 1s or the 10s position
-         *  if we are not displaying 1s
-         */
+         *  the right of the display. It could be either the 1s or the 10s 
+         *  position if we are not displaying 1s
+         *********************************************************************/
         this._zeroOk = false;
         if ((this._resolutionTens && this._digitPositionInWheel == 1) || 
             (!this._resolutionTens && this._digitPositionInWheel == 0)) {
@@ -58,17 +53,17 @@ export class NumericWheelDisplay{
         }
 
         /** Create a style to be used for the wheel characters */
-        let style = new PIXI.TextStyle({
+        let style = new TextStyle({
             fontFamily: fontName,
             fontSize: fontSizePxString,
             fill: "white",
             fontWeight: "bold"
         });
 
-        /**********************************************************************
+        /*********************************************************************
          * Calculate all of the font metrics and dimensions needed to position
          * the characters in the wheel display.
-         **********************************************************************/
+         *********************************************************************/
 
         /** Calculate the font ratio (digitDisplayAreaHeight/10)
          * This is used to move the digit up and down when scrolling
@@ -76,7 +71,7 @@ export class NumericWheelDisplay{
         this._fontRatio = this._digitDisplayAreaHeight / 10;
 
         /** Create sample text to measure using the typical digits to be displayed */
-        let sampleMessage = new Text("0123456789", style);
+        let sampleMessage = new Text({text: "0123456789", style: style});
 
         this.digitWidth = Math.ceil(sampleMessage.width / 10);
         if (this._resolutionTens == true && this._digitPositionInWheel == 1) {
@@ -86,9 +81,9 @@ export class NumericWheelDisplay{
         /** Calculate the verticl center of the character as an anchor point */
         let characterVerticalCentre = calculateCharacterVerticalCentre(fontName, fontSize, "bold", capitalHeightRatio, "0123456789" );
 
-        /**********************************************************************
+        /*********************************************************************
          * Create all of the PixiJS objects needed for the display      
-         **********************************************************************/
+         *********************************************************************/
 
         /** Create a container to hold all of the objects. The objects will be 
          *  positioned based on the origin of the ocntainer
@@ -155,7 +150,9 @@ export class NumericWheelDisplay{
          *  right of left side depending on the alignment of the digits
          */
         maskRectangle = new Graphics();
-        maskRectangle.beginFill(0xFF0000);    // Red Mask
+        maskRectangle.fillStyle = {
+            color: 0xff0000,    // red
+        }
 
         let maskRectangleX;
 
@@ -166,9 +163,9 @@ export class NumericWheelDisplay{
         }
         let maskRectangleY = y - (this._digitDisplayAreaHeight / 2 + additionalWindowHeight);
 
-        maskRectangle.drawRect(maskRectangleX, maskRectangleY, this.digitWidth, this._digitDisplayAreaHeight + (2 * additionalWindowHeight));
+        maskRectangle.rect(maskRectangleX, maskRectangleY, this.digitWidth, this._digitDisplayAreaHeight + (2 * additionalWindowHeight));
 
-        maskRectangle.endFill();
+        maskRectangle.fill();
 
         /** Add all of the PixiJS objects to the container */
 
@@ -305,16 +302,29 @@ export class NumericWheelDisplay{
     }
 
 }
-/** Create wheel digit text */
+/*****************************************************************************
+ * Class representing a single digit in the wheel
+ *****************************************************************************/
+
 export class NumericWheelDigit {
-    
+
+    /*************************************************************************
+     * Constructor
+     * @param {string} fontName of the font for the digit
+     * @param {number} fontSize of the font
+     * @param {string} colour of the font
+     *************************************************************************/
+
+
     constructor(fontName, fontSize, digit, colour = "white") {
-        let style = new PIXI.TextStyle({
+
+        let style = new TextStyle({
             fontFamily: fontName,
             fontSize: fontSize,
             fill: colour,
             fontWeight: "bold"
         });
-        this.text = new PIXI.Text(digit, style);
+
+        this.text = new Text({text:digit, style:style});
     }
 }

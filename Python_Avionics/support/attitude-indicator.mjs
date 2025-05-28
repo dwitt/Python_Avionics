@@ -2,9 +2,15 @@
 
 import { Container, Graphics, TextStyle, Text } from './pixi.mjs';
 
-/******************************************************************************
+/*****************************************************************************
  * Class representing a Attitude indicator.
- */
+ *
+ * This class will create an attitude indicator that is sized based on the 
+ * canvas size of the app that is passed
+ * 
+ * 
+ * 
+ *****************************************************************************/
 export class AttitudeIndicator {
     constructor(app) {
 
@@ -14,7 +20,7 @@ export class AttitudeIndicator {
         this._pitch = 0;
         this._roll = 0;
 
-        // initial values for slip/skid acc and smoothing
+        // initial values for slip/skid acceleration and smoothing
         //this._acc100Z = 0;
         this._accZ = 0;
         //this._acc100Y = 0;
@@ -46,7 +52,7 @@ export class AttitudeIndicator {
         // find the smallest display dimension and use it to determine the size 
         // of all arcs
 
-        let circularBorder = 60;    // pixel border outside or arc
+        let circularBorder = 65;    // pixel border outside of arc
         let minimum_screen = Math.min(this.displayWidth, this.displayHeight);
         this.radius = (minimum_screen / 2 ) - circularBorder;
 

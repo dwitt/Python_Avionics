@@ -1,27 +1,40 @@
+/*****************************************************************************
+ * EFIS Display
+ * This is the main module load by the index.html file.
+ * The proram uses PixiJS to support the graphics display
+ * 19-May-2025
+ * Current PixiJS Version 8.6.6
+ * version 0.1
+ * 
+ * 
+ *****************************************************************************/
 'use strict';
 
 import { Application, Graphics } from './pixi.mjs';
+// Alternative imports for PixiJS to suppor minified code ---------------------
 //import { Application, Graphics } from './pixi.min.js';
 //import { Application, Graphics, Container } from './pixi.min.mjs';
 
+// Import of modules required for different aspects of the EFIS display -------
+// Commented out various lines as part of update to newer PixiJS version
 
-// Commented out the following lines to test
-//import { Ribbon } from './ribbon.mjs';
+import { Ribbon } from './ribbon.mjs';  // Altitude Ribbon
+
 // import { AirspeedRibbon } from './airspeedRibbon.mjs';
 // import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
 // import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
 // import { Interactions } from './interaction.mjs';
-// import { QNHDisplay } from './qnhdisplay.mjs';
+import { QNHDisplay } from './qnhdisplay.mjs';
 // import { SpeedDisplay } from './speedDisplay.mjs';
-// import { AltitudeDisplay } from './altitudeDisplay.mjs'
+import { AltitudeDisplay } from './altitudeDisplay.mjs'
 // import { TempTimeDisplay } from './tempTimeDisplay.mjs';
 // import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
 import { UserInput } from './userInput.mjs';
-// import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
+import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
 // import { AirspeedWheel } from './airSpeedWheel.mjs';
-// import { AltitudeWheel } from './altitudeWheel.mjs';
+import { AltitudeWheel } from './altitudeWheel.mjs';
 // import { Brightness } from './brightness.mjs';
 // import { TemperatureGraph } from './temperatureGraph.mjs';
 
@@ -34,17 +47,17 @@ import { UserInput } from './userInput.mjs';
 
 // ----------------------------------------------------------------------------
 
-var CAN_QNH_PERIOD = 1000;   // time in milliseconds (1 second)
-var last_qnh = 29.92;
+var CAN_QNH_PERIOD = 1000;      // time in milliseconds (1 second)
+var last_qnh = 29.92;           // default qnh
 var last_brightness = null;     // force a brightness change of first pass
-var can_qnh_timestamp = Date.now();
-var current_time_millis = Date.now();
+var can_qnh_timestamp = Date.now();     // current time
+var current_time_millis = Date.now();   // current time
 
 // ----------------------------------------------------------------------------
 // ---Create a Pixi Application                                             ---
 // ----------------------------------------------------------------------------
 
-const app = new Application();
+const app = new Application();  // the applicaiton object available globally
 await app.init({width: 480,
                 height: 400
                 }
@@ -91,7 +104,7 @@ dataObject.magy = 0.0;
 dataObject.magz = 0.0;
 
 // ----------------------------------------------------------------------------
-// --- Connect to the websocket to recieve the data from the can bus as     ---
+// --- Connect to the websocket to receive the data from the can bus as     ---
 // --- objects.                                                             ---
 // ----------------------------------------------------------------------------
 
@@ -144,6 +157,7 @@ var attitudeIndicator,
     softButtons,
     magnetometerCalibrate;
 
+// call setup after the fonts are loaded and ready
     
 document.fonts.ready.then(function() {
     setup();
@@ -156,7 +170,7 @@ document.fonts.ready.then(function() {
 myWebSocket.onmessage = RecieveWebSocketMessage;
 
 // ****************************************************************************
-// *** END OF SCRIPT - We should be event based from this point onward      ***
+// *** END OF SCRIPT - We are event based from this point onward            ***
 // ****************************************************************************
 
 
@@ -171,20 +185,65 @@ function RecieveWebSocketMessage(event) {
 }
 
 
-// ----------------------------------------------------------------------------
-// This `setup` function will run when the image has loaded                 ---
-// ----------------------------------------------------------------------------
+/*****************************************************************************
+ * @brief   The setup function is called create the objects that will be
+ *          drawn on the canvas.
+ *****************************************************************************/
 function setup() {
 
-    let x = app.screen.width;
-    let y = app.screen.height;
+    let x = app.screen.width;       // canvas width
+    let y = app.screen.height;      // canvas height
 
+    //-------------------------------------------------------------------------
+    // Objects are arranged back to front on the display. Create the
+    // background objects first.
+    // ------------------------------------------------------------------------
+
+    //-------------------------------------------------------------------------
+    // Create the Attitude indicator
+    // It is centerally located on the screen.
+    //-------------------------------------------------------------------------
     attitudeIndicator = new AttitudeIndicator(app);       
-         
-    // altimeter_ribbon = new Ribbon(app, x-35, y/2, y-130, 90, true, 100, 4, 5, true, undefined, undefined, true);
-    // altitudeWheel = new AltitudeWheel(app) //, 755, 240);
-    // qnhDisplay = new QNHDisplay(app, x - (35 + 90), y-130/2+25, 90, 25, 8);
-    // altitudeDisplay = new AltitudeDisplay(app, x - (35 + 90), 130/2, 90, 25, 8); 
+    
+    //-------------------------------------------------------------------------
+    // Create the altimeter display ribbon (vertical tape)
+    //-------------------------------------------------------------------------
+    altimeter_ribbon = new Ribbon(
+        app,            // the current application to draw the ribbon on
+        x-35, y/2,      // the location of the ribbon
+        y-140, 90,      // the height and width of the ribbon
+        true,           // right side if true
+        100,            // Major interval size (units)
+        4,              // number of major intervals in ribbon height
+        5,              // number of minor devisions per major devision
+        true,           // allow negative values if true
+        undefined,      // colour_bar1 
+        undefined,      // colour_bar2
+        true);          // show adjustable setting bug if true
+    
+    //-------------------------------------------------------------------------
+    // Create the current altitude display as a magnifier the as each of the
+    // digits display as if they are on a wheel the rotate on a axis
+    // parallel to the screen
+    //-------------------------------------------------------------------------    
+    altitudeWheel = new AltitudeWheel(app) //, 755, 240);
+    
+    qnhDisplay = new QNHDisplay(
+        app, 
+        x - (35 + 90), y-140/2+25,
+        90, 25,
+         8);
+
+    //------------------------------------------------------------------------- 
+    // Create an altitude display, generally above the altitude ribbon, that
+    // can display various altitudes that are uses selected such as GPS,
+    // Pressure or Density altitude
+    //------------------------------------------------------------------------- 
+    altitudeDisplay = new AltitudeDisplay(
+        app,                    // the current appication to draw on
+        x - (35 + 90), 140/2,   // location of the altitude display
+        90, 25,                 // width and height of the box
+        8);                     // radius of the box's top corners
 
     // airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
     // airspeedWheel = new AirspeedWheel(app, 45, y/2);
@@ -210,12 +269,12 @@ function setup() {
     //magnetometerCalibrate = new MagnetometerCalibrate(app);
     //softButtons = new SoftButtons(app, magnetometerCalibrate);
 
-    // userInput.registerCallback(qnhDisplay);
+    userInput.registerCallback(qnhDisplay);
     // userInput.registerCallback(tempTimeDisplay);
     // userInput.registerCallback(brightness);
     // userInput.registerCallback(speedDisplay);
     userInput.registerCallback(headingIndicator);
-    // userInput.registerCallback(altitudeDisplay);
+    userInput.registerCallback(altitudeDisplay);
     // userInput.registerCallback(altimeter_ribbon);
     
 
@@ -234,7 +293,7 @@ function DisplayUpdateLoop(delta) {
     attitudeIndicator.accY = dataObject.accy;
     attitudeIndicator.accZ = dataObject.accz;
     // attitudeIndicator.updateSlipSkid();
-    // altitudeWheel.value = dataObject.altitude;
+    altitudeWheel.value = dataObject.altitude;
     // //qnhDisplay.value = globalThis.qnh; // dataObject.qnh; // Don't update from json
     // altimeter_ribbon.value = dataObject.altitude;
     // //vsiDisplay.value = dataObject.vsi;
@@ -268,6 +327,7 @@ function DisplayUpdateLoop(delta) {
     // altitudeDisplay.update();
 
     //magnetometerCalibrate.plotPoint(dataObject.magx,dataObject.magy,dataObject.magz);
+    
     // // Process any change in the user input encoder
     userInput.processState(dataObject.position, dataObject.pressed)
 

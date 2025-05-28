@@ -1,28 +1,28 @@
-/* global PIXI */
+// 4-May-2025 - Started Update for PixiJS 8.6.6
 'use strict';
 
 import { NumericWheelDisplay } from "./numericWheelDisplay.mjs";
+import { Graphics, TextStyle, Text} from './pixi.mjs';
 
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Graphics = PIXI.Graphics,
-//     Text = PIXI.Text;
-
-/**     
- * Class representing an Airspeed Wheel Display.
- */
+/*****************************************************************************     
+ * Class representing an Altitude Wheel Display.
+ *****************************************************************************/
 export class AltitudeWheel  {
 
+    /*************************************************************************
+     * Constructor
+     * @param {object} app Pixijs
+     *************************************************************************/
     constructor(app) {
 
         // position based on screen size
         this.x = app.screen.width - 45;
         this.y = app.screen.height / 2;
-        this.app = app;
+        this.app = app;                 // <-- This can probably be deleted
 
         //console.log("construct alt tens");
+        // Create the NumericWheelDisplay objects to display each digit of the
+        // wheel.
         this.tensWheel = new NumericWheelDisplay("Tahoma", 28, 1489/2048, 30, 1 ,false, 20, true, true, this.x, this.y);
 
         let hundredsWheelX = this.x - this.tensWheel.digitWidth;
@@ -37,21 +37,22 @@ export class AltitudeWheel  {
         let width = this.tensWheel.digitWidth + this.hundredsWheel.digitWidth + this.thousandsWheel.digitWidth + this.tenThousandsWheel.digitWidth;
         let width1 = this.tensWheel.digitWidth;
 
+        
         this.altitudeWheelOutline(app, this.x, this.y, true, width, 30/2 , width1, (30/2 + 20) );
 
         // Add text for ft
         // Create a style to be used for the units characters
-        this.style = new PIXI.TextStyle({
+        this.style = new TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '18px',
             fill: "white",
             fontWeight: "normal",
-            stroke: "black",
-            strokeThickness: 2
+            stroke: "black"//,
+            //strokeThickness: 2  - Does not appear to be available anymore
             }
         );
 
-        this.altUnits = new Text("ft", this.style);
+        this.altUnits = new Text({text:"ft", style: this.style});
         this.altUnits.anchor.set(1,0.2);
         this.altUnits.position.set((this.x - width) - 5, this.y);
 
@@ -63,9 +64,18 @@ export class AltitudeWheel  {
     }
 
     altitudeWheelOutline(app,x,y,right,width,height,left_width,left_height){
+        
         let line = new Graphics();
-        line.lineStyle(2,0xFFFFFF);
-        line.beginFill(0x000000);
+        
+        line.strokeStyle = {
+            color: 0xffffff,    // white
+            width: 2,           // 2 px
+        }
+        
+        line.fillStyle = {
+            color: 0x000000,    // black
+        }
+
         // strart drawing the point
         line.moveTo(x+6,y);
         line.lineTo(x+1,y-5);
@@ -83,7 +93,10 @@ export class AltitudeWheel  {
         // complete the point
         line.lineTo(x+1,y+5);
         line.lineTo(x+6,y);
-        line.endFill();
+        line.closePath();
+
+        line.stroke();
+        line.fill();
 
         app.stage.addChild(line);
 
