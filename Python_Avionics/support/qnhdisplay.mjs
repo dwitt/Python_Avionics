@@ -65,7 +65,6 @@ export class QNHDisplay {
     createQNHUnitsText(x, y, width, height) {
         let unitStyle, unitVerticalCentre, text, unitText;
 
-
         unitStyle = new TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '12px',
@@ -115,9 +114,9 @@ export class QNHDisplay {
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
         let fillAlpha = 0.25;       // 35% 
-        let lineColour = 0xFFFFFF;  // black
+        let lineColour = 0xFFFFFF;  // white
         let lineThickness = 1;      // 1 pixel
-        let lineAlpha = 1.0;       // 25%
+        let lineAlpha = 0.5;        // 50%
         let linePosition = 1;       // inside
 
 

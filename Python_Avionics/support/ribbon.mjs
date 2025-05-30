@@ -734,7 +734,9 @@ export class Colour_Bar {
     constructor(colours = [], x_pos = 0, width = 5, y_max = 300, scale = 1, right_aligned = false) {
         this.colours = colours;
         this.x_pos = x_pos;
+
         //console.log(this.x);
+        
         this.bar_y_max = y_max;
         this.bar_scale = scale;
         if (right_aligned == true) {
@@ -756,11 +758,16 @@ export class Colour_Bar {
         let length = colours.length;
 
         for (i = 0; i < length; i++ ){
-            this.graphics.beginFill(colours[i].colour);
+            this.graphics.fileStyle = {
+                alpha: 1,
+                color: colours[i].colour,
+            };
             if (i+1 < length) {
-                this.graphics.drawRect(0, colours[i].position, this.bar_width, colours[i+1].position - colours[i].position);
+                this.graphics.rect(0, colours[i].position, this.bar_width, colours[i+1].position - colours[i].position);
+                this.graphics.fill();
             } else {
-                this.graphics.drawRect(0, colours[i].position, this.bar_width, this.bar_y_max - colours[i].position); 
+                this.graphics.rect(0, colours[i].position, this.bar_width, this.bar_y_max - colours[i].position); 
+                this.graphics.fill();
             }
         }
 
