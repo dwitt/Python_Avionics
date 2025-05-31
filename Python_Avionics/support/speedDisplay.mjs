@@ -1,19 +1,7 @@
 'use strict';
-/* global PIXI */
+
 import { drawSpecialRectangle } from './specialRectangle.mjs';
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     loader = PIXI.Loader.shared,
-//     resources = PIXI.Loader.shared.resources,
-//     TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-// var Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
+import { Container, Graphics, TextStyle, Text } from './pixi.mjs';
 
 /**     
  * Class representing the speed display.
@@ -37,9 +25,6 @@ const GAMMA = 1.401;                // ratio of specific heats of air
 
 export class SpeedDisplay {
 
-
-
-
     constructor (app, x , y, width, height, radius){
 
         this.screen_width = app.screen.width;
@@ -56,45 +41,24 @@ export class SpeedDisplay {
         this.speedOfSound = 0;
 
         this.container = new Container();
+        this.container.sortableChildren = true;
         this.colour = "chartreuse";
 
-        this.displayItem = GS;
-    
-        // Create a style to be used for the speed characters
-        this.style = new PIXI.TextStyle({
-            fontFamily: 'Tahoma',
-            fontSize: '18px',
-            fill: this.colour,
-            fontWeight: "normal"
-        });
+        this.speedText = this.createSpeedText(x, y, width, height);
+        this.speedText.zIndex = 2;
 
-        this.unitsStyle = new PIXI.TextStyle({
-            fontFamily: 'Tahoma',
-            fontSize: '12px',
-            fill: this.colour,
-            fontWeight: "normal"
-        });
-    
+        this.speedLegend = this.createSpeedLegendText(x ,y, width, height);
+        this.speedLegend.zIndex = 2;
 
-        let valueText = "0"
-        let legendText = "GS"
-        let unitsText = "kts" 
-    
-        this.speedText = new Text(valueText, this.style);
-        this.speedText.anchor.set(1,.5);
-        this.speedText.position.set(x + width*2/3 , y - height/2);
-
-        this.speedLegend = new Text(legendText, this.unitsStyle);
-        this.speedLegend.anchor.set(0,.87);
-        this.speedLegend.position.set(x + width * 2/3 + 5, y - height / 2);
-
-        this.speedUnits = new Text(unitsText, this.unitsStyle);
-        this.speedUnits.anchor.set(0,.17);
-        this.speedUnits.position.set(x + width * 2/3 + 5, y - height / 2);
+        this.speedUnits = this.createSpeedUnitsText(x, y, width, height);
+        this.speedUnits.zIndex = 2;
     
         this.speedRectangle = this.regularRectangle(x, y, width, height, radius);
+        this.speedRectangle.zIndex = 1;
         this.speedSelectedRectangle = this.selectedRectangle(x, y, width, height, radius);
+        this.speedSelectedRectangle.zIndex = 1;
         this.speedChangingRectangle = this.changingRectangle(x, y, width, height, radius);
+        this.speedChangingRectangle.zIndex = 1;
     
         this.container.addChild(this.speedRectangle);
         this.container.addChild(this.speedText);
@@ -104,26 +68,124 @@ export class SpeedDisplay {
         app.stage.addChild(this.container);
     }
 
+    /*************************************************************************
+     * @brief Create and return a PixiJS Text object for the text to
+     *          be rendered in the speed display box. 
+     * 
+     * @param {number} x The x position on the display of the speed box
+     * @param {number} y The y position on the display of the speed box
+     * @param {number} width The width of the speed display box
+     * @param {number} height The height of the speed display box
+     */
+    createSpeedText(x, y, width, height){
+        let style, speedText, text;
+
+        style = new TextStyle({
+            fontFamily: 'Tahoma',
+            fontSize: '18px',
+            fill: this.colour,
+            fontWeight: "normal"
+        });
+
+        text = "0" 
+        speedText = new Text({
+            text: speedText,
+            style: style,
+        });
+
+        speedText.anchor.set(1,.5);
+        speedText.position.set(x + width*2/3 , y - height/2);
+
+        return speedText;
+    }
+
+    /*************************************************************************
+     * @brief Create and return a PixiJS Text object for the units text to
+     *          be rendered in the speed display box. 
+     * 
+     * @param {number} x The x position on the display of the speed box
+     * @param {number} y The y position on the display of the speed box
+     * @param {number} width The width of the speed display box
+     * @param {number} height The height of the speed display box
+     */
+    createSpeedUnitsText(x, y, width, height){
+        let unitsStyle, speedUnitsText, unitsText;
+
+        unitsStyle = new TextStyle({
+            fontFamily: 'Tahoma',
+            fontSize: '12px',
+            fill: this.colour,
+            fontWeight: "normal"
+        });
+
+        unitsText = "kts" 
+        speedUnitsText = new Text({
+            text: unitsText,
+            style: unitsStyle,
+        });
+
+        speedUnitsText.anchor.set(0,.17);
+        speedUnitsText.position.set(x + width * 2/3 + 5, y - height / 2);
+
+        return speedUnitsText;
+    }
+
+    /*************************************************************************
+     * @brief Create and return a PixiJS Text object for the legend text to
+     *          be rendered in the speed display box. 
+     * 
+     * @param {number} x The x position on the display of the speed box
+     * @param {number} y The y position on the display of the speed box
+     * @param {number} width The width of the speed display box
+     * @param {number} height The height of the speed display box
+     */
+    createSpeedLegendText(x, y, width, height){
+        let legendStyle, speedLegendText, legendText;
+
+        legendStyle = new TextStyle({
+            fontFamily: 'Tahoma',
+            fontSize: '12px',
+            fill: this.colour,
+            fontWeight: "normal"
+        });
+
+        legendText = "GS" 
+        speedLegendText = new Text({
+            text: legendText,
+            style: legendStyle,
+        });
+
+        speedLegendText.anchor.set(0,.87);
+        speedLegendText.position.set(x + width * 2/3 + 5, y - height / 2);
+
+        return speedLegendText;
+    }
+
     regularRectangle(x, y, width, height, radius){
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
-        let fillAlpha = 0.35;       // 35% 
-        let lineColour = 0x000000;  // Black
+        let fillAlpha = 0.25;       // 25% 
+        let lineColour = 0xFFFFFF;  // WHITE
         let lineThickness = 1;      // 1 pixel
-        let lineAlpha = 0.25;       // 25%
-        let linePosition = 0;       // 
+        let lineAlpha = 0.5;       // 50%
+        let linePosition = 1;       // inside
 
 
         var speedRectangle = new Graphics();
-        speedRectangle.beginFill(fillColour, fillAlpha); 
-        speedRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
+        speedRectangle.fillStyle = {
+            alpha: fillAlpha,
+            color: fillColour,
+        };
+        speedRectangle.strokeStyle = {
+            alignment: linePosition,
+            alpha: lineAlpha,
+            color: lineColour,
+            width: lineThickness,            
+        };
     
         drawSpecialRectangle(speedRectangle, x, y - height, width, height, radius, true, true, false, false);
-    
-        speedRectangle.endFill();
+        speedRectangle.stroke();
+        speedRectangle.fill();
     
         return(speedRectangle);
     }
@@ -131,22 +193,27 @@ export class SpeedDisplay {
     selectedRectangle(x, y, width, height, radius){
         // Draw Custom Rectangle
         let fillColour = 0x000000;  // black
-        let fillAlpha = 0.35;       // 25% 
+        let fillAlpha = 0.25;       // 25% 
         let lineColour = 0xFF0000;  // red
         let lineThickness = 2;      // 2 pixel
         let lineAlpha = 1.00;       // 100%
-        let linePosition = 0.5;       // middle
+        let linePosition = 0.5;      // middle
 
         var speedRectangle = new Graphics();
-        speedRectangle.beginFill(fillColour, fillAlpha); 
-        speedRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
+        speedRectangle.fillStyle = {
+            alpha: fillAlpha,
+            color: fillColour,    
+        };
+        speedRectangle.strokeStyle = {
+            alignment: linePosition,
+            alpha: lineAlpha,
+            color: lineColour,
+            width: lineThickness,
+        };
     
         drawSpecialRectangle(speedRectangle, x, y - height, width, height, radius, true, true, false, false);
-    
-        speedRectangle.endFill();
+        speedRectangle.stroke();
+        speedRectangle.fill();
     
         return(speedRectangle);
     }
@@ -156,20 +223,25 @@ export class SpeedDisplay {
         let fillColour = 0x000000;  // black
         let fillAlpha = 0.75;       // 75% 
         let lineColour = 0x7FFF00;  // chartreuse 
-        let lineThickness = 2;      // 1 pixel
-        let lineAlpha = .50;       // 100%
-        let linePosition = 0;       // middle
+        let lineThickness = 2;      // 2 pixel
+        let lineAlpha = 1.0;        // 100%
+        let linePosition = 0.5;       // middle
 
         var speedRectangle = new Graphics();
-        speedRectangle.beginFill(fillColour, fillAlpha); 
-        speedRectangle.lineStyle(lineThickness,
-            lineColour, 
-            lineAlpha, 
-            linePosition);
+        speedRectangle.fillStyle = {
+            alpha: fillAlpha,
+            color: fillColour,    
+        };
+        speedRectangle.strokeStyle = {
+            alignment: linePosition,
+            alpha: lineAlpha,
+            color: lineColour,
+            width: lineThickness,
+        };
     
         drawSpecialRectangle(speedRectangle, x, y - height, width, height, radius, true, true, false, false);
-    
-        speedRectangle.endFill();
+        speedRectangle.stroke();
+        speedRectangle.fill();
     
         return(speedRectangle);
     }  
@@ -180,56 +252,31 @@ export class SpeedDisplay {
         // the changable flag added to allow changes. The value should be 
         // in sequence from where it was last.
 
-        // Process changeable first as it should be enabled last
-        if (changable && !this.changable) {
-            // we just became changable
-            this.changable = true; // set the changable flag to true
-            this.changeableFirstPass = true;
-
-            // clear the selected flag to allow detetion of a selected mode
-            // when changable goes false
-            this.selected = false;
-
-            // Change to a changeable Container
-            this.container.removeChildren();
-            this.container.addChild(this.speedChangingRectangle);
-            this.container.addChild(this.speedText);
-            this.container.addChild(this.speedLegend);
-            this.container.addChild(this.speedUnits);
-        } else if (!changable && this.changable){
-            this.changable = false;
-        }
-
-        // check if the selected parameter has changed and we are not changable
-        if (selected && !this.selected && !changable) {
-            // we just became selected
+        //---------------------------------------------------------------------
+        // Process changes in the selected and changeable status
+        // --------------------------------------------------------------------
+        if (selected && !this.selected) {
             this.selected = true;
-
-            // Change to a selected Container
-            this.container.removeChildren();
+            this.container.removeChild(this.speedRectangle);
             this.container.addChild(this.speedSelectedRectangle);
-            this.container.addChild(this.speedText);
-            this.container.addChild(this.speedLegend);
-            this.container.addChild(this.speedUnits);
-
-        // check if
-        } else if (!selected && this.selected) {
-            this.selected = false;
-            // // Change to a regular container
-            // this.container.removeChildren();
-            // this.container.addChild(this.speedRectangle);
-            // this.container.addChild(this.speedText);
-            // this.container.addChild(this.speedLegend);
-            // this.container.addChild(this.speedUnits);
+        }
+        
+        if (changable && !this.changable) {
+            this.changable = true;
+            this.container.removeChild(this.speedSelectedRectangle);
+            this.container.addChild(this.speedChangingRectangle);
         }
 
-        if (!selected && !changable ) {
-            // Change to a regular container
-            this.container.removeChildren();
+        if (!changable && this.changable) {
+            this.changable = false;
+            this.container.removeChild(this.speedChangingRectangle);
+            this.container.addChild(this.speedSelectedRectangle);
+        }
+
+        if (!selected && this.selected) {
+            this.selected = false;
+            this.container.removeChild(this.speedSelectedRectangle);
             this.container.addChild(this.speedRectangle);
-            this.container.addChild(this.speedText);
-            this.container.addChild(this.speedLegend);
-            this.container.addChild(this.speedUnits);
         }
 
         // process the encoder value provided

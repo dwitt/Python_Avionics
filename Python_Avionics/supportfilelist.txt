@@ -1,6 +1,7 @@
 efis-display.js
 ribbon.mjs
 airspeedRibbon.mjs
+speedDisplay.mjs
 attitude-indicator.mjs
 headingIndicator.mjs
 qnhdisplay.mjs

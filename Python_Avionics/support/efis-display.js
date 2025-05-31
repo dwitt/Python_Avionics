@@ -26,8 +26,8 @@ import { AttitudeIndicator } from './attitude-indicator.mjs';
 // import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
 // import { Interactions } from './interaction.mjs';
-import { QNHDisplay } from './qnhdisplay.mjs';
-// import { SpeedDisplay } from './speedDisplay.mjs';
+import { QNHDisplay } from './qnhdisplay.mjs'; //
+import { SpeedDisplay } from './speedDisplay.mjs';
 import { AltitudeDisplay } from './altitudeDisplay.mjs'
 // import { TempTimeDisplay } from './tempTimeDisplay.mjs';
 // import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
@@ -245,9 +245,9 @@ function setup() {
         90, 25,                 // width and height of the box
         8);                     // radius of the box's top corners
 
-    airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-130, 90, false, 10, 8, 2, false);
+    airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-140, 90, false, 10, 8, 2, false);
     // airspeedWheel = new AirspeedWheel(app, 45, y/2);
-    // speedDisplay = new SpeedDisplay(app, 35, 130/2, 90, 25, 8);
+    speedDisplay = new SpeedDisplay(app, 35, 140/2, 90, 25, 8);
     // tempTimeDisplay = new TempTimeDisplay(app, 35, y-130/2+25, 90, 25, 8);
 
     // //tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
@@ -272,7 +272,7 @@ function setup() {
     userInput.registerCallback(qnhDisplay);
     // userInput.registerCallback(tempTimeDisplay);
     // userInput.registerCallback(brightness);
-    // userInput.registerCallback(speedDisplay);
+    userInput.registerCallback(speedDisplay);
     userInput.registerCallback(headingIndicator);
     userInput.registerCallback(altitudeDisplay);
     // userInput.registerCallback(altimeter_ribbon);
