@@ -228,11 +228,16 @@ function setup() {
     //-------------------------------------------------------------------------    
     altitudeWheel = new AltitudeWheel(app) //, 755, 240);
     
+    //------------------------------------------------------------------------- 
+    // Create an qnh display, generally below the airspeed ribbon that
+    // displays the current qnh value in inHg
+    //------------------------------------------------------------------------- 
+
     qnhDisplay = new QNHDisplay(
-        app, 
-        x - (35 + 90), y-140/2+25,
-        90, 25,
-         8);
+        app,                        // the current application to draw on
+        x - (35 + 90), y-140/2+25,  // the location of the display
+        90, 25,                     // the width and heigh of the display
+        8);                         // the box's corner radius
 
     //------------------------------------------------------------------------- 
     // Create an altitude display, generally above the altitude ribbon, that
@@ -245,9 +250,36 @@ function setup() {
         90, 25,                 // width and height of the box
         8);                     // radius of the box's top corners
 
-    airspeedRibbon = new AirspeedRibbon(app, 35, y/2, y-140, 90, false, 10, 8, 2, false);
+    // ------------------------------------------------------------------------
+    // Create the airspeed ribbon to be displayed on the left side of the 
+    // EFIS display area
+    // The ribbon origin is it's center left unless the right side flag is
+    // true
+    // ------------------------------------------------------------------------
+
+    airspeedRibbon = new AirspeedRibbon(
+        app,            // the current application to draw the ribbon on
+        35, y/2,        // the x and y location of the ribbon 
+        y-140, 90,      // height and width of the ribbon
+        false,          // left side if false
+        10,             // major interval size (units)
+        8,              // number of major intervals in ribbon height
+        2,              // number of minor intervals per major
+        false);         // don't allow negative numbers.
+
     // airspeedWheel = new AirspeedWheel(app, 45, y/2);
-    speedDisplay = new SpeedDisplay(app, 35, 140/2, 90, 25, 8);
+    
+    //-------------------------------------------------------------------------
+    // Create a speed display, generally above the airspeed ribbon, that can
+    // display various speeds that the user selects, such as Ground Speed, and
+    // True Air Speed
+    //-------------------------------------------------------------------------
+    speedDisplay = new SpeedDisplay(
+        app,            // the current application to draw on
+        35, 140/2,      // the x and y location of the display (lower left)
+        90, 25,         // the width and height of the display
+        8);             // the radius of the box's top corners
+
     // tempTimeDisplay = new TempTimeDisplay(app, 35, y-130/2+25, 90, 25, 8);
 
     // //tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
