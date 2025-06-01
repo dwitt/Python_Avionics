@@ -1,14 +1,8 @@
-/* global PIXI */
+// 1-June-2025 - Updated for PixiJS 8.6.6
 'use strict';
 
 import { NumericWheelDisplay } from "./numericWheelDisplay.mjs";
-
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Graphics = PIXI.Graphics,
-//     Text = PIXI.Text;
+import { Graphics, TextStyle, Text} from './pixi.mjs';
 
 /**     
  * Class representing an Airspeed Wheel Display.
@@ -33,17 +27,22 @@ export class AirspeedWheel  {
 
         // Add text for kts
         // Create a style to be used for the units characters
-        this.style = new PIXI.TextStyle({
+        this.style = new TextStyle({
             fontFamily: 'Tahoma',
             fontSize: '18px',
             fill: "white",
             fontWeight: "normal",
-            stroke: "black",
-            strokeThickness: 2
+            stroke: {
+                color: "black",
+                width: 2,
+                }
             }
         );
 
-        this.IASunits = new Text("kts", this.style);
+        this.IASunits = new Text({
+            text: "kts",
+            style: this.style
+            });
         this.IASunits.anchor.set(0,.2);
         this.IASunits.position.set(x + airspeedWidth + 8,y);
 
@@ -56,8 +55,16 @@ export class AirspeedWheel  {
 
     airspeedWheelOutline(app,x,y,width,height){
         let line = new Graphics();
-        line.lineStyle(2,0xFFFFFF);
-        line.beginFill(0x000000);
+
+        line.strokeStyle = {
+            color: 0xffffff,    // white
+            width: 2,           // 2 px
+        };
+
+        line.fillStyle = {
+            color: 0x000000,    // black
+        };
+
         // strart drawing the point
         line.moveTo(x-6,y);
         line.lineTo(x-1,y-5);
@@ -69,7 +76,11 @@ export class AirspeedWheel  {
         // complete the point
         line.lineTo(x-1,y+5);
         line.lineTo(x-6,y);
-        line.endFill();
+  
+        line.closePath();
+
+        line.stroke();
+        line.fill();
     
         app.stage.addChild(line);
     

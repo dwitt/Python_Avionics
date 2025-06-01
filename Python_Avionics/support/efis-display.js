@@ -32,8 +32,8 @@ import { AltitudeDisplay } from './altitudeDisplay.mjs'
 // import { TempTimeDisplay } from './tempTimeDisplay.mjs';
 // import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
 import { UserInput } from './userInput.mjs';
-import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
-// import { AirspeedWheel } from './airSpeedWheel.mjs';
+//import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
+import { AirspeedWheel } from './airSpeedWheel.mjs';
 import { AltitudeWheel } from './altitudeWheel.mjs';
 // import { Brightness } from './brightness.mjs';
 // import { TemperatureGraph } from './temperatureGraph.mjs';
@@ -267,7 +267,7 @@ function setup() {
         2,              // number of minor intervals per major
         false);         // don't allow negative numbers.
 
-    // airspeedWheel = new AirspeedWheel(app, 45, y/2);
+    airspeedWheel = new AirspeedWheel(app, 45, y/2);
     
     //-------------------------------------------------------------------------
     // Create a speed display, generally above the airspeed ribbon, that can
