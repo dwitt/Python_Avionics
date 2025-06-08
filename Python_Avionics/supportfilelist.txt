@@ -4,11 +4,13 @@ ribbon.mjs
 altitudeWheel.mjs
 numericWheelDisplay.mjs
 altitudeDisplay.mjs
+displayRectangle.mjs
 qnhdisplay.mjs
 headingIndicator.mjs
 airspeedRibbon.mjs
 airSpeedWheel.mjs
 speedDisplay.mjs
+tempTimeDisplay.mjs
 userInput.mjs
 utilityFunctions.mjs
 specialRectangle.mjs

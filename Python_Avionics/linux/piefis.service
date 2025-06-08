@@ -11,15 +11,15 @@ Group=david
 # The working directory of your application
 WorkingDirectory=/home/david/Python_Avionics
 
-# Specify the full path to your virtualenv’s python interpreter
+# Specify the full path to your virtualenv's python interpreter
 ExecStart=/home/david/Python_Avionics/bin/python /home/david/Python_Avionics/aio_server.py
 
 # If you want the service to automatically restart on failure:
 Restart=on-failure
 
-# If your app needs standard output/error logs saved somewhere:
-StandardOutput=inherit
-StandardError=inherit
+# Log configuration
+StandardOutput=append:/var/log/piefis.log
+StandardError=append:/var/log/piefis.log
 
 [Install]
 WantedBy=multi-user.target

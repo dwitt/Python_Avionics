@@ -488,16 +488,22 @@ async def read_input(encoder, button, data):
     data -- an object in which the data can be stored
     """
     last_encoder_position = -encoder.position
+    error_count = 0
     while True:
-        new_encoder_position = -encoder.position
-        if abs(new_encoder_position - last_encoder_position) < 100:
-            data.position = new_encoder_position
-            last_encoder_position = new_encoder_position
-        #data.position = -encoder.position
-        data.pressed = not button.value
-        #TODO: adjust the sleep time as large as possible to be repsonsive but
-        #       let the can updates take presidence as these functions are time
-        #       consuming
+        try:
+            new_encoder_position = -encoder.position
+            if abs(new_encoder_position - last_encoder_position) < 100:
+                data.position = new_encoder_position
+                last_encoder_position = new_encoder_position
+            data.pressed = not button.value
+            error_count = 0  # Reset error count on successful read
+        except Exception as e:
+            error_count += 1
+            if DEBUG and error_count % 100 == 0:  # Only print every 100 errors to avoid spam
+                print(f"Error reading encoder: {e}")
+            # Keep the last known good values
+            await asyncio.sleep(0.1)  # Add a small delay when errors occur
+            continue
         await asyncio.sleep(0)
 
 def connect_to_rotary_encoder(addr=0x36):

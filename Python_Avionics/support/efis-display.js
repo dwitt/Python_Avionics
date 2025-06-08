@@ -29,7 +29,7 @@ import { HeadingIndicator } from './headingIndicator.mjs';
 import { QNHDisplay } from './qnhdisplay.mjs'; //
 import { SpeedDisplay } from './speedDisplay.mjs';
 import { AltitudeDisplay } from './altitudeDisplay.mjs'
-// import { TempTimeDisplay } from './tempTimeDisplay.mjs';
+import { TempTimeDisplay } from './tempTimeDisplay.mjs';
 // import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
 import { UserInput } from './userInput.mjs';
 //import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
@@ -280,7 +280,15 @@ function setup() {
         90, 25,         // the width and height of the display
         8);             // the radius of the box's top corners
 
-    // tempTimeDisplay = new TempTimeDisplay(app, 35, y-130/2+25, 90, 25, 8);
+    
+    //-------------------------------------------------------------------------
+    // Create a display below the speed ribbon to display the time or the OAT
+    //-------------------------------------------------------------------------
+    tempTimeDisplay = new TempTimeDisplay(
+        app, 
+        35, y-140/2, // was + 25 for the height
+        90, 25, 
+        8);
 
     // //tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
 
@@ -302,7 +310,7 @@ function setup() {
     //softButtons = new SoftButtons(app, magnetometerCalibrate);
 
     userInput.registerCallback(qnhDisplay);
-    // userInput.registerCallback(tempTimeDisplay);
+    userInput.registerCallback(tempTimeDisplay);
     // userInput.registerCallback(brightness);
     userInput.registerCallback(speedDisplay);
     userInput.registerCallback(headingIndicator);
