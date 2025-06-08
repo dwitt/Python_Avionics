@@ -91,7 +91,7 @@ export class DisplayRectangle {
             }
         );
         if (rightAligned) {
-            valueTextX = x - width * 2/3;
+            valueTextX = x - width * 1/3;
         } else {
             valueTextX = x + width * 2/3;
         }
@@ -136,7 +136,7 @@ export class DisplayRectangle {
         }
 
         if (rightAligned) {
-            unitTextX = x - width * 2/3 - 5;
+            unitTextX = x - width * 1/3 + 5;
         } else {
             unitTextX = x + width * 2/3 + 5;
         }

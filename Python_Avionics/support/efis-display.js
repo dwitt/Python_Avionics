@@ -235,7 +235,7 @@ function setup() {
 
     qnhDisplay = new QNHDisplay(
         app,                        // the current application to draw on
-        x - (35 + 90), y-140/2+25,  // the location of the display
+        x - (35), y-140/2,  // the location of the display
         90, 25,                     // the width and heigh of the display
         8);                         // the box's corner radius
 

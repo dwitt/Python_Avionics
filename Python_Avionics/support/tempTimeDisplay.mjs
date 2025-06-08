@@ -62,27 +62,26 @@ export class TempTimeDisplay extends DisplayRectangle {
 
         // process the encoder value provided
 
-        this._displayItem = Math.abs(value % 2);
-
-        if (this._displayItem == TEMP) {
-            this.unitText.text = "ºC";
-        }
-        else if (this._displayItem == TIME) {
-            this.unitText.text = "UTC";
+        if (selected && changable) {
+            this._displayItem = Math.abs(value % 2);
         
+            if (this._displayItem == TEMP) {
+                this.unitText.text = "ºC";
+            }
+            else if (this._displayItem == TIME) {
+                this.unitText.text = "UTC";
+            
+            }
+            
+            this.update();
         }
-        
-            //this.my_value = 2992 + value;
-
-            //this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100) + " in";
-
 
     }
 
     update() {
         if (this._displayItem == TEMP) {
             if (this._temperature !== undefined) {
-                this._valueText.text = String(this._temperature);
+                this.valueText.text = String(this._temperature);
             }
         }
         else if (this._displayItem == TIME) {
@@ -96,7 +95,7 @@ export class TempTimeDisplay extends DisplayRectangle {
                 if (minuteString.length == 1) {
                     minuteString = '0' + minuteString;
                 }
-                this._valueText.text = hourString + ":" + minuteString
+                this.valueText.text = hourString + ":" + minuteString
              }
         
         }
