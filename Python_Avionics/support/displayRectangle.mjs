@@ -47,6 +47,8 @@ export class DisplayRectangle {
         let valueTextY;
         let unitTextX;
         let unitTextY;
+        let legendTextX;
+        let legendTextY;    
 
         // set up class variables
         this.colour = 0xffffff;         // white - normal
@@ -169,6 +171,7 @@ export class DisplayRectangle {
                 style: legendTextStyle,
             }
         );
+
         // adjust anghor based on whether we have a legend
         // -->> Maybe not required
         if (legend) {
@@ -176,8 +179,20 @@ export class DisplayRectangle {
         } else {
             yAnchor = 0.5;      // technically not used??
         }
+
+        if (rightAligned) {
+            legendTextX = x - width * 1/3 + 5;
+        } else {
+            legendTextX = x + width * 2/3 + 5;
+        }
+        if (radiusTop) {
+            legendTextY = y - height/2;
+        } else {
+            legendTextY = y + height/2;
+        }
+
         this.legendText.anchor.set(0, 0.87);
-        this.legendText.position.set(x + width * 2/3 + 5, y - height / 2);
+        this.legendText.position.set(legendTextX, legendTextY);
         this.legendText.zIndex = 10;
 
         //---------------------------------------------------------------------        

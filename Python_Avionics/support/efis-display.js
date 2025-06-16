@@ -235,7 +235,7 @@ function setup() {
 
     qnhDisplay = new QNHDisplay(
         app,                        // the current application to draw on
-        x - (35), y-140/2,  // the location of the display
+        x - (35), y-140/2,          // the location of the display
         90, 25,                     // the width and heigh of the display
         8);                         // the box's corner radius
 
@@ -246,7 +246,7 @@ function setup() {
     //------------------------------------------------------------------------- 
     altitudeDisplay = new AltitudeDisplay(
         app,                    // the current appication to draw on
-        x - (35 + 90), 140/2,   // location of the altitude display
+        x - (35), 140/2,        // location of the altitude display
         90, 25,                 // width and height of the box
         8);                     // radius of the box's top corners
 
@@ -290,7 +290,6 @@ function setup() {
         90, 25, 
         8);
 
-    // //tasDisplay = new TASDisplay(app, 35, 130/2, 90, 25, 8 )
 
     // vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
 
@@ -302,8 +301,12 @@ function setup() {
 
     // brightness = new Brightness(app);
 
+    // ------------------------------------------------------------------------
+    // The following is for an EMS display - Not currently being implemented
+    // ------------------------------------------------------------------------
     // //egtGraph = new TemperatureGraph(app2, 0, 200, "EGT", 1100, 1500, 0, 1400, 1400);
     // //chtGraph = new TemperatureGraph(app2, 240, 200, "CHT", 100, 500, 200, 400, 450);
+    //-------------------------------------------------------------------------
 
     userInput = new UserInput(app);
     //magnetometerCalibrate = new MagnetometerCalibrate(app);
