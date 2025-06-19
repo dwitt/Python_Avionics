@@ -21,7 +21,7 @@ import { Application, Graphics } from './pixi.mjs';
 import { Ribbon } from './ribbon.mjs';  // Altitude Ribbon
 
 import { AirspeedRibbon } from './airspeedRibbon.mjs';
-// import { VsiIndicator } from './vsi-indicator.mjs';
+import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
 // import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
@@ -291,7 +291,10 @@ function setup() {
         8);
 
 
-    // vsiIndicator = new VsiIndicator(app, x-35, y/2, y-80, 35);
+    vsiIndicator = new VsiIndicator(
+        app, 
+        x-35, y/2, 
+        y-80, 35);
 
      var aircraft = new AircraftIndicator(app);
 

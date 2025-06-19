@@ -11,6 +11,7 @@ airspeedRibbon.mjs
 airSpeedWheel.mjs
 speedDisplay.mjs
 tempTimeDisplay.mjs
+vsi-indicator.mjs
 userInput.mjs
 utilityFunctions.mjs
 specialRectangle.mjs

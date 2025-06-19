@@ -1,17 +1,5 @@
 'use strict';
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     //loader = PIXI.Loader.shared,
-//     //resources = PIXI.Loader.shared.resources,
-//     //TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-//     Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
+import { Application, Graphics, Container, TextStyle,Text } from './pixi.mjs';
 
 /**
  * Class representing a VSI indicator.
@@ -39,6 +27,7 @@ export class VsiIndicator {
         var oneThousandSpace = .75;
         var twoThousandSpace = .25;
 
+        // --------------------------------------------------------------------
         // Drawing will be relative to container except mask (if used)
         this.container = new Container();
 
@@ -53,16 +42,33 @@ export class VsiIndicator {
 
         // fill the background with 25% black with a 75% outline
         var fillColour = 0x000000;
-        var fillAlpha = 0.0;
+        var fillAlpha = 0.25;
         var outlineWidth = 1;
-        var outlineAlpha = 0.0;
+        var outlineAlpha = 0.75;
 
-        this.vsiBackground.beginFill(fillColour, fillAlpha);
-        this.vsiBackground.lineStyle(outlineWidth, fillColour, outlineAlpha, 0);
+        this.vsiBackground.strokeStyle = {
+            alignment: 1.0,     // 1.0 is inside, 0.0 is outside
+            color: fillColour,
+            alpha: outlineAlpha,
+            width: outlineWidth
+        };
+
+        this.vsiBackground.fillStyle = {
+            alignment: 0.0,
+            alpha: fillAlpha,
+            color: fillColour,
+            width: outlineWidth,
+        };
+
+        //
+        //this.vsiBackground.lineStyle(outlineWidth, fillColour, outlineAlpha, 0);
         
-        this.vsiBackground.drawRect(0, -height/2, width, height);
+        this.vsiBackground.rect(0, -height/2, width, height);
+        this.vsiBackground.stroke();
+        this.vsiBackground.fill();
+        
         //console.log(height);
-        this.vsiBackground.endFill
+
 
         // add the Background to the container
         this.container.addChild(this.vsiBackground);
@@ -82,7 +88,28 @@ export class VsiIndicator {
         var minorLineWidth = 1;
         var lineColour = 0xFFFFFF;
 
-        this.vsiTickMarks.lineStyle(majorLineWidth,lineColour);
+        const majorStrokeStyle = {
+            alignment: 0.5,         // 1.0 is inside, 0.0 is outside
+            color: lineColour,      // colour of the line
+            alpha: 1.0,             // opacity of the line (100% = 1.0)
+            width: majorLineWidth,  // width of the line
+        };
+
+        const minorStrokeStyle = {
+            alignment: 0.5,         // 1.0 is inside, 0.0 is outside
+            color: lineColour,      // colour of the line
+            alpha: 1.0,             // opacity of the line (100% = 1.0)
+            width: minorLineWidth,  // width of the line
+        };
+
+        this.vsiTickMarks.strokeStyle = {
+            alignment: 0.5,         // 1.0 is inside, 0.0 is outside
+            color: lineColour,      // colour of the line
+            alpha: 1.0,             // opacity of the line (100% = 1.0)
+            width: majorLineWidth,  // width of the line
+        };
+
+        //this.vsiTickMarks.lineStyle(majorLineWidth,lineColour);
         this.tickMarkOffsetFromLeft = 10;
         this.tickMarkLength = 7.5;
         this.tickMarkLargeOffsetFromLeft = 10;
@@ -100,8 +127,10 @@ export class VsiIndicator {
 
 
         // draw the vertical line on the left
+        this.vsiTickMarks.strokeStyle = majorStrokeStyle;
         this.vsiTickMarks.moveTo(this.tickMarkOffsetFromLeft, tickMarkAreaHeight + 1);
         this.vsiTickMarks.lineTo(this.tickMarkOffsetFromLeft, -tickMarkAreaHeight - 1);
+        this.vsiTickMarks.stroke();
  
         // Draw the tick marks
 
@@ -109,20 +138,25 @@ export class VsiIndicator {
         let j;
         let lineWidth;
 
+        // set the line style for the tick marks
+
+
         // Draw the 0 to 1000 tick marks.
         for (i = -10; i <= 10; i = i + 1) {
             j = -(i * oneThousandsInterval);
 
             if ( i % 5 == 0) {
-                lineWidth = majorLineWidth;
-                this.vsiTickMarks.lineStyle(lineWidth,lineColour);
+                this.vsiTickMarks.strokeStyle = majorStrokeStyle;
+
                 this.vsiTickMarks.moveTo(this.tickMarkLargeOffsetFromLeft,j);
                 this.vsiTickMarks.lineTo(this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength,j);
+                this.vsiTickMarks.stroke();
             } else {
-                lineWidth = minorLineWidth;
-                this.vsiTickMarks.lineStyle(lineWidth,lineColour);
+                this.vsiTickMarks.strokeStyle = minorStrokeStyle;
+
                 this.vsiTickMarks.moveTo(this.tickMarkOffsetFromLeft,j);
                 this.vsiTickMarks.lineTo(this.tickMarkOffsetFromLeft + this.tickMarkLength,j);
+                this.vsiTickMarks.stroke();
             }
         }
 
@@ -131,82 +165,146 @@ export class VsiIndicator {
             j = -(i * twoThousandsInterval + Math.sign(i) * this.oneThousandsHeight);
 
             if ( i % 2 == 0) {
-                lineWidth = majorLineWidth;
-                this.vsiTickMarks.lineStyle(lineWidth,lineColour);
+                this.vsiTickMarks.strokeStyle = majorStrokeStyle;
                 this.vsiTickMarks.moveTo(this.tickMarkLargeOffsetFromLeft, j);
                 this.vsiTickMarks.lineTo(this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength,j);
+                this.vsiTickMarks.stroke();
             } else {
-                lineWidth = minorLineWidth;
-                this.vsiTickMarks.lineStyle(lineWidth,lineColour);
+                this.vsiTickMarks.strokeStyle = minorStrokeStyle;
                 this.vsiTickMarks.moveTo(this.tickMarkOffsetFromLeft, j);
                 this.vsiTickMarks.lineTo(this.tickMarkOffsetFromLeft + this.tickMarkLength,j);
+                this.vsiTickMarks.stroke();
             }
         }
 
         // add a zero indictor
         lineWidth = 2;
-        lineColour = 0xffffff;
-        fillColour = 0x000000;
-        fillAlpha = 0.0;
+        lineColour = 0xffffff;      // white
+        fillColour = 0xFFFFFF;      // white
+        fillAlpha = 1.0;            // 0% opacity
 
-        this.vsiTickMarks.lineStyle(lineWidth, lineColour);
-        this.vsiTickMarks.beginFill(fillColour, fillAlpha);
+        const triangleStrokeStyle = {
+            alignment: 1.0,         // 1.0 is inside, 0.0 is outside
+            color: lineColour,      // colour of the line
+            alpha: 1.0,             // opacity of the line (100% = 1.0)
+            width: lineWidth,       // width of the line
+        };
 
-        this.vsiTickMarks.drawPolygon(this.width,-this.zeroTriangleHeight/2, this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength,0, this.width,this.zeroTriangleHeight/2);
+        const triangleFillStyle = {
+            alignment: 1.0,         // 1.0 is inside, 0.0 is outside
+            alpha: fillAlpha,       // opacity of the fill (100% = 1.0)
+            color: fillColour,      // colour of the fill
+            width: lineWidth,       // width of the fill
+        };
+
+        this.vsiTickMarks.strokeStyle = triangleStrokeStyle;
+        this.vsiTickMarks.fillStyle = triangleFillStyle;
+
+        this.vsiTickMarks.poly(
+           [this.width, -this.zeroTriangleHeight/2,
+            this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength, 0, 
+            this.width, this.zeroTriangleHeight/2],
+            true
+        );
+
+        this.vsiTickMarks.stroke();
+        this.vsiTickMarks.fill();
+
 
         // add text to tick marks
 
         // set text style
-        let textStyle = new PIXI.TextStyle({
-            fontFamily: "Tahoma",
-            fontSize: 17,
-            fill: "white",
-            stroke: "black",
-            strokeThickness: 2,
-            fontWeight: "normal" 
-        });
+        let textStyle = new TextStyle(
+            {
+                fontFamily: "Tahoma",
+                fontSize: 17,           // *** This seem incorrect 
+                fill: "white",
+                fontWeight: "normal",
+                stroke: 
+                {
+                    color: "black",
+                    width: 2,
+                }
+            },
+        );
 
         let textOffset = (width - (this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength))/2 + this.tickMarkLargeLength + this.tickMarkLargeOffsetFromLeft;
 
-        let text = new Text(".5", textStyle);
+        let text = new Text(
+            {
+                text: ".5",
+                style: textStyle,
+            }
+        );
         text.anchor.set(.6,.5);
         text.position.set(textOffset, oneThousandsInterval * 5);
-        this.vsiTickMarks.addChild(text);
+        this.container.addChild(text);
 
-        text = new Text(".5", textStyle);
+        text = new Text(
+            {
+                text: ".5",
+                style: textStyle,
+            }
+        );
         text.anchor.set(.6,.5);
         text.position.set(textOffset, -oneThousandsInterval * 5);
-        this.vsiTickMarks.addChild(text);
+        this.container.addChild(text);
 
-        textStyle = new PIXI.TextStyle({
-            fontFamily: "Tahoma",
-            fontSize: 22,
-            fill: "white",
-            stroke: "black",
-            strokeThickness: 2,
-            fontWeight: "normal" 
-        });
+        textStyle = new TextStyle(
+            {
+                fontFamily: "Tahoma",
+                fontSize: 22,
+                fill: "white",
+                fontWeight: "normal",
+                stroke: 
+                {
+                    color: "black",
+                    width: 2,
+                }
+            }
+        );
 
 
-        text = new Text("1", textStyle);
+        text = new Text(
+            {
+                text: "1",
+                style: textStyle,
+            }
+        );
         text.anchor.set(.5,.5);
         text.position.set(textOffset, oneThousandsInterval * 10);
-        this.vsiTickMarks.addChild(text);
+        this.container.addChild(text);
 
-        text = new Text("1", textStyle);
+        text = new Text(
+            {
+                text: "1",
+                style: textStyle,
+            }
+        );
         text.anchor.set(.5,.5);
         text.position.set(textOffset, -oneThousandsInterval * 10);
-        this.vsiTickMarks.addChild(text);        
+        this.container.addChild(text);        
 
-        text = new Text("2", textStyle);
+        text = new Text(
+            {
+                text: "2",
+                style: textStyle,
+            }
+        );
         text.anchor.set(.5,.5);
         text.position.set(textOffset, this.oneThousandsHeight + this.twoThousandsHeight);
-        this.vsiTickMarks.addChild(text);
+        this.container.addChild(text);
 
-        text = new Text("2", textStyle);
+        text = new Text(
+            {
+                text: "2",
+                style: textStyle,
+            }
+        );
         text.anchor.set(.5,.5);
         text.position.set(textOffset, -this.oneThousandsHeight - this.twoThousandsHeight);
-        this.vsiTickMarks.addChild(text); 
+
+        this.container.addChild(text); 
         this.container.addChild(this.vsiTickMarks);
 
 
