@@ -346,7 +346,9 @@ function DisplayUpdateLoop(delta) {
     // //testAirspeedDisplay.value = dataObject.airspeed;
     // airspeedWheel.value = dataObject.airspeed;
     // airspeedRibbon.value = dataObject.airspeed;
-    // vsiIndicator.value = dataObject.vsi;
+    vsiIndicator.value = dataObject.vsi;
+    // Temporary test - uncomment to test VSI indicator
+    // vsiIndicator.value = 500; // Test with 500 fpm climb
 
     // //slipBallIndicator.accZ = dataObject.accz;
     // //slipBallIndicator.accY = dataObject.accy;

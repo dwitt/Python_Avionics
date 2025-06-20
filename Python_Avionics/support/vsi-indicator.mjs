@@ -1,5 +1,5 @@
 'use strict';
-import { Application, Graphics, Container, TextStyle,Text } from './pixi.mjs';
+import { Application, Graphics, Container, TextStyle, Text } from './pixi.mjs';
 
 /**
  * Class representing a VSI indicator.
@@ -317,6 +317,8 @@ export class VsiIndicator {
 
     set value(newValue) {
 
+        newValue = 1000;    // for testing
+
         // check if the value has changed and return if it has not
 
         if (newValue == this._value) {
@@ -331,9 +333,26 @@ export class VsiIndicator {
         this.vsiIndicatorBar.clear();
 
         // setup the fill parameters
-        let colour = 0xc000c0;
+        let colour = 0xC000C0;
         let vsiAlpha = 1.0;
-        this.vsiIndicatorBar.beginFill(colour, vsiAlpha);
+
+        this.vsiIndicatorBar.fillStyle = {
+            color: colour,
+            alpha: vsiAlpha,
+        };
+
+        colour = 0xffffff;
+        let lineWidth = 1;
+        let lineColour = 0x000000;
+
+        const vsiIndicatorBarLineStyle = {
+            color: lineColour,
+            alpha: vsiAlpha,
+            width: lineWidth,
+        };
+
+
+        this.vsiIndicatorBar.strokeStyle = vsiIndicatorBarLineStyle;
 
         // calculate bar height with direction
         
@@ -355,16 +374,32 @@ export class VsiIndicator {
         let vsiBarWidth = this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength - this.tickMarkOffsetFromLeft;
         let vsiBarX = this.tickMarkOffsetFromLeft;
         
-        this.vsiIndicatorBar.drawRect(vsiBarX,0,vsiBarWidth,vsiBarHeight);
-        
-        colour = 0xffffff;
-        let lineWidth = 1;
-        let lineColour = 0x000000;
+        this.vsiIndicatorBar.poly(
+            [vsiBarX, 0,
+            vsiBarX + vsiBarWidth, 0,
+            vsiBarX + vsiBarWidth, vsiBarHeight+1,
+            vsiBarX, vsiBarHeight+1],
+            true);
 
-        this.vsiIndicatorBar.beginFill(colour, vsiAlpha);
-        this.vsiIndicatorBar.lineStyle(lineWidth, lineColour);
+        //this.vsiIndicatorBar.rect(
+        //    vsiBarX, 0,
+        //    vsiBarWidth,vsiBarHeight+1);
+
+        //this.vsiIndicatorBar.rect(10, 0, 10, -30);
+
+        this.vsiIndicatorBar.fill();
+        this.vsiIndicatorBar.stroke();
         
-        this.vsiIndicatorBar.drawPolygon(this.width,-this.zeroTriangleHeight/2+vsiBarHeight, this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength,vsiBarHeight, this.width,this.zeroTriangleHeight/2 + vsiBarHeight);
+
+        this.vsiIndicatorBar.poly(
+           [this.width,-this.zeroTriangleHeight/2+vsiBarHeight, 
+            this.tickMarkLargeOffsetFromLeft + this.tickMarkLargeLength,vsiBarHeight, 
+            this.width,this.zeroTriangleHeight/2 + vsiBarHeight],
+            true
+        );
+
+        this.vsiIndicatorBar.fill();
+        this.vsiIndicatorBar.stroke();
 
     }
 }
