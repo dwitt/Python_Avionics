@@ -31,7 +31,7 @@ DEBUG_WEBSOCKET = False
 
 # Set constants for CAN bus use
 
-CAN_QNH_MSG_ID = 0x2
+CAN_QNH_MSG_ID = 0x2E
 CAN_QNH_PERIOD = 1000 # ms between messages (1 second between transmitting qnh)
 
 class CAN_MSG_ID(Enum):
@@ -154,15 +154,15 @@ class MyWebSocketResponse:
             try:
                 if DEBUG_QNH:
                     print("QNH from json=", end = "")
-                    print(dict_object['qnh'], end = "")
+                    print(dict_object['qnh'])
                 # process a qnh object
                 qnh = dict_object['qnh']
-                brightness = dict_object['brightness']
+                #brightness = dict_object['brightness']
                 if DEBUG:
                     print(f'Brightness: {brightness}')
                 self.process_qnh(qnh)
                 # process a brightness object
-                self.backlight.brightness = brightness
+                #self.backlight.brightness = brightness
 
                 # 
 
@@ -291,17 +291,18 @@ async def process_can_messages(reader, data, last_received_times):
         msg = await reader.get_message()
         if DEBUG_CAN:
             print("got msg")
-        # kluge to get the altitud
+        
+
         if msg.arbitration_id == 0x28:
-            data.altitude = msg.data[2] | (msg.data[3]<<8) | (msg.data[4]<<16)
+            data.altitude = msg.data[2] | (msg.data[3]<<8) | (msg.data[4]<<16) | (msg.data[5]<<24)
 
             # Check for obvious signs of negative data
             # Check if high bit is a 1
-            if (msg.data[4] & 1<<7) == 1<<7:
+            #if (msg.data[4] & 1<<7) == 1<<7:
                 #XOR to peform 1s compliment (high byte was not sent by CAN)
-                data.altitude = -1 * (data.altitude ^ 0xffffff)
-            (data.airspeed, dummy_2, dummy_3, dummy_4, data.vsi, dummy_7) = (
-                struct.unpack("<hBBBhB", msg.data))
+            #    data.altitude = -1 * (data.altitude ^ 0xffffff)
+            (data.airspeed, data.altitude, data.vsi) = (
+                struct.unpack("<hlh", msg.data))
 
             if DEBUG:
                 print(data.vsi, data.airspeed)

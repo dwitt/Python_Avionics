@@ -317,7 +317,6 @@ export class VsiIndicator {
 
     set value(newValue) {
 
-        newValue = 1000;    // for testing
 
         // check if the value has changed and return if it has not
 

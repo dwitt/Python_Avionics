@@ -341,11 +341,11 @@ function DisplayUpdateLoop(delta) {
     // attitudeIndicator.updateSlipSkid();
     altitudeWheel.value = dataObject.altitude;
     // //qnhDisplay.value = globalThis.qnh; // dataObject.qnh; // Don't update from json
-    // altimeter_ribbon.value = dataObject.altitude;
+    altimeter_ribbon.value = dataObject.altitude;
     // //vsiDisplay.value = dataObject.vsi;
     // //testAirspeedDisplay.value = dataObject.airspeed;
-    // airspeedWheel.value = dataObject.airspeed;
-    // airspeedRibbon.value = dataObject.airspeed;
+    airspeedWheel.value = dataObject.airspeed;
+    airspeedRibbon.value = dataObject.airspeed;
     vsiIndicator.value = dataObject.vsi;
     // Temporary test - uncomment to test VSI indicator
     // vsiIndicator.value = 500; // Test with 500 fpm climb
@@ -379,23 +379,52 @@ function DisplayUpdateLoop(delta) {
     // // Process any change in the user input encoder
     userInput.processState(dataObject.position, dataObject.pressed)
 
-    // // Send the qnh value out to python using the websocket and json
-    // current_time_millis = Date.now();
+    // Send the qnh value out to python using the websocket and json
+    current_time_millis = Date.now();
 
-    // if (qnhDisplay.value != last_qnh || 
-    //     current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD ||
-    //     brightness.value != last_brightness) {
+    if (qnhDisplay.value != last_qnh || 
+        current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD) { //||
+        //brightness.value != last_brightness) {
         
-    //     last_qnh = qnhDisplay.value;
-    //     last_brightness = brightness.value;
-    //     can_qnh_timestamp = current_time_millis;
+        last_qnh = qnhDisplay.value;
+        //last_brightness = brightness.value; // Add back in when brightness is implemented
+        can_qnh_timestamp = current_time_millis;
 
-    //     var obj = {qnh: qnhDisplay.value, ticker: delta, position: dataObject.position, brightness: brightness.value};
+        // Extract values safely to avoid circular references
+        var qnhValue = 29.92; // default value
+        var tickerValue = 0;   // default value
+        
+        try {
+            // Safely extract qnh value
+            if (qnhDisplay && typeof qnhDisplay.value === 'number') {
+                qnhValue = qnhDisplay.value;
+            }
+            
+            // Safely extract ticker value
+            if (typeof delta === 'number') {
+                tickerValue = delta;
+            }
+        } catch (e) {
+            console.warn("Error extracting values:", e);
+        }
+        
+        // Create a clean object with only primitive values
+        var obj = {
+            qnh: qnhValue,
+            ticker: tickerValue
+        };
 
-    //     var json = JSON.stringify(obj);
-    //     if (myWebSocket.readyState == 1) {
-    //         myWebSocket.send("json" + json);}
-    // }
+        try {
+            var json = JSON.stringify(obj);
+        } catch (error) {
+            console.error("JSON.stringify error:", error);
+            console.log("Object being serialized:", obj);
+            // Fallback to a simple object if serialization fails
+            var json = JSON.stringify({qnh: 29.92, ticker: 0});
+        }
+        if (myWebSocket.readyState == 1) {
+            myWebSocket.send("json" + json);}
+    }
 
 }
 
