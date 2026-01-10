@@ -158,8 +158,8 @@ class MyWebSocketResponse:
                 # process a qnh object
                 qnh = dict_object['qnh']
                 #brightness = dict_object['brightness']
-                if DEBUG:
-                    print(f'Brightness: {brightness}')
+                # if DEBUG:
+                #     print(f'Brightness: {brightness}')
                 self.process_qnh(qnh)
                 # process a brightness object
                 #self.backlight.brightness = brightness
@@ -589,12 +589,19 @@ async def main():
     # -------------------------------------------------------------------------
 
     # We should now be able to use the reader to get messages
-
+    # Build the list of tasks to run based on what's enabled
+    tasks = [
+        monitor_timeout(avionics_data, last_received_times),
+        send_json(web_socket_response, avionics_data),
+    ]
+    
+    if not DEBUG_DISABLE_CAN:
+        tasks.append(process_can_messages(reader, avionics_data, last_received_times))
+    
+    if not DEBUG_DISABLE_ENCODER:
+        tasks.append(read_input(encoder, button, avionics_data))
    
-    await asyncio.gather(process_can_messages(reader,avionics_data, last_received_times),
-                            monitor_timeout(avionics_data, last_received_times),
-                            send_json(web_socket_response, avionics_data),
-                            read_input(encoder, button, avionics_data))
+    await asyncio.gather(*tasks)
     while True:
         await asyncio.sleep(3600)     #sleep for an hour
 

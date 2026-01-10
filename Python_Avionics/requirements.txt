@@ -1,0 +1,6 @@
+aiohttp
+python-can
+adafruit-extended-bus
+adafruit-circuitpython-seesaw
+rpi-backlight
+
