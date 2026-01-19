@@ -4,7 +4,7 @@ DefaultDependencies=false
 After=network.target
 
 [Service]
-# The user and grouip under which the service will run
+# The user and group under which the service will run
 User=david
 Group=david
 

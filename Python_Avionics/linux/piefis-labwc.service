@@ -1,0 +1,85 @@
+[Unit]
+Description=PiEFIS Wayland Kiosk using labwc
+After=systemd-user-sessions.service seatd.service can0.service
+Wants=seatd.service can0.service
+
+# Limit to 5 starts within 30 seconds
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+
+[Service]
+Type=simple
+# Change the user to the user that will be running the service
+User=david
+
+# Have systemd create a /run/piefis directory for the session
+# with permissions for the user + owner as read/write/Execute.
+# This will be the User identified above.
+RuntimeDirectory=piefis
+RuntimeDirectoryMode=0700
+
+# Run on a real VT so seatd/libseat can grant DRM + input
+TTYPath=/dev/tty1
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+TTYReset=no
+TTYVHangup=no
+TTYVTDisallocate=no
+
+# give Chromium time to exit cleanly
+TimeoutStopSec=15
+KillSignal=SIGTERM
+SendSIGKILL=yes
+
+# Environment variables for the session
+# Tell the compositor where to find the runtime directory.
+Environment=XDG_RUNTIME_DIR=/run/piefis
+# Forces libseat to use seatd as the backend (instead of logind).
+Environment=LIBSEAT_BACKEND=seatd
+# Tell the compositor where the home directory is.
+Environment=HOME=/home/david
+# Tell the compositor where to find the session bus address.
+Environment=DBUS_SESSION_BUS_ADDRESS=
+# Tell the compositor where to find the system bus address.
+Environment=DBUS_SYSTEM_BUS_ADDRESS=
+
+# Remove stale Wayland socket/lock (prevents "Invalid argument")
+ExecStartPre=/usr/bin/rm -f /run/piefis/wayland-0 /run/piefis/wayland-0.lock
+
+# Wait up to 8 seconds for runtime dir + seatd socket
+# Then verify that the runtime directory is writable.
+ExecStartPre=/bin/sh -lc '\
+  for i in $(seq 1 80); do \
+     test -S /run/seatd.sock || { sleep 0.1; continue; }; \
+     test -w /run/piefis || { sleep 0.1; continue; }; \
+     rm -f /run/piefis/.wltest; \
+     ( : > /run/piefis/.wltest ) 2>/dev/null && rm -f /run/piefis/.wltest && break; \
+     sleep 0.1; \
+  done'
+
+#ExecStart=/usr/bin/labwc -S "/usr/bin/foot"
+ExecStart=/usr/bin/dbus-run-session -- /usr/bin/labwc -d -S "/usr/bin/chromium \
+  --start-fullscreen \
+  --kiosk \
+  --noerrdialogs \
+  --disable-infobars \
+  --disable-sync \
+  --disable-features=UseDBus,Translate,MediaRouter \
+  --disable-component-update \
+  --disable-default-apps \
+  --disable-background-networking \
+  --disable-session-crashed-bubble \
+  --disable-restore-session-state \
+  --enable-features=UseOzonePlatform \
+  --ozone-platform=wayland \
+  --no-first-run \
+  --user-data-dir=/run/piefis/chromium-kiosk \
+  http://localhost:8080"
+
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
