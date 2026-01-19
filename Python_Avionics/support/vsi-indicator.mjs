@@ -7,7 +7,7 @@ import { Application, Graphics, Container, TextStyle, Text } from './pixi.mjs';
 
 export class VsiIndicator {
     /**
-     * Create a VSI Indicator
+     * @brief Create a VSI Indicator
      * @param {PIXI.Application} app - The application to add this object to.
      * @param {number} x - The x location of the left edge of the VSI indicator.
      * @param {number} y - The y location of the vertical center of the VSI indicator.
@@ -16,12 +16,12 @@ export class VsiIndicator {
      */
     constructor(app, x, y, height, width) {
         
-        this.x = x;
-        this.y = y;
-        this.height = height;
-        this.width = width;
+        this.x = x; // x location of the left edge of the VSI indicator
+        this.y = y; // y location of the vertical center of the VSI indicator
+        this.height = height; // height of the VSI indicator
+        this.width = width; // width of the VSI indicator
 
-        this._value = 0;
+        this._value = 0; // current value of the VSI indicator
 
         var verticalCharacterSpace = 30;
         var oneThousandSpace = .75;
@@ -41,23 +41,23 @@ export class VsiIndicator {
         this.vsiBackground = new Graphics();
 
         // fill the background with 25% black with a 75% outline
-        var fillColour = 0x000000;
-        var fillAlpha = 0.25;
-        var outlineWidth = 1;
-        var outlineAlpha = 0.75;
+        var fillColour = 0x000000;  // black
+        var fillAlpha = 0.25;       // 25% opacity
+        var outlineWidth = 1;       // 1 pixel width
+        var outlineAlpha = 0.75;    // 75% opacity
 
         this.vsiBackground.strokeStyle = {
-            alignment: 1.0,     // 1.0 is inside, 0.0 is outside
-            color: fillColour,
-            alpha: outlineAlpha,
-            width: outlineWidth
+            alignment: 1.0,         // 1.0 is inside, 0.0 is outside
+            color: fillColour,      // colour of the outline
+            alpha: outlineAlpha,    // opacity of the outline
+            width: outlineWidth     // width of the outline
         };
 
         this.vsiBackground.fillStyle = {
             alignment: 0.0,
-            alpha: fillAlpha,
-            color: fillColour,
-            width: outlineWidth,
+            alpha: fillAlpha,       // opacity of the fill
+            color: fillColour,      // colour of the fill
+            width: outlineWidth     // width of the fill
         };
 
         //
@@ -309,6 +309,15 @@ export class VsiIndicator {
 
 
         app.stage.addChild(this.container);
+    }
+
+    /*************************************************************************
+     * Create the background for the VSI Indicator
+     * 
+     * @returns {object} A PixiJS Graphics object.
+     *************************************************************************/
+    createBackgroundGraphics(height, width){
+        const backgroundGraphics = new Graphics();
     }
 
     /**
