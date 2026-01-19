@@ -4,13 +4,14 @@
 
 # remote directories on the pi-efis computer
 piefis_main_dir=/home/david/Python_Avionics/
-piefis_support_dir=/home/david/Python_Avionics/support/
+piefis_support_dir=/home/david/Python_Avionics/support
 piefis_linux_dir=/home/david/Python_Avionics/linux/
 
 destination_server=pi-efis.local
 user=david
 
-# list of files in the support directory to be coppied
+# list of files in the support directory to be copied
+# Note: The original list of files is below for reference but this is not used
 supportfilelist="supportfilelist.txt"
 
 echo 'Copying main files to the Pi Efis'
@@ -32,7 +33,7 @@ while IFS= read -r line; do
 
     echo "copying $line"
 
-    rsync support/"$line" "$user"@"$destination_server":"$piefis_support_dir""$line"
+    rsync support/"$line" "$user"@"$destination_server":"$piefis_support_dir/$line"
 
 done < "./$supportfilelist"
 
@@ -64,13 +65,13 @@ done < "./$supportfilelist"
 #rsync support/pixi-v8.1.5.js "$user"@"$destination_server":"$piefis_support_dir"pixi.js
 #rsync support/pixi-v8.1.5.js.map "$user"@"$destination_server":"$piefis_support_dir"pixi.js.map
 
-rsync support/pixi-v8.6.6.mjs "$user"@"$destination_server":"$piefis_support_dir"pixi.mjs
-rsync support/pixi-v8.6.6.min.mjs "$user"@"$destination_server":"$piefis_support_dir"pixi.min.mjs
-rsync support/pixi-v8.6.6.mjs.map "$user"@"$destination_server":"$piefis_support_dir"pixi.mjs.map
-rsync support/pixi-v8.6.6.min.mjs.map "$user"@"$destination_server":"$piefis_support_dir"pixi.min.mjs.map
+rsync support/pixi-v8.6.6.mjs "$user@$destination_server:$piefis_support_dir/pixi.mjs"
+rsync support/pixi-v8.6.6.min.mjs "$user@$destination_server:$piefis_support_dir/pixi.min.mjs"
+rsync support/pixi-v8.6.6.mjs.map "$user@$destination_server:$piefis_support_dir/pixi.mjs.map"
+rsync support/pixi-v8.6.6.min.mjs.map "$user@$destination_server:$piefis_support_dir/pixi.min.mjs.map"
 
-rsync "support/Tahoma Bold.ttf" "$user"@"$destination_server":"$piefis_support_dir"Tahoma\ Bold.ttf
-rsync support/Tahoma.ttf "$user"@"$destination_server":"$piefis_support_dir"Tahoma.ttf
+rsync "support/Tahoma Bold.ttf" "$user@$destination_server:$piefis_support_dir/Tahoma\ Bold.ttf"
+rsync support/Tahoma.ttf "$user@$destination_server:$piefis_support_dir/Tahoma.ttf"
 # rsync support/efis-test.js "$user"@"$destination_server":"$piefis_support_dir"efis-test.js
 
 
