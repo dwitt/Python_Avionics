@@ -57,9 +57,22 @@ var current_time_millis = Date.now();   // current time
 // ---Create a Pixi Application                                             ---
 // ----------------------------------------------------------------------------
 
+const screenW = window.innerWidth;
+const screenH = window.innerHeight;
+
+let width = screenW;
+let height = screenH;
+
+if (screenH > screenW) {
+  // Portrait → top half
+  height = screenH / 2;
+} else {
+  // Landscape → left half
+  width = screenW / 2;
+}
 const app = new Application();  // the applicaiton object available globally
-await app.init({width: 480,
-                height: 400
+await app.init({width: width,
+                height: height
                 }
 );
 
@@ -67,21 +80,21 @@ await app.init({width: 480,
 // Create another application as a test
 // This sets up a second canvas for display. This is just a test canvas
 // TODO: Delete this section
-// let app2 = new Application({
-//     width: 480,
-//     height: 400,
-//     antialias: true,
-//     transparent: false,
-//     resolution:1
-//     }
-// );
+// This will create a blank canvas that is black at the bottom or side of the
+// screen.
+const app2 = new Application();
+await app2.init({width: width,
+                height: height
+                }
+);
 
 // ----------------------------------------------------------------------------
 // --- Add the canvas that Pixi automatically created for you to the HTML   ---
 // --- document                                                             ---
 // ----------------------------------------------------------------------------
 document.body.appendChild(app.canvas);
-//document.body.appendChild(app2.view);
+document.body.appendChild(app2.canvas);
+
 
 // ----------------------------------------------------------------------------
 // --- Create a new object to hold the data object coming from the websocket---
@@ -290,11 +303,16 @@ function setup() {
         90, 25, 
         8);
 
-
+    //-------------------------------------------------------------------------
+    // Create a VSI Indicator
+    // Position the indicators origin 35 pixels from the left edge of the
+    // screen and vertically centered on the screen.
+    // The VSI indicator is 35 pixels wide and 80 pixels tall.
+    //-------------------------------------------------------------------------
     vsiIndicator = new VsiIndicator(
-        app, 
-        x-35, y/2, 
-        y-80, 35);
+        app,            // the current application to draw on          
+        x-35, y/2,      // the x and y location of the VSI indicator
+        y-80, 35);      // the width and height of the VSI indicator
 
      var aircraft = new AircraftIndicator(app);
 
