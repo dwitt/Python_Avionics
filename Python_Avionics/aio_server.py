@@ -3,6 +3,7 @@
 
 import asyncio
 import json
+from pickle import FALSE
 import struct
 import time
 import datetime
@@ -510,23 +511,29 @@ async def read_input(encoder, button, data):
 def connect_to_rotary_encoder(addr=0x36):
     """
     Use Seesaw to connect do an adafruit rotary encoder and return the encoder
-    and the button.
+    and the button. Returns (None, None) if the encoder is not connected.
     """
     # create seesaw connection to I2C
     #my_seesaw = seesaw.Seesaw(board.I2C(), addr)
-    my_seesaw = seesaw.Seesaw(I2C(5), addr)
+    print(f"connect_to_rotary_encoder(): bus=1 addr=0x{addr:02X}")
+    try:
+        my_seesaw = seesaw.Seesaw(I2C(1), addr)
 
-    seesaw_product = (my_seesaw.get_version() >> 16) & 0xFFFF
-    if DEBUG:
-        print("Found product {}".format(seesaw_product))
-    if seesaw_product != 4991:
-        print("Wrong firmware loaded?  Expected 4991")
+        seesaw_product = (my_seesaw.get_version() >> 16) & 0xFFFF
+        if DEBUG:
+            print("Found product {}".format(seesaw_product))
+        if seesaw_product != 4991:
+            print("Wrong firmware loaded?  Expected 4991")
 
-    my_seesaw.pin_mode(24, my_seesaw.INPUT_PULLUP)
-    button = digitalio.DigitalIO(my_seesaw, 24)
-    encoder = rotaryio.IncrementalEncoder(my_seesaw)
+        my_seesaw.pin_mode(24, my_seesaw.INPUT_PULLUP)
+        button = digitalio.DigitalIO(my_seesaw, 24)
+        encoder = rotaryio.IncrementalEncoder(my_seesaw)
 
-    return(encoder, button)
+        return(encoder, button)
+    except (OSError, ValueError) as e:
+        print(f"Warning: Could not connect to rotary encoder at 0x{addr:02X}: {e}")
+        print("Continuing without rotary encoder support.")
+        return (None, None)
 
 # -----------------------------------------------------------------------------
 # --- Main Loop - Called from the end of this file                          ---
@@ -537,8 +544,13 @@ async def main():
     The main function for the program declared as a coroutine so that it can
     be run asynchronously.
     """
+    # --- Initialize Variables
+    encoder = None
+    button = None
+
     # --- Create the instance of the encoder and button
     if not DEBUG_DISABLE_ENCODER:
+        # if DEBUG_DISABLE_ENCODER is False
         (encoder, button) = connect_to_rotary_encoder()
 
     # --- Create an instance of the AvionicsData class to store the data in
@@ -591,14 +603,17 @@ async def main():
     # We should now be able to use the reader to get messages
     # Build the list of tasks to run based on what's enabled
     tasks = [
+    #    process_can_messages(reader, avionics_data, last_received_times),
         monitor_timeout(avionics_data, last_received_times),
         send_json(web_socket_response, avionics_data),
+    #    read_input(encoder, button, avionics_data)
     ]
     
     if not DEBUG_DISABLE_CAN:
         tasks.append(process_can_messages(reader, avionics_data, last_received_times))
     
-    if not DEBUG_DISABLE_ENCODER:
+    if encoder is not None and button is not None:
+        # handle the case here we were not able to connect to the encoder
         tasks.append(read_input(encoder, button, avionics_data))
    
     await asyncio.gather(*tasks)
