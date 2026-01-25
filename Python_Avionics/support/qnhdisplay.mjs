@@ -2,6 +2,10 @@
 
 import { DisplayRectangle } from './displayRectangle.mjs';
 
+// QNH range limits in inHg × 100 format (2800 = 28.00 inHg, 3100 = 31.00 inHg)
+const QNH_MIN_INHG_X_100 = 2800;
+const QNH_MAX_INHG_X_100 = 3100;
+
 /**     
  * Class representing the QNH display.
  */
@@ -28,7 +32,11 @@ export class QNHDisplay extends DisplayRectangle {
             false           // no legend
         );
 
+        // my_value stores QNH in inHg × 100 (e.g., 2992 = 29.92 inHg)
+        // This format preserves two decimal places when stored as an integer
         this.my_value = 2992;
+        // Track last encoder position to calculate delta for proper clamping behavior
+        this.lastEncoderValue = 0;
         this.QNHFormat = new Intl.NumberFormat('en-US', {minimumFractionDigits: 2});
 
         // Set initial text values
@@ -48,17 +56,30 @@ export class QNHDisplay extends DisplayRectangle {
         
         // Process the encoder value provided
         if (selected && changable) {
-            this.my_value = 2992 + value;
+            // my_value is stored as inHg × 100 (e.g., 2992 = 29.92 inHg)
+            // value is an absolute encoder position. Calculate delta from last position
+            // and apply to current my_value to maintain proper clamping behavior.
+            // This ensures that if we hit a limit, the encoder "sticks" at that limit
+            // until rotated the other direction, rather than requiring full rotation back.
+            const encoderDelta = value - this.lastEncoderValue;
+            const newValue = this.my_value + encoderDelta;
+            this.my_value = Math.max(QNH_MIN_INHG_X_100, Math.min(QNH_MAX_INHG_X_100, newValue));
+            this.lastEncoderValue = value;
+            // Divide by 100 to convert from inHg × 100 to inHg for display (shows 2 decimal places)
             this.valueText.text = this.QNHFormat.format(Math.floor(this.my_value)/100);
         }
     }
 
     set value(new_value) {
-        this.my_value = new_value;
-        this.valueText.text = this.QNHFormat.format(Math.floor(new_value)/100);
+        // new_value is expected to be in inHg × 100 format
+        // Clamp value between 2800 (28.00 inHg) and 3100 (31.00 inHg)
+        this.my_value = Math.max(QNH_MIN_INHG_X_100, Math.min(QNH_MAX_INHG_X_100, new_value));
+        // Divide by 100 to convert from inHg × 100 to inHg for display (shows 2 decimal places)
+        this.valueText.text = this.QNHFormat.format(Math.floor(this.my_value)/100);
     }
 
     get value() {
+        // Returns QNH value in inHg × 100 format (e.g., 2992 = 29.92 inHg)
         return this.my_value;
     }
 }

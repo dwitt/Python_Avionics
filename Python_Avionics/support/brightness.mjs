@@ -1,5 +1,6 @@
 /*global PIXI */
 'use strict';
+import { Container, Graphics } from './pixi.mjs';
 // ----------------------------------------------------------------------------
 // Aliases - Allows for changes in PIXI.JS
 // TODO - Make sure we have all of the necessary aliases set
@@ -72,11 +73,18 @@ export class Brightness {
 
         let radius = this.ballDiameter/2
 
-        graphics.lineStyle(lineWidth, lineColour);
-        graphics.beginFill(backgroundColour, this._brightness/100);
+        graphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour
+        };
+        graphics.fillStyle = {
+            color: backgroundColour,
+            alpha: this._brightness/100
+        };
 
-        graphics.drawCircle(0,0, this.ballDiameter/2);
-        graphics.endFill()
+        graphics.circle(0, 0, this.ballDiameter/2);
+        graphics.fill();
+        graphics.stroke();
 
         let rayOffset = radius + 3;
         let rayEnd = radius + 6;
@@ -86,6 +94,7 @@ export class Brightness {
             graphics.moveTo((rayOffset) * Math.sin(angle), (rayOffset) * Math.cos(angle));
             graphics.lineTo((rayEnd) * Math.sin(angle), (rayEnd) * Math.cos(angle));
         }
+        graphics.stroke();
 
         return (graphics);
 
@@ -97,8 +106,12 @@ export class Brightness {
         let lineWidth = 2;
         let lineColour = 0xff0000 // Red
 
-        graphics.lineStyle(lineWidth, lineColour);
-        graphics.drawCircle(0,0, this.ballDiameter/2);
+        graphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour
+        };
+        graphics.circle(0, 0, this.ballDiameter/2);
+        graphics.stroke();
 
         let radius = this.ballDiameter/2
         let rayOffset = radius + 3;
@@ -109,6 +122,7 @@ export class Brightness {
             graphics.moveTo((rayOffset) * Math.sin(angle), (rayOffset) * Math.cos(angle));
             graphics.lineTo((rayEnd) * Math.sin(angle), (rayEnd) * Math.cos(angle));
         }
+        graphics.stroke();
 
         return(graphics);
     }
@@ -124,29 +138,40 @@ export class Brightness {
 
         var graphics = new Graphics();
 
-        graphics.lineStyle(lineWidth, lineColour);
-        graphics.drawCircle(0,0, this.ballDiameter/2);
-
-        graphics.lineStyle(lineWidth, lineColour);
+        graphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour
+        };
+        graphics.circle(0, 0, this.ballDiameter/2);
+        graphics.stroke();
 
         for (let i = 0; i < 360; i = i + 45) {
             let angle = i * Math.PI / 180
             graphics.moveTo((rayOffset) * Math.sin(angle), (rayOffset) * Math.cos(angle));
             graphics.lineTo((rayEnd) * Math.sin(angle), (rayEnd) * Math.cos(angle));
         }
+        graphics.stroke();
 
         graphics.moveTo(radius + 10, 0);
         graphics.lineTo(radius + 54, 0);
+        graphics.stroke();
 
         this.brightnessSlider = new Graphics();
 
-        this.brightnessSlider.lineStyle(4, lineColour);
+        this.brightnessSlider.strokeStyle = {
+            width: 4,
+            color: lineColour
+        };
         this.brightnessSlider.moveTo(radius + 12,-radius);
         this.brightnessSlider.lineTo(radius + 12,radius);
+        this.brightnessSlider.stroke();
 
-        graphics.addChild(this.brightnessSlider);
+        // Use a Container to hold both graphics objects since Graphics can't have children in v8
+        var container = new Container();
+        container.addChild(graphics);
+        container.addChild(this.brightnessSlider);
 
-        return(graphics);
+        return(container);
     }
 
     drawChangeableGraphic(graphics, alpha){
@@ -158,28 +183,39 @@ export class Brightness {
         let lineColour = 0x00ffff; // Cyan
         let bgColour = 0xFFFFFF; // White
 
-        graphics.lineStyle(lineWidth, lineColour);
+        graphics.strokeStyle = {
+            width: lineWidth,
+            color: lineColour
+        };
+        graphics.fillStyle = {
+            color: bgColour,
+            alpha: alpha
+        };
 
-        graphics.beginFill(bgColour, alpha);
-        graphics.drawCircle(0,0, this.ballDiameter/2);
-        graphics.endFill();
-
-        graphics.lineStyle(lineWidth, lineColour);
+        graphics.circle(0, 0, this.ballDiameter/2);
+        graphics.fill();
+        graphics.stroke();
 
         for (let i = 0; i < 360; i = i + 45) {
             let angle = i * Math.PI / 180
             graphics.moveTo((rayOffset) * Math.sin(angle), (rayOffset) * Math.cos(angle));
             graphics.lineTo((rayEnd) * Math.sin(angle), (rayEnd) * Math.cos(angle));
         }
+        graphics.stroke();
 
         graphics.moveTo(radius + 10, 0);
         graphics.lineTo(radius + 54, 0);
+        graphics.stroke();
 
         this.brightnessSlider = new Graphics();
 
-        this.brightnessSlider.lineStyle(4, lineColour);
+        this.brightnessSlider.strokeStyle = {
+            width: 4,
+            color: lineColour
+        };
         this.brightnessSlider.moveTo(radius + 12,-radius);
         this.brightnessSlider.lineTo(radius + 12,radius);
+        this.brightnessSlider.stroke();
 
     }
 

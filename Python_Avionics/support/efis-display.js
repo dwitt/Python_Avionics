@@ -6,12 +6,11 @@
  * Current PixiJS Version 8.6.6
  * version 0.1
  * 
- * 
  *****************************************************************************/
 'use strict';
 
 import { Application, Graphics } from './pixi.mjs';
-// Alternative imports for PixiJS to suppor minified code ---------------------
+// Alternative imports for PixiJS to support minified code --------------------
 //import { Application, Graphics } from './pixi.min.js';
 //import { Application, Graphics, Container } from './pixi.min.mjs';
 
@@ -35,7 +34,7 @@ import { UserInput } from './userInput.mjs';
 //import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
 import { AirspeedWheel } from './airSpeedWheel.mjs';
 import { AltitudeWheel } from './altitudeWheel.mjs';
-// import { Brightness } from './brightness.mjs';
+import { Brightness } from './brightness.mjs';
 // import { TemperatureGraph } from './temperatureGraph.mjs';
 
 //import { DrawSpecialRectangle } from './specialRectangle.mjs';
@@ -48,7 +47,8 @@ import { AltitudeWheel } from './altitudeWheel.mjs';
 // ----------------------------------------------------------------------------
 
 var CAN_QNH_PERIOD = 1000;      // time in milliseconds (1 second)
-var last_qnh = 29.92;           // default qnh
+// last_qnh stores QNH in inHg × 100 format (e.g., 2992 = 29.92 inHg)
+var last_qnh = 2992;            // default qnh (29.92 inHg × 100)
 var last_brightness = null;     // force a brightness change of first pass
 var can_qnh_timestamp = Date.now();     // current time
 var current_time_millis = Date.now();   // current time
@@ -320,7 +320,7 @@ function setup() {
     headingIndicator = new HeadingIndicator(app, x);//- 260);
     // //menu = new Interactions(app, x - 150, y - 40, 150, 40);
 
-    // brightness = new Brightness(app);
+    brightness = new Brightness(app);
 
     // ------------------------------------------------------------------------
     // The following is for an EMS display - Not currently being implemented
@@ -335,7 +335,7 @@ function setup() {
 
     userInput.registerCallback(qnhDisplay);
     userInput.registerCallback(tempTimeDisplay);
-    // userInput.registerCallback(brightness);
+    userInput.registerCallback(brightness);
     userInput.registerCallback(speedDisplay);
     userInput.registerCallback(headingIndicator);
     userInput.registerCallback(altitudeDisplay);
@@ -401,19 +401,21 @@ function DisplayUpdateLoop(delta) {
     current_time_millis = Date.now();
 
     if (qnhDisplay.value != last_qnh || 
-        current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD) { //||
-        //brightness.value != last_brightness) {
+        current_time_millis > can_qnh_timestamp + CAN_QNH_PERIOD ||
+        brightness.value != last_brightness) {
         
         last_qnh = qnhDisplay.value;
-        //last_brightness = brightness.value; // Add back in when brightness is implemented
+        last_brightness = brightness.value;
         can_qnh_timestamp = current_time_millis;
 
         // Extract values safely to avoid circular references
-        var qnhValue = 29.92; // default value
+        // qnhValue is in inHg × 100 format (e.g., 2992 = 29.92 inHg)
+        var qnhValue = 2992; // default value (29.92 inHg × 100)
         var tickerValue = 0;   // default value
+        var brightnessValue = 100; // default value
         
         try {
-            // Safely extract qnh value
+            // Safely extract qnh value (qnhDisplay.value returns inHg × 100 format)
             if (qnhDisplay && typeof qnhDisplay.value === 'number') {
                 qnhValue = qnhDisplay.value;
             }
@@ -422,14 +424,21 @@ function DisplayUpdateLoop(delta) {
             if (typeof delta === 'number') {
                 tickerValue = delta;
             }
+            
+            // Safely extract brightness value
+            if (brightness && typeof brightness.value === 'number') {
+                brightnessValue = brightness.value;
+            }
         } catch (e) {
             console.warn("Error extracting values:", e);
         }
         
         // Create a clean object with only primitive values
+        // Note: qnh is in inHg × 100 format (e.g., 2992 = 29.92 inHg)
         var obj = {
             qnh: qnhValue,
-            ticker: tickerValue
+            ticker: tickerValue,
+            brightness: brightnessValue
         };
 
         try {
@@ -438,7 +447,8 @@ function DisplayUpdateLoop(delta) {
             console.error("JSON.stringify error:", error);
             console.log("Object being serialized:", obj);
             // Fallback to a simple object if serialization fails
-            var json = JSON.stringify({qnh: 29.92, ticker: 0});
+            // Note: qnh is in inHg × 100 format (2992 = 29.92 inHg)
+            var json = JSON.stringify({qnh: 2992, ticker: 0, brightness: 100});
         }
         if (myWebSocket.readyState == 1) {
             myWebSocket.send("json" + json);}
