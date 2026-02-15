@@ -9,7 +9,7 @@
  *****************************************************************************/
 'use strict';
 
-import { Application, Graphics } from './pixi.mjs';
+import { Application, Graphics, Text, TextStyle } from './pixi.mjs';
 // Alternative imports for PixiJS to support minified code --------------------
 //import { Application, Graphics } from './pixi.min.js';
 //import { Application, Graphics, Container } from './pixi.min.mjs';
@@ -22,26 +22,22 @@ import { Ribbon } from './ribbon.mjs';  // Altitude Ribbon
 import { AirspeedRibbon } from './airspeedRibbon.mjs';
 import { VsiIndicator } from './vsi-indicator.mjs';
 import { AttitudeIndicator } from './attitude-indicator.mjs';
-// import { SlipBallIndicator } from './slipBall.mjs';
+import { SlipBallIndicator } from './slipBall.mjs';
 import { HeadingIndicator } from './headingIndicator.mjs';
-// import { Interactions } from './interaction.mjs';
 import { QNHDisplay } from './qnhdisplay.mjs'; //
 import { SpeedDisplay } from './speedDisplay.mjs';
 import { AltitudeDisplay } from './altitudeDisplay.mjs'
 import { TempTimeDisplay } from './tempTimeDisplay.mjs';
 // import { calculateCharacterVerticalCentre } from './utilityFunctions.mjs';
 import { UserInput } from './userInput.mjs';
-//import { NumericWheelDisplay, NumericWheelDigit } from './numericWheelDisplay.mjs';
 import { AirspeedWheel } from './airSpeedWheel.mjs';
 import { AltitudeWheel } from './altitudeWheel.mjs';
 import { Brightness } from './brightness.mjs';
-// import { TemperatureGraph } from './temperatureGraph.mjs';
+import { TurnRateIndicator } from './turnRateIndicator.mjs';
 
-//import { DrawSpecialRectangle } from './specialRectangle.mjs';
-//import { SoftButtons } from './softButtons.mjs';
-//import { MagnetometerCalibrate } from './magnetometerCalibrate.mjs';
+import { SoftButtons } from './softButtons.mjs';
+import { MenuOverlay } from './menuOverlay.mjs';
 
-//var websocket;
 
 
 // ----------------------------------------------------------------------------
@@ -52,6 +48,20 @@ var last_qnh = 2992;            // default qnh (29.92 inHg × 100)
 var last_brightness = null;     // force a brightness change of first pass
 var can_qnh_timestamp = Date.now();     // current time
 var current_time_millis = Date.now();   // current time
+
+// Turn rate spring-mass-damper filter variables
+// Simulates mechanical gyroscope inertia: mass resists sudden changes,
+// spring pulls toward actual value, damping prevents oscillation
+var smoothedTurnRate = 0.0;     // Current displayed turn rate (position)
+var turnRateVelocity = 0.0;     // Rate of change of displayed value
+var turnRateSpring = 8.0;       // Spring constant - how strongly it tracks the input
+var turnRateDamping = 4.5;      // Damping constant - slightly underdamped for realistic feel
+                                // Critical damping = 2 * sqrt(spring) ≈ 5.66, using 4.5 for slight underdamp
+
+// TEST: Set to true to sweep airspeed 0-200 for testing color bands
+var TEST_AIRSPEED_SWEEP = false;
+var testAirspeed = 0;
+var testAirspeedDir = 1;
 
 // ----------------------------------------------------------------------------
 // ---Create a Pixi Application                                             ---
@@ -168,7 +178,10 @@ var attitudeIndicator,
     chtGraph,
     userInput,
     softButtons,
-    magnetometerCalibrate;
+    menuOverlay,
+    magnetometerCalibrate,
+    turnRateIndicator,
+    turnRateDebugText;
 
 // call setup after the fonts are loaded and ready
     
@@ -272,7 +285,7 @@ function setup() {
 
     airspeedRibbon = new AirspeedRibbon(
         app,            // the current application to draw the ribbon on
-        35, y/2,        // the x and y location of the ribbon 
+        0, y/2,         // the x and y location of the ribbon
         y-140, 90,      // height and width of the ribbon
         false,          // left side if false
         10,             // major interval size (units)
@@ -280,7 +293,7 @@ function setup() {
         2,              // number of minor intervals per major
         false);         // don't allow negative numbers.
 
-    airspeedWheel = new AirspeedWheel(app, 45, y/2);
+    airspeedWheel = new AirspeedWheel(app, 10, y/2);
     
     //-------------------------------------------------------------------------
     // Create a speed display, generally above the airspeed ribbon, that can
@@ -289,7 +302,7 @@ function setup() {
     //-------------------------------------------------------------------------
     speedDisplay = new SpeedDisplay(
         app,            // the current application to draw on
-        35, 140/2,      // the x and y location of the display (lower left)
+        0, 140/2,       // the x and y location of the display (lower left)
         90, 25,         // the width and height of the display
         8);             // the radius of the box's top corners
 
@@ -299,7 +312,7 @@ function setup() {
     //-------------------------------------------------------------------------
     tempTimeDisplay = new TempTimeDisplay(
         app, 
-        35, y-140/2, // was + 25 for the height
+        0, y-140/2, // was + 25 for the height
         90, 25, 
         8);
 
@@ -316,9 +329,9 @@ function setup() {
 
      var aircraft = new AircraftIndicator(app);
 
-    // //slipBallIndicator = new SlipBallIndicator(app);
+    slipBallIndicator = new SlipBallIndicator(app);
+    turnRateIndicator = new TurnRateIndicator(app, app.screen.width / 2, app.screen.height - 19);
     headingIndicator = new HeadingIndicator(app, x);//- 260);
-    // //menu = new Interactions(app, x - 150, y - 40, 150, 40);
 
     brightness = new Brightness(app);
 
@@ -330,8 +343,54 @@ function setup() {
     //-------------------------------------------------------------------------
 
     userInput = new UserInput(app);
-    //magnetometerCalibrate = new MagnetometerCalibrate(app);
-    //softButtons = new SoftButtons(app, magnetometerCalibrate);
+
+    // --- Menu overlay with toggle items ---
+    const toggleDefs = [
+        {
+            label: "Airspeed Sweep",
+            getState: () => TEST_AIRSPEED_SWEEP,
+            setState: (val) => { TEST_AIRSPEED_SWEEP = val; },
+        },
+        {
+            label: "Encoder Debug",
+            getState: () => userInput.itemSelectorText
+                ? userInput.itemSelectorText.visible : false,
+            setState: (val) => { userInput.setDebugVisible(val); },
+        },
+    ];
+
+    menuOverlay = new MenuOverlay(app, toggleDefs);
+
+    const menuCallback = {
+        addContainer() {
+            menuOverlay.toggle();
+        }
+    };
+
+    // Menu button — lower right corner, between ribbon bottom and canvas edge
+    let btnMargin = 1;
+    let btnHeight = 40 - 2 * btnMargin;  // 38px
+    let btnWidth = 90;
+    softButtons = new SoftButtons(app, menuCallback, {
+        x: x - btnWidth - btnMargin,
+        y: y - 40 + btnMargin,
+        width: btnWidth,
+        height: btnHeight
+    });
+
+    // Create debug text for turn rate (commented out - uncomment to debug)
+    // let turnRateTextStyle = new TextStyle({
+    //     fontFamily: 'Tahoma',
+    //     fontSize: '20px',
+    //     fill: "white",
+    //     fontWeight: "normal"
+    // });
+    // turnRateDebugText = new Text({
+    //     text: "TR: 0.0",
+    //     style: turnRateTextStyle
+    // });
+    // turnRateDebugText.position.set(10, app.screen.height - 60);
+    // app.stage.addChild(turnRateDebugText);
 
     userInput.registerCallback(qnhDisplay);
     userInput.registerCallback(tempTimeDisplay);
@@ -339,8 +398,7 @@ function setup() {
     userInput.registerCallback(speedDisplay);
     userInput.registerCallback(headingIndicator);
     userInput.registerCallback(altitudeDisplay);
-    // userInput.registerCallback(altimeter_ribbon);
-    
+    userInput.registerCallback(altimeter_ribbon);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -352,8 +410,9 @@ function setup() {
 
 function DisplayUpdateLoop(delta) {
 
+    // Data arrives in NED frame from Arduino, no corrections needed here
     attitudeIndicator.pitch = dataObject.pitch;
-    attitudeIndicator.roll = -dataObject.roll;
+    attitudeIndicator.roll = dataObject.roll;
     attitudeIndicator.accY = dataObject.accy;
     attitudeIndicator.accZ = dataObject.accz;
     // attitudeIndicator.updateSlipSkid();
@@ -362,17 +421,45 @@ function DisplayUpdateLoop(delta) {
     altimeter_ribbon.value = dataObject.altitude;
     // //vsiDisplay.value = dataObject.vsi;
     // //testAirspeedDisplay.value = dataObject.airspeed;
-    airspeedWheel.value = dataObject.airspeed;
-    airspeedRibbon.value = dataObject.airspeed;
+    if (TEST_AIRSPEED_SWEEP) {
+        // TEST: Sweep airspeed 0→200→0 to verify color bands
+        testAirspeed += testAirspeedDir * 0.3;
+        if (testAirspeed >= 200) testAirspeedDir = -1;
+        if (testAirspeed <= 0) testAirspeedDir = 1;
+        airspeedWheel.value = testAirspeed;
+        airspeedRibbon.value = testAirspeed;
+    } else {
+        airspeedWheel.value = dataObject.airspeed;
+        airspeedRibbon.value = dataObject.airspeed;
+    }
     vsiIndicator.value = dataObject.vsi;
     // Temporary test - uncomment to test VSI indicator
     // vsiIndicator.value = 500; // Test with 500 fpm climb
 
-    // //slipBallIndicator.accZ = dataObject.accz;
-    // //slipBallIndicator.accY = dataObject.accy;
-    // //slipBallIndicator.update();
+    slipBallIndicator.accZ = dataObject.accz;
+    slipBallIndicator.accY = dataObject.accy;
+    slipBallIndicator.update();
 
     headingIndicator.value = dataObject.yaw;
+
+    // Update turn rate using spring-mass-damper model (simulates gyro inertia)
+    if (dataObject.turn_rate !== undefined) {
+        // dt from PixiJS ticker (seconds)
+        var dt = delta.deltaMS / 1000.0;
+
+        // Spring-mass-damper: F = -spring*(position - target) - damping*velocity
+        var acceleration = -turnRateSpring * (smoothedTurnRate - dataObject.turn_rate)
+                           - turnRateDamping * turnRateVelocity;
+        turnRateVelocity += acceleration * dt;
+        smoothedTurnRate += turnRateVelocity * dt;
+
+        // Update turn rate indicator bar
+        turnRateIndicator.update(smoothedTurnRate);
+
+        // Show both raw and filtered values for comparison (commented out - uncomment to debug)
+        // turnRateDebugText.text = "TR Raw: " + dataObject.turn_rate.toFixed(2) +
+        //                          " | Gyro: " + smoothedTurnRate.toFixed(2);
+    }
 
     // speedDisplay.groundSpeed = dataObject.gps_speed;
     // speedDisplay.staticPressure = dataObject.static_pressure;

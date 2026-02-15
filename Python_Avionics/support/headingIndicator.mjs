@@ -28,6 +28,11 @@ export class HeadingIndicator {
         this._value = 0;
         this._previous_value = 0;
         this._bugValue = 5;
+        this._bugIncrement = 1;
+        this._bugFastIncrement = 2;
+        this._bugFastDeltaThreshold = 6;    // delta >= this uses fast increment
+        this._bugSpeedSensitive = true;     // set to false to disable speed sensitivity
+        this._lastEncoderValue = 0;         // holds the last encoder value to calculate deltas
 
         /*********************************************************************
          * Create the graphics required for the horizontal ribbon
@@ -660,19 +665,20 @@ export class HeadingIndicator {
         // process the encoder value provided
         if (changable && !this.changeableFirstPass) {
 
-            if (value >= 0) {
-                this._bugValue = value % 360;
-            } else {
-                this._bugValue = 360 + (value % 360);
-            }
+            let delta = value - this._lastEncoderValue;
+            this._lastEncoderValue = value;
+            let increment = (this._bugSpeedSensitive && Math.abs(delta) >= this._bugFastDeltaThreshold)
+                ? this._bugFastIncrement : this._bugIncrement;
+            this._bugValue = this._bugValue + delta * increment;
+            // Wrap to 0-359
+            this._bugValue = ((this._bugValue % 360) + 360) % 360;
             this.bugText.text = this._bugValue.toString();
 
             this.positionHeadingBugOnRibbon(this._value);
 
-            // TODO reposition the bug as the value changes
-            //this.QNHText.text = this.QNHFormat.format(Math.floor(this.my_value)/100) + " in";
         } else if (this.changeableFirstPass) {
-            // TODO: handle any first pas requirements
+            // Save the starting encoder value so the first delta is zero
+            this._lastEncoderValue = value;
             this.changeableFirstPass = false;
         }
     }

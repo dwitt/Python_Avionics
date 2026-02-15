@@ -1,17 +1,6 @@
 'use strict';
-// ----------------------------------------------------------------------------
-// Aliases - Allows for changes in PIXI.JS
-// TODO - Make sure we have all of the necessary aliases set
-// ----------------------------------------------------------------------------
-// var Application = PIXI.Application,
-//     //loader = PIXI.Loader.shared,
-//     //resources = PIXI.Loader.shared.resources,
-//     //TextureCache = PIXI.utils.TextureCache,
-//     Sprite = PIXI.Sprite,
-//     Rectangle = PIXI.Rectangle,
-//     Graphics = PIXI.Graphics,
-//     Container = PIXI.Container,
-//     Text = PIXI.Text;
+
+import { Container, Graphics } from './pixi.mjs';
 
 /**     
  * Class representing a Slip Ball Indicator.
@@ -47,56 +36,88 @@ export class SlipBallIndicator {
         let bgColour = 0x000000; // black
         let bgAlpha = 0.25 // 25%
 
-        let lineWidth = 1; // pixels
-        let lineColour = 0x000000; // black
+        // Tube dimensions
+        let tubeLeft = -this.indicatorSize * this.ballDiameter - this.ballDiameter/2 - 2;
+        let tubeTop = -this.ballDiameter/2 - 2;
+        let tubeWidth = 2 * this.indicatorSize * this.ballDiameter + this.ballDiameter + 4;
+        let tubeHeight = this.ballDiameter + 4;
+        let tubeRadius = this.ballDiameter/2 + 2;
 
-        slipBallBackgroundGraphics.lineStyle(lineWidth, lineColour);
-        slipBallBackgroundGraphics.beginFill(bgColour, bgAlpha);
+        // Fill the tube background
+        slipBallBackgroundGraphics.roundRect(tubeLeft, tubeTop, tubeWidth, tubeHeight, tubeRadius);
+        slipBallBackgroundGraphics.fill({ color: bgColour, alpha: bgAlpha });
 
-        slipBallBackgroundGraphics.drawRoundedRect(
-            -this.indicatorSize * this.ballDiameter - this.ballDiameter/2 - 2, -this.ballDiameter/2 - 2,
-            2 * this.indicatorSize * this.ballDiameter + this.ballDiameter + 4, this.ballDiameter + 4,
-            this.ballDiameter/2 + 2
-            );
+        // Shadow edge on top (recessed look)
+        let tubeEdges = new Graphics();
+        tubeEdges.roundRect(tubeLeft, tubeTop, tubeWidth, tubeHeight, tubeRadius);
+        tubeEdges.stroke({ width: 1.5, color: 0x333333 });
+
+        // Inner highlight along the bottom (light catching lower edge)
+        let tubeHighlight = new Graphics();
+        tubeHighlight.roundRect(tubeLeft + 1, tubeTop + 1, tubeWidth - 2, tubeHeight - 2, tubeRadius - 1);
+        tubeHighlight.stroke({ width: 1, color: 0x444444 });
         
 
 
-        // Add the graphics to the container
+        // Add the tube graphics to the container (outer edge, fill, inner highlight)
         slipBallContainer.addChild(slipBallBackgroundGraphics);
+        slipBallContainer.addChild(tubeEdges);
+        slipBallContainer.addChild(tubeHighlight);
 
         // position the container
         slipBallContainer.x = displayWidth / 2;
         slipBallContainer.y = displayHeight - positionFromBottom;
 
-        // create the slip ball
-        this.slipBallGraphics = new Graphics();
+        // Create the slip ball
+        this.slipBallGraphics = new Container();
+        let radius = this.ballDiameter / 2;
 
-        let lineAlpha = 1;
-        let lineAlignment = 0.5; // inside
-        lineColour = 0x000000; //black
-        let fillColour = 0xFFFFFF; //white
-        let fillAlpha = 1;
+        // Base ball - light grey, no outline (arcs provide the edge)
+        let ballBase = new Graphics();
+        ballBase.circle(0, 0, radius);
+        ballBase.fill({ color: 0xCCCCCC });
+        this.slipBallGraphics.addChild(ballBase);
 
-        this.slipBallGraphics.lineStyle(lineWidth, lineColour, lineAlpha, lineAlignment);
-        this.slipBallGraphics.beginFill(fillColour, fillAlpha);
+        // Shadow arc on bottom-right (light coming from upper-left)
+        let shadowArc = new Graphics();
+        shadowArc.arc(0, 0, radius, Math.PI * 0.15, Math.PI * 1.15);
+        shadowArc.stroke({ width: 2, color: 0x444444 });
+        this.slipBallGraphics.addChild(shadowArc);
 
-        this.slipBallGraphics.drawCircle(0,0,this.ballDiameter/2);
-        
+        // Highlight arc on top-left
+        let highlightArc = new Graphics();
+        highlightArc.arc(0, 0, radius, Math.PI * 1.15, Math.PI * 0.15);
+        highlightArc.stroke({ width: 1.5, color: 0x999999 });
+        this.slipBallGraphics.addChild(highlightArc);
+
+        // Shadow on bottom-right - darker grey, offset
+        let ballShadow = new Graphics();
+        ballShadow.circle(1, 2, radius - 3);
+        ballShadow.fill({ color: 0x999999, alpha: 0.5 });
+        this.slipBallGraphics.addChild(ballShadow);
+
+        // Highlight on upper-left - white, smaller and offset
+        let ballHighlight = new Graphics();
+        ballHighlight.circle(-3, -3, radius * 0.4);
+        ballHighlight.fill({ color: 0xFFFFFF, alpha: 0.7 });
+        this.slipBallGraphics.addChild(ballHighlight);
+
         slipBallContainer.addChild(this.slipBallGraphics);
 
-        // Construct the inclinometer bars
-
+        // Inclinometer bars (added after ball so they render in front)
         let slipBallBarGraphics = new Graphics();
+        slipBallBarGraphics.strokeStyle = {
+            width: 2,
+            color: 0xFFFFFF,
+        };
 
-        lineWidth = 2; // pixel
-        lineColour = 0xFFFFFF; // white
-
-        slipBallBarGraphics.lineStyle(lineWidth, lineColour);
         slipBallBarGraphics.moveTo( -this.ballDiameter/2 - 1, -this.ballDiameter/2 - 1);
         slipBallBarGraphics.lineTo( -this.ballDiameter/2 - 1, +this.ballDiameter/2 + 1);
+        slipBallBarGraphics.stroke();
 
         slipBallBarGraphics.moveTo( this.ballDiameter/2 + 1, -this.ballDiameter/2 - 1);
         slipBallBarGraphics.lineTo( this.ballDiameter/2 + 1, +this.ballDiameter/2 + 1);
+        slipBallBarGraphics.stroke();
 
         slipBallContainer.addChild(slipBallBarGraphics);
 

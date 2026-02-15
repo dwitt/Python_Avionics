@@ -16,3 +16,7 @@ userInput.mjs
 utilityFunctions.mjs
 specialRectangle.mjs
 brightness.mjs
+slipBall.mjs
+turnRateIndicator.mjs
+softButtons.mjs
+menuOverlay.mjs

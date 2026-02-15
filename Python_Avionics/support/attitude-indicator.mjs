@@ -19,6 +19,7 @@ export class AttitudeIndicator {
         // initial values for internal position variables
         this._pitch = 0;
         this._roll = 0;
+        this._turnRate = 0;
 
         // initial values for slip/skid acceleration and smoothing
         //this._acc100Z = 0;
@@ -208,7 +209,7 @@ export class AttitudeIndicator {
     //     this._accY = this.smoothedValueY(newValue/100)
     // }
 
-    /************************************************************************* 
+    /*************************************************************************
      * Create a container that holds the background for the attitude         *
      * indicator.                                                            *
      * Draw the sky and earth in a container where 0,0 is the center         *
@@ -593,8 +594,9 @@ export class AttitudeIndicator {
         arcGraphics.x = centreX;
         arcGraphics.y = centreY;
 
-        // Save the are in the container and display it
+        // Save the arc in the container and display it
         arcContainer.addChild(arcGraphics);
+
         return arcContainer;
 
     }

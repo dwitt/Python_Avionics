@@ -153,6 +153,7 @@ class MyWebSocketResponse:
         self.can_qnh_timestamp = int(time.monotonic_ns() / 1000000)
         # Initialize backlight with error handling
         self.backlight = None
+        self.last_brightness = None
         try:
             # Check if the backlight path exists
             if not os.path.exists(BACKLIGHT_PATH):
@@ -280,9 +281,12 @@ class MyWebSocketResponse:
                         try:
                             # Ensure brightness is in valid range (0-100)
                             brightness = max(0, min(100, int(brightness)))
-                            self.backlight.brightness = brightness
-                            if DEBUG_BRIGHTNESS:
-                                print(f'Backlight brightness set to: {brightness}%')
+                            # Only write to backlight if value has changed
+                            if brightness != self.last_brightness:
+                                self.backlight.brightness = brightness
+                                self.last_brightness = brightness
+                                if DEBUG_BRIGHTNESS:
+                                    print(f'Backlight brightness set to: {brightness}%')
                         except (ValueError, TypeError, AttributeError) as e:
                             print(f"Error setting backlight brightness: {e}")
                     else:
@@ -582,16 +586,13 @@ async def process_ahrs_orient_message(msg, data, last_received_times):
         (data.yaw, data.pitch, data.roll, data.turn_rate) = (
             struct.unpack("<hhhh", msg.data)
         )
-        # Data received from Adafruit ISM330DHCX + LIS3MDL oriented
-        # Roll - X axis forward
-        # Pitch - Y axis to the left (of forward)
-        # Yaw - Z axis is pointing up
-        # Correction for axis orientation applied to data below
-        
-        # AHRS values are sent as 10x actual value, divide by AHRS_SCALING_FACTOR to get actual value
-        data.yaw = 360 - data.yaw / AHRS_SCALING_FACTOR  # adjust for data received
-        data.pitch = -data.pitch / AHRS_SCALING_FACTOR  # adjust for data received
+        # Data received from Arduino already converted from sensor native frame (NWU)
+        # to aircraft standard (NED). Only scaling needed here.
+        # AHRS values are sent as 10x actual value, divide by AHRS_SCALING_FACTOR
+        data.yaw = data.yaw / AHRS_SCALING_FACTOR
+        data.pitch = data.pitch / AHRS_SCALING_FACTOR
         data.roll = data.roll / AHRS_SCALING_FACTOR
+        data.turn_rate = data.turn_rate / AHRS_SCALING_FACTOR
         last_received_times[CAN_MSG_ID.AHRS_ORIENT.value] = time.time()
         return True
     except struct.error as e:

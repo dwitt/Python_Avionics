@@ -65,7 +65,13 @@ export class Ribbon {
         this._ribbonUndefined = false;
 
         this._bugValue = 0;
-        this._bugZeroValue = 0;     // holds the most negative setting to all of no lag when adjusting up.
+        this._bugMinValue = -1000;
+        this._bugMaxValue = 12500;
+        this._bugIncrement = 25;
+        this._bugFastIncrement = 100;
+        this._bugFastDeltaThreshold = 6;    // delta >= this uses fast increment
+        this._bugSpeedSensitive = true;     // set to false to disable speed sensitivity
+        this._lastEncoderValue = 0;         // holds the last encoder value to calculate deltas
 
         let mask_x, mask_y, i;
 
@@ -347,7 +353,10 @@ export class Ribbon {
             width: bugOutlineWidth,           // 2 pixels
         };
         
-        //bugGraphic.beginFill(bugFillColour, bugFillAlpha);
+        bugGraphic.fillStyle = {
+            color: bugFillColour,
+            alpha: bugFillAlpha,
+        };
 
         /**
          * Draw the bug clockwise assuming it is right aligned. The bug
@@ -365,6 +374,7 @@ export class Ribbon {
         bugGraphic.lineTo(0,0);                                    // back to origin
 
         bugGraphic.fill();
+        bugGraphic.stroke();
 
         return bugGraphic;
     }
@@ -377,8 +387,12 @@ export class Ribbon {
      *     accordingly
      */
     positionBugOnRibbon(ribbonDisplayValue){
+        // Guard against undefined ribbon value (data not yet received)
+        if (ribbonDisplayValue === undefined || ribbonDisplayValue === null) {
+            ribbonDisplayValue = 0;
+        }
         var bugGraphicPosition = -1 * (this._bugValue - ribbonDisplayValue) * this.ribbon_interval_ratio;
-        this.bugGraphic.position.set(0,bugGraphicPosition);  
+        this.bugGraphic.position.set(0,bugGraphicPosition);
     }
 
     /**
@@ -421,6 +435,7 @@ export class Ribbon {
         // Draw the line in from the edge to allow the width of the line to show
         lineAndBoxGraphic.moveTo(alignment * 2, ribbonHeight/2);
         lineAndBoxGraphic.lineTo(alignment * 2 , - ribbonHeight/2);
+        lineAndBoxGraphic.stroke();
 
         selectedGraphicContainer.addChild(lineAndBoxGraphic);
 
@@ -485,6 +500,7 @@ export class Ribbon {
         // Draw the line in from the edge to allow the width of the line to show
         leaderAndBoxGraphic.moveTo(alignment * 2, ribbonHeight/2);
         leaderAndBoxGraphic.lineTo(alignment * 2 , - ribbonHeight/2);
+        leaderAndBoxGraphic.stroke();
 
         // Draw leader line to the box
         //leaderAndBoxGraphic.lineStyle(leaderLineWidth, outlineColour, outlineAlpha, leaderLinePosition);
@@ -497,6 +513,7 @@ export class Ribbon {
 
         leaderAndBoxGraphic.moveTo(alignment * 2, ribbonHeight/2 - (boxVerticalOffset + boxHeight/2));
         leaderAndBoxGraphic.lineTo(alignment * boxHorizontalOffset, ribbonHeight/2 - (boxVerticalOffset + boxHeight/2));
+        leaderAndBoxGraphic.stroke();
 
         // Draw the box
         //leaderAndBoxGraphic.lineStyle(outlineWidth, outlineColour, outlineAlpha, outlinePosition);
@@ -518,6 +535,7 @@ export class Ribbon {
         }
         leaderAndBoxGraphic.roundRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
         leaderAndBoxGraphic.fill();
+        leaderAndBoxGraphic.stroke();
 
         changableGraphicsContainer.addChild(leaderAndBoxGraphic);
 
@@ -591,21 +609,20 @@ export class Ribbon {
             
         // }
 
-        // TODO: remove the first pass test
         // process the encoder value provided
         if (changable && !this.changeableFirstPass) {
 
-            if (value < this._bugZeroValue) {
-                // The value is less than zero
-                this._bugZeroValue = value;
-            }
-            this._bugValue = (value - this._bugZeroValue) * 100;
+            let delta = value - this._lastEncoderValue;
+            this._lastEncoderValue = value;
+            let increment = (this._bugSpeedSensitive && Math.abs(delta) >= this._bugFastDeltaThreshold)
+                ? this._bugFastIncrement : this._bugIncrement;
+            this._bugValue = Math.max(this._bugMinValue, Math.min(this._bugMaxValue, this._bugValue + delta * increment));
             this.bugText.text = this._bugValue.toString();
             this.positionBugOnRibbon(this._value);
 
-
         } else if (this.changeableFirstPass) {
-            //handle any first pas requirements
+            // Save the starting encoder value so the first delta is zero
+            this._lastEncoderValue = value;
             this.changeableFirstPass = false;
         }
     }
@@ -665,12 +682,13 @@ export class Ribbon {
 
         if (this.allowNegative == false ) {
             if (new_value < this.rulerZeroOffset) {
-                //console.log(this.rulerZeroOffset);
-
+                // Value is low enough that the ruler bottom (zero) is still visible
                 this.ruler.position.set(0,(-this.rulerZeroOffset + new_value) * this.ribbon_interval_ratio);
+            } else {
+                // Value is high enough to scroll normally using remainder
+                this.ruler.position.set(0, remainder * this.ribbon_interval_ratio);
             }
         } else {
-
             this.ruler.position.set(0, remainder * this.ribbon_interval_ratio);
         }
 
@@ -758,7 +776,7 @@ export class Colour_Bar {
         let length = colours.length;
 
         for (i = 0; i < length; i++ ){
-            this.graphics.fileStyle = {
+            this.graphics.fillStyle = {
                 alpha: 1,
                 color: colours[i].colour,
             };

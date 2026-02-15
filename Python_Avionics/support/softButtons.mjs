@@ -2,91 +2,73 @@
 
 import { Container, Graphics, TextStyle, Text, CanvasTextMetrics } from './pixi.mjs';
 
-/***************************************************************************** 
+/*****************************************************************************
  * Class to display soft buttons on the screen
  * ***************************************************************************/
 export class SoftButtons {
-    
+
     /*************************************************************************
      * Constructor
      * @param {object} app Pixijs
-     * // @param {number} width the width of the horizontal ribbon
+     * @param {object} callBackClass Object with addContainer() method
+     * @param {object} options Optional positioning: {x, y, width, height}
      *************************************************************************/
 
-        constructor(app, callBackClass) {
-        
-        // save the display dimensions for use elsewhere in the function
+        constructor(app, callBackClass, options = {}) {
+
         this.displayWidth = app.screen.width;
         this.displayHeight = app.screen.height;
         this.callBackClass = callBackClass;
 
-        // set the height of the soft button display
-        const height = 60;
-        const numberOfButtons = 4;
-        const width = this.displayWidth / numberOfButtons;
+        const height = options.height || 30;
+        const width = options.width || 70;
+        const xPos = options.x !== undefined ? options.x : this.displayWidth - width - 5;
+        const yPos = options.y !== undefined ? options.y : this.displayHeight - height - 3;
 
-        // create the container for the horizontal buttons
-        // note: text can only be added to a container so we need both a 
-        // container and graphics
         const softButtonContainer = new Container();
-        const softButtonGraphics = new Graphics();
+        softButtonContainer.position.set(xPos, yPos);
 
-        softButtonContainer.y = this.displayHeight - height;
+        const buttonContainer = this.createButtonContainer(height, width, "Menu");
 
-        const buttonContainer = this.createButtonContainer(height, width, "Config");
-
-        // Try some events
         buttonContainer.eventMode = 'static';
         buttonContainer.cursor = 'pointer';
         buttonContainer.on('pointerdown', this.onClick);
         buttonContainer.userData = this;
 
-
-        
         softButtonContainer.addChild(buttonContainer);
-
         app.stage.addChild(softButtonContainer);
         }
-
-    /*************************************************************************
-     * @brief Create a button container of a prescribed width and height
-     * 
-     * @param height The height of the button
-     * @param width  The width of the button
-     * @returns      A graphic container
-     */
-
 
     createButtonContainer(height, width, text) {
 
         const buttonContainer = new Container();
         const buttonGraphics = new Graphics();
-        const margin = 5;
+        const margin = 3;
 
         buttonGraphics.fillStyle = {
-            alpha: 1.0,         // solid
-            color: 0xbbbbbb,    // light grey
+            alpha: 0.7,
+            color: 0x333333,
         };
 
         buttonGraphics.strokeStyle = {
-            alignment: 1,       // inside
-            alpha: 1.0,         // solid
-            color: 0x000000,    // black
-            width: 1,           // 2 px
+            alignment: 1,
+            alpha: 0.8,
+            color: 0x666666,
+            width: 1,
         }
 
         let textStyle = new TextStyle({
             fontFamily: "Tahoma",
-            fontSize: 22,
-            fill: 0x000000,             // gray
-            fontWeight: "normal"  
+            fontSize: 20,
+            fill: 0xbbbbbb,
+            fontWeight: "normal"
         });
 
         buttonGraphics.roundRect(margin,
                                  margin,
-                                 width - 2 * margin, 
+                                 width - 2 * margin,
                                  height - 2 * margin,
-                                 margin);
+                                 4);
         buttonGraphics.fill();
         buttonGraphics.stroke();
 
@@ -97,22 +79,15 @@ export class SoftButtons {
         buttonText.anchor.set(0.5,0.5);
         buttonText.position.set(width / 2, height / 2);
 
-
         buttonContainer.addChild(buttonGraphics);
         buttonContainer.addChild(buttonText);
 
         return buttonContainer;
     }
 
-    /*************************************************************************
-     * @brief Handle onClick events
-     */
-
-    onClick() 
+    onClick()
     {
-        //console.log(this.userData.callBackClass.displayWidth);
         this.userData.callBackClass.addContainer();
     }
-
 
 }

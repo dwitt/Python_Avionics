@@ -44,9 +44,9 @@ export class UserInput {
 
             let displayHeight = app.screen.height;
 
-            this.itemSelectorText = this.createTextObjectAt(10, displayHeight);
+            this.itemSelectorText = this.createTextObjectAt(90, displayHeight);
 
-            this.encoderText = this.createTextObjectAt(50, displayHeight);
+            this.encoderText = this.createTextObjectAt(140, displayHeight);
 
             app.stage.addChild(this.itemSelectorText);
             app.stage.addChild(this.encoderText);
@@ -291,7 +291,9 @@ export class UserInput {
         }
     }
 
-    
-
+    setDebugVisible(visible) {
+        if (this.itemSelectorText) this.itemSelectorText.visible = visible;
+        if (this.encoderText) this.encoderText.visible = visible;
+    }
 
 }
