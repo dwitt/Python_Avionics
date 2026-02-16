@@ -1,6 +1,6 @@
-# Raspberry Pi based Electronic Flight Information System (PiEFIS)
+# PiEFIS Setup Guide (Wayland/labwc)
 
-## Setup steps on Raspberry Pi OS Lite (64-bit) — labwc version  
+## Raspberry Pi based Electronic Flight Information System
 (Tested with Raspberry Pi OS Lite (64-bit) Trixie released 04-Dec-2025 on Raspberry Pi 4)
 
 This guide configures PiEFIS on Raspberry Pi OS Lite using **labwc** instead of X11.  
@@ -13,12 +13,12 @@ The system boots directly into **Chromium kiosk mode** with no desktop environme
 Use the Raspberry Pi Imager program from:  
 https://www.raspberrypi.com/software/
 
-Select your Raspberry Pi model. Currently know to work with Raspberry Pi 4. Select Raspberry Pi OS (other) and then select Raspberry Pi OS Lite (64 bit). Pick your storage device. You will then be prompted for the following customizations
+Select your Raspberry Pi model. Currently known to work with Raspberry Pi 4. Select Raspberry Pi OS (other) and then select Raspberry Pi OS Lite (64 bit). Pick your storage device. You will then be prompted for the following customizations
 
 - Hostname (so the EFIS is easy to find on the network)
 - Localization
 - Username and password
-- Wi-fi (if required but recommend
+- Wi-Fi (if required but recommended)
 - Enable SSH (recommended during setup)
 - Raspberry Pi Connect (not required)
 
@@ -38,16 +38,18 @@ Edit `/boot/firmware/config.txt`:
 sudo nano /boot/firmware/config.txt
 ```
 
-Add the following line at the end of the file:
+Add the following lines at the end of the file:
 
 ```ini
 dtoverlay=mcp2515-can0,oscillator=12000000,interrupt=25,spimaxfrequency=2000000
+dtoverlay=gpio-shutdown,gpio_pin=17,active_low=1,gpio_pull=up
 ```
 
 Notes:
 
 - Verify the oscillator frequency on your CAN board
 - Some boards require `spimaxfrequency=1000000`
+- The `gpio-shutdown` overlay enables a clean shutdown when GPIO17 is pulled low (e.g. via a pushbutton to ground)
 
 Save and reboot:
 
@@ -116,9 +118,9 @@ Notes:
 - `labwc` is a minimal Wayland compositor.
 - No desktop environment is installed
 - Chromium is used to present the display on the EFIS.
-- Seatd is provided so that cage is not run as root.
+- Seatd is provided so that labwc is not run as root.
 
-Enabled seatd
+Enable seatd:
 
 ```bash
 sudo systemctl enable --now seatd
@@ -139,17 +141,11 @@ Adjust `pi:pi` if using a different user.
 
 ---
 
-## Rotate the Display
+## Display Rotation
 
-**With the Pi Display 2 the standard orientation is portarit**
+The Pi Display 2 defaults to portrait orientation. With `display_auto_detect=1` in `config.txt` (set by default in Raspberry Pi OS Trixie), the display rotation is handled automatically and no `display_rotate` setting is required.
 
-Edit `/boot/firmware/config.txt`:
-
-```bash
-sudo nano /boot/firmware/config.txt
-```
-
-Add one of the following:
+If you are using a different display and need to rotate manually, add one of the following to `/boot/firmware/config.txt`:
 
 ```ini
 display_rotate=1
@@ -161,14 +157,6 @@ Rotation values:
 - `1` = 90° clockwise
 - `2` = 180°
 - `3` = 270° clockwise
-
-This rotates:
-
-- Display output
-- Touch input
-- Framebuffer
-
-No transformation matrix is required.
 
 ---
 
@@ -193,10 +181,10 @@ Verify if Python is installed by trying a dry run (-s option):
 ```bash
 sudo apt install -s python3
 ```
-You should expect to find a copy of python version 3.xx installed. Check at http://python.org to see what the latest release is. The version installed as part of the Raspberry Pi OS may not be the latest but it should be close.
+You should expect to find Python 3 installed. Raspberry Pi OS Trixie ships with Python 3.13. The version installed may not be the very latest but it should be close. Check at http://python.org to see what the current release is.
 
 
-Install the tools required for a virtual enviornment and to all pip to be used to install python packages:
+Install the tools required for a virtual environment and to allow pip to be used to install python packages:
 
 ```bash
 sudo apt install --no-install-recommends python3-virtualenv python3-pip
@@ -208,7 +196,7 @@ You may also need the development tools.
 sudo apt install --no-install-recommends python3-dev build-essential
 ```
 
-Create and activate the virtual environment:
+Create and activate the virtual environment. Note that the virtual environment is created inside the `~/Python_Avionics` directory alongside the application code:
 
 ```bash
 virtualenv Python_Avionics
@@ -241,11 +229,17 @@ Add:
 ```ini
 initial_turbo=60
 disable_splash=1
+enable_uart=1
 ```
 
-Optional (recommended): 
- 
-Add `quiet` to `/boot/cmdline.txt`.
+- `initial_turbo` — runs the CPU at maximum frequency for the first 60 seconds to speed up boot
+- `disable_splash` — suppresses the rainbow splash screen
+- `enable_uart` — enables the primary UART serial port on GPIO14/15. This provides a serial console fallback if SSH and networking are unavailable. May also be needed for serial GPS modules or other serial devices.
+
+Optional — the following can be added to `/boot/firmware/cmdline.txt` to clean up the boot process. Note that `quiet` makes boot issues harder to diagnose.
+
+- `quiet` — suppresses kernel boot messages on the console
+- `fastboot` — skips filesystem checks on boot
 
 ---
 
@@ -273,7 +267,7 @@ Edit bitrate if required.
 Copy the file `linux/piefis.service` from the repo to:
 
 ```
-etc/systemd/system/piefis.service
+/etc/systemd/system/piefis.service
 ```
 
 Enable and start the service
@@ -281,12 +275,13 @@ Enable and start the service
 ```bash
 sudo systemctl enable piefis.service
 ```
-##TODO: ENABLE LOGGING ***
+
+Logging is configured in the service file to append to `/var/log/piefis.log`.
 
 ---
 ## Configure labwc + Chromium Startup (Kiosk Mode)
 
-Edit the `piefis-labwc.service` file and change the user name to your user.
+Edit the `piefis-labwc.service` file and change the `User=` and `HOME=` values to your user.
 
 Copy `linux/piefis-labwc.service` from the repo to:
 
@@ -294,7 +289,18 @@ Copy `linux/piefis-labwc.service` from the repo to:
 /etc/systemd/system/piefis-labwc.service
 ```
 
-Enable and start the service.
+The service file:
+
+- Runs labwc as your user (not root) via seatd
+- Creates a private runtime directory at `/run/piefis`
+- Cleans up stale Wayland sockets before starting
+- Waits for seatd to be ready before launching
+- Launches Chromium in kiosk mode via `dbus-run-session`
+- Disables unnecessary Chromium features (sync, translate, infobars, etc.)
+- Uses `--ozone-platform=wayland` for native Wayland rendering
+- Restarts automatically on failure
+
+Enable and start the service:
 
 ```bash
 sudo systemctl enable piefis-labwc
@@ -303,28 +309,41 @@ sudo systemctl start piefis-labwc
 
 ---
 
-## Scale the Display if Required
-
-If you want to upscale the display you can add the follwoing:
-
-```
-wlr-randr --output DSI-1 --scale=0.5 &
-```
-
-to `~/.config/labwc/autostart`
-
-## Hide the pointer
+## Install Display Utilities
 
 ```bash
-sudo apt install wtype
+sudo apt install wlr-randr wtype
 ```
 
-Add 
+- `wlr-randr` is the Wayland equivalent of `xrandr` — used to set display scale and resolution
+- `wtype` is the Wayland equivalent of `xdotool` — used to send keyboard shortcuts to hide the pointer
+
+## Scale the Display if Required
+
+If you want to scale the display you can add the following to `~/.config/labwc/autostart`:
 
 ```
-wtype -M alt -M logo h -m logo -m alt
+wlr-randr --output DSI-1 --scale=1.25 &
 ```
-to `~/.config/labwc/sutostart`
+
+A scale value greater than 1.0 makes content larger (fewer logical pixels). Adjust to suit your display.
+
+## Hide the Pointer
+
+Add the following to `~/.config/labwc/autostart` to hide the mouse pointer once Chromium is running:
+
+```bash
+(
+  for i in $(seq 1 100); do
+    pgrep -x chromium >/dev/null && break
+    sleep 0.1
+  done
+  sleep 1.0
+  wtype -M alt -M logo h -m logo -m alt
+) &
+```
+
+This waits for Chromium to start before sending the hide-pointer shortcut.
 
 
 
@@ -333,15 +352,15 @@ to `~/.config/labwc/sutostart`
 Disabling unused services significantly reduces boot time.
 
 ```bash
-sudo systemctl disable ssh
-sudo systemctl disable hciuart
-sudo systemctl disable nmbd
-sudo systemctl disable smbdsud
-sudo systemctl disable systemd-timesyncd
-sudo systemctl disable wpa_supplicant
-sudo systemctl disable rpi-eeprom-update
-sudo systemctl disable raspi-config
-sudo systemctl disable dhcpcd
+sudo systemctl disable ssh                # If you don't need SSH to access the Pi
+sudo systemctl disable hciuart            # Disables Bluetooth UART
+sudo systemctl disable nmbd               # If you have Samba installed
+sudo systemctl disable smbd               # If you have Samba installed
+sudo systemctl disable systemd-timesyncd  # Disables time sync across the network
+sudo systemctl disable wpa_supplicant     # Disables WPA for Wi-Fi network connections
+sudo systemctl disable rpi-eeprom-update  # Disables eeprom updates on boot
+sudo systemctl disable raspi-config       # Disables raspi-config from updating on boot
+sudo systemctl disable dhcpcd             # Disables DHCP client
 ```
 
 ---
@@ -352,7 +371,7 @@ On reboot, the system will:
 
 1. Boot Raspberry Pi OS Lite
 2. Initialize the CAN interface
-3. Start a minimal Wayland compositor
-4. Launch Chromium fullscreen at `http://localhost:8080`
-5. Run with no desktop, no window manager, and no X11
+3. Start labwc (minimal Wayland compositor) via seatd
+4. Launch Chromium fullscreen in kiosk mode at `http://localhost:8080`
+5. Run with no desktop environment and no X11
 

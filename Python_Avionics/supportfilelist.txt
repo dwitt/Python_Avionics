@@ -20,3 +20,4 @@ slipBall.mjs
 turnRateIndicator.mjs
 softButtons.mjs
 menuOverlay.mjs
+hsi.mjs

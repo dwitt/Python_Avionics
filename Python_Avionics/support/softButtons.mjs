@@ -46,7 +46,7 @@ export class SoftButtons {
         const margin = 3;
 
         buttonGraphics.fillStyle = {
-            alpha: 0.7,
+            alpha: 0.9,         // was 0.7
             color: 0x333333,
         };
 
@@ -54,7 +54,7 @@ export class SoftButtons {
             alignment: 1,
             alpha: 0.8,
             color: 0x666666,
-            width: 1,
+            width: 2,           // was 1
         }
 
         let textStyle = new TextStyle({

@@ -50,7 +50,7 @@ export class SlipBallIndicator {
         // Shadow edge on top (recessed look)
         let tubeEdges = new Graphics();
         tubeEdges.roundRect(tubeLeft, tubeTop, tubeWidth, tubeHeight, tubeRadius);
-        tubeEdges.stroke({ width: 1.5, color: 0x333333 });
+        tubeEdges.stroke({ width: 2, color: 0x333333 });  // was 1.5
 
         // Inner highlight along the bottom (light catching lower edge)
         let tubeHighlight = new Graphics();

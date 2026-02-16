@@ -217,7 +217,7 @@ export class VsiIndicator {
         let textStyle = new TextStyle(
             {
                 fontFamily: "Tahoma",
-                fontSize: 17,           // *** This seem incorrect 
+                fontSize: 16,           // was 17
                 fill: "white",
                 fontWeight: "normal",
                 stroke: 

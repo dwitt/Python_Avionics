@@ -244,7 +244,7 @@ export class Ribbon {
         let text_style = new TextStyle({
             fontFamily: "Tahoma",
             fontSize: 22,
-            fill: "#BBBBBB",
+            fill: 0xbbbbbb,  // was "#BBBBBB"
             fontWeight: "normal"
             
         });
@@ -479,9 +479,9 @@ export class Ribbon {
         var bugTextStyle = new TextStyle({
             fontFamily: "Tahoma",
             fontSize: 20,
-            fill: "aqua",
+            fill: 0x00ffff,  // was "aqua"
             fontWeight: "normal"
-            
+
         });
 
         var changableGraphicsContainer = new Container();

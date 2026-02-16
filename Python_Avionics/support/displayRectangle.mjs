@@ -72,14 +72,14 @@ export class DisplayRectangle {
         // create the value text including the style
 
         let font = 'Tahoma';
-        let size = 18;
+        let size = 20;  // was 18
         let weight = 'normal';
 
         const textStyle = new TextStyle(
             {
                 fontFamily: font,
                 fontSize: size,
-                fill: 'aqua',
+                fill: 0x00ffff,  // was 'aqua'
                 fontWeight: weight,
             }
         );
@@ -117,7 +117,7 @@ export class DisplayRectangle {
             {
                 fontFamily: font,
                 fontSize: size,
-                fill: 'aqua',
+                fill: 0x00ffff,  // was 'aqua'
                 fontWeight: weight,
             }
         );
@@ -138,9 +138,9 @@ export class DisplayRectangle {
         }
 
         if (rightAligned) {
-            unitTextX = x - width * 1/3 + 5;
+            unitTextX = x - width * 1/3 + 4;
         } else {
-            unitTextX = x + width * 2/3 + 5;
+            unitTextX = x + width * 2/3 + 4;
         }
         if (radiusTop) {
             unitTextY = y - height/2;
@@ -159,7 +159,7 @@ export class DisplayRectangle {
             {
                 fontFamily: font,
                 fontSize: size,
-                fill: 'aqua',
+                fill: 0x00ffff,  // was 'aqua'
                 fontWeight: weight,
             }
         );
@@ -204,12 +204,12 @@ export class DisplayRectangle {
             alignment: 1,       // inside
             alpha: 0.5,         // 50%
             color: 0xFFFFFF,    // white
-            width: 1,           // 1 px
+            width: 2,           // 2 px
         };
 
         const fillStyle = {
-            alpha: 0.25,         // 25% 
-            color: 0x000000,     // black
+            alpha: 1.0,         // solid black
+            color: 0x000000,    // black
         }
 
         this.regularRectangle = this.rectangle(
@@ -229,10 +229,10 @@ export class DisplayRectangle {
 
         // Update the strokeStyle for the selected rectangle
         Object.assign(strokeStyle, {
-            alignment: 0.5,     // middle
+            alignment: 1,       // inside
             alpha: 1.0,         // 100%
             color: 0xFF0000,    // red
-            width: 2,           // 1 px            
+            width: 2,           // 2 px
         });
 
         this.selectedRectangle = this.rectangle(
@@ -286,8 +286,8 @@ export class DisplayRectangle {
             y = y - height;
         };
 
-        // check if we are on the right side of the screen. if so, our origin 
-        // is at the right so we need to move it to the left side 
+        // check if we are on the right side of the screen. if so, our origin
+        // is at the right so we need to move it to the left side
         if (alignRight) {
             x = x - width;
         }
@@ -301,9 +301,9 @@ export class DisplayRectangle {
             radius,
             top, top,
             bottom, bottom
-        ); 
-        rectangle.stroke();
+        );
         rectangle.fill();
+        rectangle.stroke();
 
         return rectangle;
     }

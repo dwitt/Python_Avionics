@@ -16,7 +16,7 @@ export class AltitudeWheel  {
     constructor(app) {
 
         // position based on screen size
-        this.x = app.screen.width - 45;
+        this.x = app.screen.width - 47;
         this.y = app.screen.height / 2;
         this.app = app;                 // <-- This can probably be deleted
 
@@ -44,7 +44,7 @@ export class AltitudeWheel  {
         // Create a style to be used for the units characters
         this.style = new TextStyle({
             fontFamily: 'Tahoma',
-            fontSize: '18px',
+            fontSize: '20px',  // was '18px'
             fill: "white",
             fontWeight: "normal",
             stroke: "black"//,
@@ -68,7 +68,7 @@ export class AltitudeWheel  {
         let line = new Graphics();
         
         line.strokeStyle = {
-            color: 0xffffff,    // white
+            color: 0x666666,    // grey — was 0xffffff
             width: 2,           // 2 px
         }
         
@@ -80,23 +80,23 @@ export class AltitudeWheel  {
         line.moveTo(x+6,y);
         line.lineTo(x+1,y-5);
         // draw right side box
-        line.lineTo(x+1,y-(1+left_height));
-        line.lineTo(x-(1+left_width),y-(1+left_height));
-        line.lineTo(x-(1+left_width),y-(1+height));
+        line.lineTo(x+1,y-(2+left_height));
+        line.lineTo(x-(1+left_width),y-(2+left_height));
+        line.lineTo(x-(1+left_width),y-(2+height));
         // draw left side box
-        line.lineTo(x-(1+width),y-(1+height));
-        line.lineTo(x-(1+width),y+(2+height));
-        line.lineTo(x-(1+left_width),y+(2+height));
+        line.lineTo(x-(1+width),y-(2+height));
+        line.lineTo(x-(1+width),y+(3+height));
+        line.lineTo(x-(1+left_width),y+(3+height));
         // draw right side box
-        line.lineTo(x-(1+left_width),y+(1+left_height));
-        line.lineTo(x+1,y+(1+left_height));
+        line.lineTo(x-(1+left_width),y+(2+left_height));
+        line.lineTo(x+1,y+(2+left_height));
         // complete the point
         line.lineTo(x+1,y+5);
         line.lineTo(x+6,y);
         line.closePath();
 
-        line.stroke();
         line.fill();
+        line.stroke();
 
         app.stage.addChild(line);
 

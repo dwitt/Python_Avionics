@@ -268,7 +268,7 @@ export class HeadingIndicator {
         const magnifierGraphics = new Graphics();
         const magnifierContainer = new Container();
 
-        const lineWidth = 1;
+        const lineWidth = 2;
         const magnifierWidth = 60;    // 60 pixels
         const magnifierHeight = height - 10;   // 35 pixel
         const magnifierOffset = 10 - lineWidth ;    // 8 px up from bottom of ribbon
@@ -277,7 +277,7 @@ export class HeadingIndicator {
         magnifierGraphics.strokeStyle = {
             alignment: 0,       // inside
             alpha: 1.0,         // 100%
-            color: 0xffffff,    // white
+            color: 0x666666,    // grey — was 0xffffff
             width: lineWidth,           // 2 px
         }
 
@@ -296,8 +296,8 @@ export class HeadingIndicator {
         magnifierGraphics.lineTo(-magnifierWidth/2, -magnifierOffset);
         magnifierGraphics.closePath();
 
-        magnifierGraphics.stroke();
         magnifierGraphics.fill();
+        magnifierGraphics.stroke();
 
         let textStyle = new TextStyle({
             fontFamily: "Tahoma",
@@ -423,8 +423,8 @@ export class HeadingIndicator {
         bugGraphics.lineTo(bugWidth/2, ribbonHeight-adjustBug);
         bugGraphics.closePath();
 
-        bugGraphics.stroke();
         bugGraphics.fill();
+        bugGraphics.stroke();
 
         bugContainer.addChild(bugGraphics);
 
@@ -500,8 +500,8 @@ export class HeadingIndicator {
         const boxHorizontalOffset = 10;   // 10px from left
         const boxHeight = 25;             // 25px
         const boxWidth = 40;              // 40px
-        const boxCornerRadius = 5;        // 5px
-        const bugFontSize = 21;           // 21pt font
+        const boxCornerRadius = 4;        // was 5px
+        const bugFontSize = 20;           // was 21pt font
 
         const yAnchor = this.calculateCharacterVerticalCentre(bugFontSize);
         const boxVerticalOffset = (height - boxHeight) / 2;
@@ -519,7 +519,7 @@ export class HeadingIndicator {
         const leaderAndBoxGraphics = new Graphics();
 
         leaderAndBoxGraphics.strokeStyle = {
-            alignment: 0,               // 0% out (in)
+            alignment: 1,               // was 0 (outside), now inside
             alpha: 1,                   // 100%
             color: 0x00ffff,            // cyan
             width: lineWidth,           // 2 px
@@ -546,8 +546,8 @@ export class HeadingIndicator {
         
         leaderAndBoxGraphics.roundRect(topLeftX,topLeftY, boxWidth, boxHeight, boxCornerRadius);
 
-        leaderAndBoxGraphics.stroke();
         leaderAndBoxGraphics.fill();
+        leaderAndBoxGraphics.stroke();
 
         this.changableGraphicsContainer.addChild(leaderAndBoxGraphics);
 

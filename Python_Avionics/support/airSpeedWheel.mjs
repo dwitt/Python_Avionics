@@ -29,7 +29,7 @@ export class AirspeedWheel  {
         // Create a style to be used for the units characters
         this.style = new TextStyle({
             fontFamily: 'Tahoma',
-            fontSize: '18px',
+            fontSize: '20px',  // was '18px'
             fill: "white",
             fontWeight: "normal",
             stroke: {
@@ -57,7 +57,7 @@ export class AirspeedWheel  {
         let line = new Graphics();
 
         line.strokeStyle = {
-            color: 0xffffff,    // white
+            color: 0x666666,    // grey — was 0xffffff
             width: 2,           // 2 px
         };
 
@@ -69,18 +69,18 @@ export class AirspeedWheel  {
         line.moveTo(x-6,y);
         line.lineTo(x-1,y-5);
         // draw box
-        line.lineTo(x-1,y-(1+height));
-        line.lineTo(x+(1+width),y-(1+height));
-        line.lineTo(x+(1+width),y+(1+height));
-        line.lineTo(x-1,y+(1+height));
+        line.lineTo(x-1,y-(2+height));
+        line.lineTo(x+(1+width),y-(2+height));
+        line.lineTo(x+(1+width),y+(2+height));
+        line.lineTo(x-1,y+(2+height));
         // complete the point
         line.lineTo(x-1,y+5);
         line.lineTo(x-6,y);
   
         line.closePath();
 
-        line.stroke();
         line.fill();
+        line.stroke();
     
         app.stage.addChild(line);
     

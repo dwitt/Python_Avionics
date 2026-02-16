@@ -37,6 +37,7 @@ import { TurnRateIndicator } from './turnRateIndicator.mjs';
 
 import { SoftButtons } from './softButtons.mjs';
 import { MenuOverlay } from './menuOverlay.mjs';
+import { HSI } from './hsi.mjs';
 
 
 
@@ -105,6 +106,9 @@ await app2.init({width: width,
 document.body.appendChild(app.canvas);
 document.body.appendChild(app2.canvas);
 
+// --- HSI on the second canvas ---
+let hsiDiameter = Math.min(app2.screen.width, app2.screen.height) * 0.75;
+hsi = new HSI(app2, app2.screen.width / 2, app2.screen.height / 2, hsiDiameter);
 
 // ----------------------------------------------------------------------------
 // --- Create a new object to hold the data object coming from the websocket---
@@ -179,6 +183,7 @@ var attitudeIndicator,
     userInput,
     softButtons,
     menuOverlay,
+    hsi,
     magnetometerCalibrate,
     turnRateIndicator,
     turnRateDebugText;
@@ -293,7 +298,7 @@ function setup() {
         2,              // number of minor intervals per major
         false);         // don't allow negative numbers.
 
-    airspeedWheel = new AirspeedWheel(app, 10, y/2);
+    airspeedWheel = new AirspeedWheel(app, 12, y/2);
     
     //-------------------------------------------------------------------------
     // Create a speed display, generally above the airspeed ribbon, that can
@@ -399,6 +404,7 @@ function setup() {
     userInput.registerCallback(headingIndicator);
     userInput.registerCallback(altitudeDisplay);
     userInput.registerCallback(altimeter_ribbon);
+    userInput.registerCallback(hsi);
 
     app.ticker.add(delta => DisplayUpdateLoop(delta));
 }
@@ -441,6 +447,13 @@ function DisplayUpdateLoop(delta) {
     slipBallIndicator.update();
 
     headingIndicator.value = dataObject.yaw;
+    hsi.heading = dataObject.yaw;
+    if (dataObject.true_track !== undefined) {
+        hsi.groundTrack = dataObject.true_track;
+    }
+    if (dataObject.gps_speed !== undefined) {
+        hsi.groundSpeed = dataObject.gps_speed;
+    }
 
     // Update turn rate using spring-mass-damper model (simulates gyro inertia)
     if (dataObject.turn_rate !== undefined) {
