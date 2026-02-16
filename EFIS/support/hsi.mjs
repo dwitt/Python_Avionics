@@ -159,16 +159,51 @@ export class HSI {
     }
 
     // -----------------------------------------------------------------------
-    // Aircraft symbol — small white triangle at centre (fixed)
+    // Aircraft symbol — top-down airplane silhouette at centre (fixed)
     // -----------------------------------------------------------------------
     _createAircraftSymbol() {
         const g = new Graphics();
 
         g.fillStyle = { color: 0xffffff };
-        g.moveTo(0, -14);       // nose (top)
-        g.lineTo(-8, 7);        // left wing
-        g.lineTo(0, 3);         // tail centre
-        g.lineTo(8, 7);         // right wing
+
+        // Fuselage (50% longer: was -16 to 12, now -24 to 18)
+        g.moveTo(0, -24);       // nose tip (was -16)
+        g.lineTo(-4, -16);      // nose left (was -10)
+        g.lineTo(-4, 14);       // tail body left (was 18)
+        g.lineTo(-2, 20);       // tail tip left (was 18)
+        g.lineTo(2, 20);        // tail tip right (was 18)
+        g.lineTo(4, 14);        // tail body right (was 18)
+        g.lineTo(4, -16);       // nose right (was -10)
+        g.closePath();
+        g.fill();
+
+        // Main wings (swept back)
+        g.moveTo(-4, -5);       // wing root left (was -3)
+        g.lineTo(-22, 5);       // wingtip left
+        g.lineTo(-20, 9);       // wingtip trailing left
+        g.lineTo(-4, 3);        // wing trailing root left
+        g.closePath();
+        g.fill();
+
+        g.moveTo(4, -5);        // wing root right (was -3)
+        g.lineTo(22, 5);        // wingtip right
+        g.lineTo(20, 9);        // wingtip trailing right
+        g.lineTo(4, 3);         // wing trailing root right
+        g.closePath();
+        g.fill();
+
+        // Horizontal stabilizer (same shape as wings, scaled down)
+        g.moveTo(-3, 12);       // stab leading root left (was -4)
+        g.lineTo(-14, 18);      // stab leading tip left
+        g.lineTo(-13, 20);      // stab trailing tip left
+        g.lineTo(-3, 17);       // stab trailing root left (was -4)
+        g.closePath();
+        g.fill();
+
+        g.moveTo(3, 12);        // stab leading root right (was 4)
+        g.lineTo(14, 18);       // stab leading tip right
+        g.lineTo(13, 20);       // stab trailing tip right
+        g.lineTo(3, 17);        // stab trailing root right (was 4)
         g.closePath();
         g.fill();
 
