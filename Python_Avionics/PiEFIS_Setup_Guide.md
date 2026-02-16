@@ -347,6 +347,76 @@ This waits for Chromium to start before sending the hide-pointer shortcut.
 
 
 
+## Configure SMB File Sharing (Optional)
+
+SMB file sharing allows flight plans to be transferred to the PiEFIS from apps like ForeFlight using "Save to Files". The Pi appears as a network share that can be accessed as a guest (no password required). Apple compatibility extensions are included for iOS/iPadOS support.
+
+Install Samba:
+
+```bash
+sudo apt install samba
+```
+
+Create the flight plans directory:
+
+```bash
+mkdir ~/flightplans
+chmod 777 ~/flightplans
+```
+
+Edit `/etc/samba/smb.conf`:
+
+```bash
+sudo nano /etc/samba/smb.conf
+```
+
+Add the following lines to the `[global]` section for Apple device compatibility:
+
+```ini
+   vfs objects = fruit streams_xattr
+   fruit:metadata = stream
+   fruit:model = RackMac
+```
+
+Ensure the `[global]` section also contains:
+
+```ini
+   map to guest = Bad User
+```
+
+Add the following share definition at the end of the file:
+
+```ini
+[flightplans]
+   comment = Flight Plans
+   path = /home/pi/flightplans
+   browseable = yes
+   read only = no
+   create mask = 0700
+   directory mask = 0700
+   guest ok = yes
+   force user = pi
+```
+
+Adjust `path` and `force user` if using a different username.
+
+Enable and start the service:
+
+```bash
+sudo systemctl enable smbd
+sudo systemctl restart smbd
+```
+
+Verify the share is visible from another machine (macOS):
+
+```bash
+smbutil view //guest@<hostname>.local
+```
+
+The `flightplans` share should appear in the list. On iOS/iPadOS, connect to the server in the Files app using the Pi's hostname. Files can be saved to the share without credentials.
+
+---
+
 ## Disable Unused Services (Optional but Recommended)
 
 Disabling unused services significantly reduces boot time.
@@ -354,8 +424,8 @@ Disabling unused services significantly reduces boot time.
 ```bash
 sudo systemctl disable ssh                # If you don't need SSH to access the Pi
 sudo systemctl disable hciuart            # Disables Bluetooth UART
-sudo systemctl disable nmbd               # If you have Samba installed
-sudo systemctl disable smbd               # If you have Samba installed
+sudo systemctl disable nmbd               # If you have Samba installed and don't need it
+sudo systemctl disable smbd               # If you have Samba installed and don't need it
 sudo systemctl disable systemd-timesyncd  # Disables time sync across the network
 sudo systemctl disable wpa_supplicant     # Disables WPA for Wi-Fi network connections
 sudo systemctl disable rpi-eeprom-update  # Disables eeprom updates on boot

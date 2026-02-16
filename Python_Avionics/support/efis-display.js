@@ -454,6 +454,12 @@ function DisplayUpdateLoop(delta) {
     if (dataObject.gps_speed !== undefined) {
         hsi.groundSpeed = dataObject.gps_speed;
     }
+    if (dataObject.xtrack !== undefined && dataObject.xtrack !== null) {
+        hsi.courseDeviation = dataObject.xtrack;
+    }
+    if (dataObject.to_from !== undefined && dataObject.to_from !== null) {
+        hsi.toFrom = dataObject.to_from;
+    }
 
     // Update turn rate using spring-mass-damper model (simulates gyro inertia)
     if (dataObject.turn_rate !== undefined) {

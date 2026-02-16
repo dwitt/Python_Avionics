@@ -4,7 +4,8 @@ import { Container, Graphics, TextStyle, Text } from './pixi.mjs';
 
 /*****************************************************************************
  * HSI — Horizontal Situation Indicator
- * Phase 1a: Compass rose with heading display
+ * Phase 1: Compass rose, heading bug, ground track, ground speed
+ * Phase 2: Course pointer, CDI bar, TO/FROM indicator
  ****************************************************************************/
 export class HSI {
 
@@ -20,6 +21,9 @@ export class HSI {
         this._bugFastIncrement = 5;
         this._bugFastDeltaThreshold = 3;
         this._lastEncoderValue = 0;
+        this._courseDeviation = 0;   // cross-track error in NM
+        this._toFrom = null;         // "TO", "FROM", or null
+        this._cdiFullScaleNM = 2;    // full-scale CDI deflection in NM
         this.changeableFirstPass = false;
         this.selected = false;
         this.changable = false;
@@ -45,6 +49,7 @@ export class HSI {
         // --- Fixed elements (don't rotate) ---
         this.fixedContainer = new Container();
         this._createHeadingBug();    // behind lubber line
+        this._createCoursePointer(); // Phase 2: needle, CDI, TO/FROM
         this._createLubberLine();
         this._createAircraftSymbol();
         this._createHeadingBox();
@@ -278,6 +283,115 @@ export class HSI {
     }
 
     // -----------------------------------------------------------------------
+    // Course pointer — magenta needle through centre with CDI and TO/FROM
+    // The entire assembly rotates with (CRS - heading)
+    // -----------------------------------------------------------------------
+    _createCoursePointer() {
+        const r = this.radius;
+        const innerLimit = 40;   // gap around centre for aircraft symbol / CDI
+        const outerLimit = r - 52; // stop before compass labels
+        const needleWidth = 3;
+        const arrowHalfWidth = 10;
+        const arrowHeight = 14;
+        const tailBarHalfWidth = 8;
+        const tailBarHeight = 4;
+
+        // Container rotates with CRS relative to heading
+        this.courseContainer = new Container();
+
+        // --- Needle: top half (arrow with shaft) ---
+        const topNeedle = new Graphics();
+        topNeedle.fillStyle = { color: 0xff00ff };  // magenta
+
+        // Arrow head
+        topNeedle.moveTo(0, -outerLimit);                              // tip
+        topNeedle.lineTo(-arrowHalfWidth, -outerLimit + arrowHeight);  // left wing
+        topNeedle.lineTo(-needleWidth / 2, -outerLimit + arrowHeight); // left shaft
+        topNeedle.lineTo(-needleWidth / 2, -innerLimit);               // shaft bottom-left
+        topNeedle.lineTo(needleWidth / 2, -innerLimit);                // shaft bottom-right
+        topNeedle.lineTo(needleWidth / 2, -outerLimit + arrowHeight);  // right shaft
+        topNeedle.lineTo(arrowHalfWidth, -outerLimit + arrowHeight);   // right wing
+        topNeedle.closePath();
+        topNeedle.fill();
+        this.courseContainer.addChild(topNeedle);
+
+        // --- Needle: bottom half (shaft with tail bar) ---
+        const bottomNeedle = new Graphics();
+        bottomNeedle.fillStyle = { color: 0xff00ff };
+
+        // Shaft
+        bottomNeedle.moveTo(-needleWidth / 2, innerLimit);
+        bottomNeedle.lineTo(-needleWidth / 2, outerLimit - tailBarHeight);
+        // Tail bar (T-shape)
+        bottomNeedle.lineTo(-tailBarHalfWidth, outerLimit - tailBarHeight);
+        bottomNeedle.lineTo(-tailBarHalfWidth, outerLimit);
+        bottomNeedle.lineTo(tailBarHalfWidth, outerLimit);
+        bottomNeedle.lineTo(tailBarHalfWidth, outerLimit - tailBarHeight);
+        bottomNeedle.lineTo(needleWidth / 2, outerLimit - tailBarHeight);
+        bottomNeedle.lineTo(needleWidth / 2, innerLimit);
+        bottomNeedle.closePath();
+        bottomNeedle.fill();
+        this.courseContainer.addChild(bottomNeedle);
+
+        // --- CDI dots (5 dots: centre + 2 each side) ---
+        const dotRadius = 3;
+        const dotSpacing = 20;  // pixels between dot centres
+        const cdiDots = new Graphics();
+        cdiDots.fillStyle = { color: 0x666666 };
+        for (let i = -2; i <= 2; i++) {
+            cdiDots.circle(i * dotSpacing, 0, dotRadius);
+            cdiDots.fill();
+        }
+        this.courseContainer.addChild(cdiDots);
+
+        // --- CDI bar (slides left/right across dots) ---
+        this.cdiBar = new Graphics();
+        this._drawCdiBar(0);
+        this.courseContainer.addChild(this.cdiBar);
+
+        // --- TO/FROM triangles ---
+        const toFromSize = 8;
+        const toFromOffset = 26;  // distance from centre along needle axis
+
+        this.toIndicator = new Graphics();
+        this.toIndicator.fillStyle = { color: 0xff00ff };
+        this.toIndicator.moveTo(0, -toFromOffset);                         // top point
+        this.toIndicator.lineTo(-toFromSize, -toFromOffset + toFromSize);   // bottom-left
+        this.toIndicator.lineTo(toFromSize, -toFromOffset + toFromSize);    // bottom-right
+        this.toIndicator.closePath();
+        this.toIndicator.fill();
+        this.toIndicator.visible = false;
+        this.courseContainer.addChild(this.toIndicator);
+
+        this.fromIndicator = new Graphics();
+        this.fromIndicator.fillStyle = { color: 0xff00ff };
+        this.fromIndicator.moveTo(0, toFromOffset);                         // bottom point
+        this.fromIndicator.lineTo(-toFromSize, toFromOffset - toFromSize);  // top-left
+        this.fromIndicator.lineTo(toFromSize, toFromOffset - toFromSize);   // top-right
+        this.fromIndicator.closePath();
+        this.fromIndicator.fill();
+        this.fromIndicator.visible = false;
+        this.courseContainer.addChild(this.fromIndicator);
+
+        this.fixedContainer.addChild(this.courseContainer);
+    }
+
+    _drawCdiBar(offsetPx) {
+        const barHalfHeight = 34;  // vertical bar spans most of the centre gap
+        const barThickness = 4;
+        this.cdiBar.clear();
+        this.cdiBar.fillStyle = { color: 0xff00ff };
+        this.cdiBar.rect(offsetPx - barThickness / 2, -barHalfHeight,
+                         barThickness, barHalfHeight * 2);
+        this.cdiBar.fill();
+    }
+
+    _updateCoursePointerRotation() {
+        const offset = (this._bugValue - this._heading) * Math.PI / 180;
+        this.courseContainer.rotation = offset;
+    }
+
+    // -----------------------------------------------------------------------
     // Heading bug readout — fixed cyan box showing bug value
     // -----------------------------------------------------------------------
     _createBugReadout() {
@@ -383,6 +497,7 @@ export class HSI {
     _updateBugPosition() {
         const offset = (this._bugValue - this._heading) * Math.PI / 180;
         this.bugContainer.rotation = offset;
+        this._updateCoursePointerRotation();
     }
 
     // -----------------------------------------------------------------------
@@ -454,6 +569,45 @@ export class HSI {
             this._lastEncoderValue = value;
             this.changeableFirstPass = false;
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Course deviation property — positions the CDI bar
+    // -----------------------------------------------------------------------
+    set courseDeviation(nm) {
+        this._courseDeviation = nm;
+        // Convert NM to pixels: full-scale (±cdiFullScaleNM) maps to ±2 dots (40px)
+        const dotSpacing = 20;
+        const maxOffsetPx = 2 * dotSpacing;  // 40px = full scale
+        let offsetPx = (nm / this._cdiFullScaleNM) * maxOffsetPx;
+        // Clamp to full-scale deflection
+        offsetPx = Math.max(-maxOffsetPx, Math.min(maxOffsetPx, offsetPx));
+        this._drawCdiBar(Math.round(offsetPx));
+    }
+
+    get courseDeviation() {
+        return this._courseDeviation;
+    }
+
+    // -----------------------------------------------------------------------
+    // TO/FROM property — shows/hides TO and FROM triangles
+    // -----------------------------------------------------------------------
+    set toFrom(value) {
+        this._toFrom = value;
+        if (value === 'TO') {
+            this.toIndicator.visible = true;
+            this.fromIndicator.visible = false;
+        } else if (value === 'FROM') {
+            this.toIndicator.visible = false;
+            this.fromIndicator.visible = true;
+        } else {
+            this.toIndicator.visible = false;
+            this.fromIndicator.visible = false;
+        }
+    }
+
+    get toFrom() {
+        return this._toFrom;
     }
 
     // -----------------------------------------------------------------------
