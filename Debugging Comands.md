@@ -5,8 +5,8 @@
 ```
 sudo systemctl stop piefis
 cd ~
-source Python_Avionics/bin/activate
-cd Python_Avionics
+source EFIS/bin/activate
+cd EFIS
 python aio_server.py
 ```
 

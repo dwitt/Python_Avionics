@@ -111,9 +111,9 @@ To rotate 90 degrees use a matrix of `"0 1 0 -1 0 1 0 0 1"`.
 
 
 ## Create the local directories
-- `mkdir ~/Python_Avionics`
-- `mkdir ~/Python_Avionics/support`
-- Copy the files from `RPi4` and `RPi4/support` in the repo to `~/Python_Avionics` and `~/Python_Avionics/support`
+- `mkdir ~/EFIS`
+- `mkdir ~/EFIS/support`
+- Copy the files from `RPi4` and `RPi4/support` in the repo to `~/EFIS` and `~/EFIS/support`
 
 ## Add Files for Python 3
 Python 3 should already be installed. You can double check it using
@@ -127,11 +127,11 @@ First, you need to install pip and virtual env so that it can be used to install
 
 Next, create a virtual environment and activate it. Do this from the home directory.
 
-`virtualenv Python_Avionics`
+`virtualenv EFIS`
 
 Activate the environment.
 
-`source Python_Avionics/bin/activate`
+`source EFIS/bin/activate`
 
 Finally install the required packages.
 

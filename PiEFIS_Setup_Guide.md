@@ -163,14 +163,14 @@ Rotation values:
 ## Create Local Directories
 
 ```bash
-mkdir ~/Python_Avionics
-mkdir ~/Python_Avionics/support
+mkdir ~/EFIS
+mkdir ~/EFIS/support
 ```
 
 Copy files from the repository:
 
-- `RPi4/*` → `~/Python_Avionics`
-- `RPi4/support/*` → `~/Python_Avionics/support`
+- `RPi4/*` → `~/EFIS`
+- `RPi4/support/*` → `~/EFIS/support`
 
 ---
 
@@ -196,11 +196,11 @@ You may also need the development tools.
 sudo apt install --no-install-recommends python3-dev build-essential
 ```
 
-Create and activate the virtual environment. Note that the virtual environment is created inside the `~/Python_Avionics` directory alongside the application code:
+Create and activate the virtual environment. Note that the virtual environment is created inside the `~/EFIS` directory alongside the application code:
 
 ```bash
-virtualenv Python_Avionics
-source Python_Avionics/bin/activate
+virtualenv EFIS
+source EFIS/bin/activate
 ```
 
 Install required packages:

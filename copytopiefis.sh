@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Script to be run from the Python_Avionics directory
+# Script to be run from the EFIS directory
 
 # remote directories on the pi-efis computer
-piefis_main_dir=/home/david/Python_Avionics/
-piefis_support_dir=/home/david/Python_Avionics/support
-piefis_linux_dir=/home/david/Python_Avionics/linux/
+piefis_main_dir=/home/david/EFIS/
+piefis_support_dir=/home/david/EFIS/support
+piefis_linux_dir=/home/david/EFIS/linux/
 
 destination_server=pi-efis.local
 user=david
