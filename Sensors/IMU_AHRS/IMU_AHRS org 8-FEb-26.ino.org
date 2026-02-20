@@ -1,0 +1,633 @@
+
+/*****************************************************************************
+ * IMU Calibration - based on Adafruit AHRS Calibration
+ * Works with MotionCal to Calibrate the compass 
+ *****************************************************************************/
+
+/*****************************************************************************
+ * Boards used
+ * Adafruit Feather RP2040
+ * Adafruit CAN Bus FeatherWing
+ * Adafruit ISM330DHCX + LIS3MDL FeatherWing
+ * Adafruit 24LC32 I2C EEPROM
+ *****************************************************************************/
+
+#include <Adafruit_ISM330DHCX.h>	// Only for ISM330DHCX
+#include <Adafruit_LSM6DS.h>		// I2C Driver base for Adafruit LSM6DSxx sensors
+
+// Remove the following includes once the the code is running.
+//#include <Adafruit_LSM6DS3.h>			// Only for LSM6DS3
+//#include <Adafruit_LSM6DS33.h>		// Only for LSM6DS33
+//#include <Adafruit_LSM6DS3TRC.h>		// Only for LSM6DS3TRC
+//#include <Adafruit_LSM6DSL.h>			// Only for LSM6DSL		
+//#include <Adafruit_LSM6DSO32.h>		// Only for LSM6DSO32
+//#include <Adafruit_LSM6DSOX.h>    	// Only for LSMDSOX
+
+#include <Adafruit_LIS3MDL.h>		// For Magnetometer
+#include <Adafruit_MCP2515.h>		// For CAN Bus FeatherWing
+#include <Adafruit_EEPROM_I2C.h>	// EEPROM to hold calibration data
+
+/*****************************************************************************
+ * Include libraries for other functions
+ *****************************************************************************/
+//----------------------------------------------------------------------------
+// Using a customized copy of the sensor calibration library that has been
+// modified to detect an Adafruit Feather RP2040 and use an EEPROM with this 
+// board
+//----------------------------------------------------------------------------
+#include <Sensor_Calibration.h>
+
+//----------------------------------------------------------------------------
+// Use the Adafruit AHRS library
+// ---------------------------------------------------------------------------
+#include <Adafruit_AHRS.h>
+
+/*****************************************************************************
+ * Defines to help with debugging     
+ *****************************************************************************/
+//#define DEBUG					Comment out for production code
+
+/*****************************************************************************
+ * Create the objects using the libraries 
+ *****************************************************************************/
+//----------------------------------------------------------------------------
+// The IMU uses the I2C bus
+//----------------------------------------------------------------------------
+
+#define ISM330DHCX_I2C_ADDRESS 	0x6A
+#define LIS3MDL_I2C_ADDRESS		0x1C
+
+Adafruit_ISM330DHCX ism330dhcx;
+Adafruit_LIS3MDL lis3mdl;
+
+//----------------------------------------------------------------------------
+// The MCP2515 (CAN Bus) uses SPI
+//----------------------------------------------------------------------------
+
+#define CAN_CS_PIN 7
+#define CAN_BAUDRATE (250000)
+
+Adafruit_MCP2515 can(CAN_CS_PIN);
+
+// CAN Message Constants -----------------------------------------------------
+#define CAN_EULER_MSG_ID	0x48
+#define CAN_ACC_MSG_ID		0x49
+#define CAN_CALIB_MSG_ID	0x23
+#define CAN_MAGX_MSG_ID		0x81
+#define CAN_MAGY_MSG_ID		0x82
+#define CAN_MAGZ_MSG_ID		0x83
+
+#define CAN_EULER_PERIOD	100		// milliseconds
+#define CAN_ACC_PERIOD		100		// milliseconds
+#define CAN_MAG_PERIOD		250		// milliseconds
+
+//----------------------------------------------------------------------------
+// The Sensor Calibration EEPROM uses the I2C bus for calibration
+// The I2C bus is on the Wire interface of the Feather RP2040
+//----------------------------------------------------------------------------
+
+#define EEPROM_I2C_ADDRESS	(0X50)
+
+Sensor_Calibration_EEPROM cal(EEPROM_I2C_ADDRESS, &Wire);	// Wire speed set at end of setup
+
+//----------------------------------------------------------------------------
+// Create Adafruit Sensor object pointers
+//----------------------------------------------------------------------------
+Adafruit_Sensor *accelerometer, *gyroscope, *magnetometer;
+
+//----------------------------------------------------------------------------
+// Set the frequency to update the SensorFusion filter and to print results
+// Create the filter object based on the method to be used for fusing the
+// sensor data. Uncomment only one of the filters
+//----------------------------------------------------------------------------
+#define FILTER_UPDATE_RATE_HZ 100	// 10 millisecond interval
+#define PRINT_EVERY_N_UPDATES 10	// 100 milisecond interval
+
+//#define AHRS_DEBUG_OUTPUT			// Enable to print AHRS debug info
+
+Adafruit_NXPSensorFusion filter; 	// slowest
+//Adafruit_Madgwick filter;  		// faster than NXP
+//Adafruit_Mahony filter;  			// fastest/smalleset
+
+//----------------------------------------------------------------------------
+// Define locally global variables and functions
+// ---------------------------------------------------------------------------
+sensors_event_t mag_event, gyro_event, accel_event;	// sensor event (data) // THESE CAN BE DELETED
+uint32_t timestamp;					// tracking the timing in the main loop
+
+// Timestamps to determine when to send the next CAN message
+
+static long canEulerTimeStamp = 0;	
+static long canAccTimeStamp = 0;
+static long canMagTimeStamp = 0;
+
+// Data to send via CAN
+// Declared globally but local to this file 
+
+static int16_t roll = 0;		// degrees * 10
+static int16_t pitch = 0;		// degrees * 10 
+static int16_t yaw = 0;			// degrees * 10
+static int16_t accelX = 0;
+static int16_t accelY = 0;
+static int16_t accelZ = 0;
+
+// Data for calculating yaw rate
+float yawRaw = 0.0;
+float lastYawRaw = 0.0;
+
+/*****************************************************************************
+ * Setup Code 
+ *
+ * Connect to all of the Peripherals
+ *****************************************************************************/
+
+void setup() {
+
+	Serial.begin(115200);
+	
+	// Add a timeout for interactive features
+	unsigned long startMillis = millis();
+	while (!Serial && (millis() - startMillis < 10000)) {
+		// Wait up to 3 seconds for USB Serial connection
+		delay(100);
+	}
+
+	#if defined(DEBUG)
+	if (Serial) {
+		Serial.println("Debugging ISM330DHCX, LIS3MDL and MCP2515.");
+	}
+	#endif
+
+	bool ism330dhcx_success, lis3mdl_success, can_success, eeprom_success;
+
+	// -----------------------------------------------------------------------
+	// Connect to the ISM330DHCX
+	// Provide the address and the I2C interface to use.
+	// When using the Earle Philhower core:
+	// Wire is I2C1 on the RP2040
+	// Wire1 is I2C0 on the RP2040
+	// Wire speed set at end of setup
+	// -----------------------------------------------------------------------
+
+	ism330dhcx_success = ism330dhcx.begin_I2C(ISM330DHCX_I2C_ADDRESS, &Wire);
+	#if defined(DEBUG)
+	if (!ism330dhcx_success && Serial) Serial.println("Could not find ISM330DHCX!");
+	#endif
+
+	// -----------------------------------------------------------------------
+	// Connect to the LIS3MDL
+	// Provide the address and the I2C interface to use.
+	// When using the Earle Philhower core:
+	// Wire is I2C1 on the RP2040
+	// Wire1 is I2C0 on the RP2040
+	// Wire speed set at end of setup
+	// -----------------------------------------------------------------------
+
+	lis3mdl_success = lis3mdl.begin_I2C(LIS3MDL_I2C_ADDRESS, &Wire);
+	#if defined(DEBUG)
+	if (!lis3mdl_success && Serial) Serial.println("Could not find LIS3MDL!");
+	#endif
+
+	// -----------------------------------------------------------------------
+	// Connect to the MCP2515 CAN Bus controller on the SPI bus
+	// Provide the baud rate for the CAN Bus
+	// -----------------------------------------------------------------------
+
+	can_success = can.begin(CAN_BAUDRATE);
+	#if defined(DEBUG)
+	if (!can_success && Serial) Serial.println("Could not find CAN Bus MCP2515!");
+	#endif
+
+
+	// -----------------------------------------------------------------------
+	// Make a stop or proceed decision based on whether we could connect
+	// to all of the devices
+
+	if (!(ism330dhcx_success && lis3mdl_success && can_success )) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Startup failed.");
+		#endif
+		while(true){	// stop in while loop forever
+			delay(10);
+		}
+	}
+
+	#if defined(DEBUG)
+	if (Serial) Serial.println("All peripherals connected.");
+	#endif
+
+	// -----------------------------------------------------------------------
+	// Connect to the EEPROM
+	// -----------------------------------------------------------------------
+
+	if (!cal.begin()) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Failed to initialize the calibration helper");
+		#endif
+		while(true) {
+			yield();
+			delay(10);
+		}
+	}
+
+	if (!cal.loadCalibration()) {
+		#if defined(DEBUG)
+    	if (Serial) Serial.println("**WARNING** No calibration loaded/found");
+		#endif
+  	}
+
+  	cal.printSavedCalibration();
+
+
+	/*************************************************************************
+	 * Configure the peripherals                          
+	 *************************************************************************/
+
+	// -----------------------------------------------------------------------
+	// Set the Accelerometer and Gyro (ISM330DHCX) ranges and data rates
+	// Note: The library is based on LSM6DS and the constants use this for
+	//       a prefix despite the fact that we are configuring the ISM330DHCX
+	// -----------------------------------------------------------------------
+	// -----------------------------------------------------------------------
+	// Set the Magnetometer (LIS3MDL) ranges, data rates and modes
+	// -----------------------------------------------------------------------
+
+	// Note: The accelerometer data range is set to 4G instead of 2G as in 
+	// the Adafruit Calibration routine. This section is effectively the 
+	// setup_sensors(void) method.
+
+	#define ACCEL_RANGE LSM6DS_ACCEL_RANGE_4_G			// +/- 4G
+	#define GYRO_RANGE LSM6DS_GYRO_RANGE_250_DPS		// 250 degrees/sec
+	#define MAG_RANGE LIS3MDL_RANGE_4_GAUSS				// 4 Gauss
+	
+	#define ACCEL_DATA_RATE LSM6DS_RATE_104_HZ			// 104 Hz
+	#define GYRO_DATA_RATE LSM6DS_RATE_104_HZ			// 104 Hz
+	#define MAG_DATA_RATE LIS3MDL_DATARATE_1000_HZ		// 1000 Hz
+
+	#define MAG_POWER_MODE LIS3MDL_MEDIUMMODE			// Medium Power
+	#define MAG_OPERATION_MODE LIS3MDL_CONTINUOUSMODE	// Continuous
+	
+	// -----------------------------------------------------------------------
+	// Set the ISM330DHCX acceleraometer range
+	// -----------------------------------------------------------------------
+	lsm6ds_accel_range_t accel_range;
+
+	ism330dhcx.setAccelRange(ACCEL_RANGE);
+	accel_range = ism330dhcx.getAccelRange();
+	if (accel_range != ACCEL_RANGE) {
+		#if defined(DEBUG)
+		if (Serial)	Serial.println("Unable to set acceleration range in ISM330DHCX.");
+		#endif
+		while(true) {
+			delay(10);
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// Set the ISM330DHCX acceleraometer data rate
+	// -----------------------------------------------------------------------
+	lsm6ds_data_rate_t accel_data_rate;
+
+	ism330dhcx.setAccelDataRate(ACCEL_DATA_RATE);
+	accel_data_rate = ism330dhcx.getAccelDataRate();
+	if (accel_data_rate != ACCEL_DATA_RATE) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Unable to set acceleration data rate in ISM330DHCX.");
+		#endif
+		while(true) {
+			delay(10);
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// Set the ISM330DHCX gyro range
+	// -----------------------------------------------------------------------
+	lsm6ds_gyro_range_t gyro_range;
+
+	ism330dhcx.setGyroRange(GYRO_RANGE);
+	gyro_range = ism330dhcx.getGyroRange();
+	if (gyro_range != GYRO_RANGE) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Unable to set gyro range in ISM330DHCX.");
+		#endif
+		while(true) {
+			delay(10);
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// Set the ISM330DHCX gyro data rate
+	// -----------------------------------------------------------------------
+	lsm6ds_data_rate_t gyro_data_rate;
+
+	ism330dhcx.setGyroDataRate(GYRO_DATA_RATE);
+	gyro_data_rate = ism330dhcx.getGyroDataRate();
+	if (gyro_data_rate != GYRO_DATA_RATE) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Unable to set GYRO data rate in ISM330DHCX.");
+		#endif
+		while(true) {
+			delay(10);
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// Set the LIS3MDL range
+	// -----------------------------------------------------------------------
+	lis3mdl_range_t magnetometer_range;
+
+	lis3mdl.setRange(MAG_RANGE);
+	magnetometer_range = lis3mdl.getRange();
+	if (magnetometer_range != MAG_RANGE) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Unable to set Magnetometer data range in LIS3MDL.");
+		#endif
+		while(true) {
+			delay(10);
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// Set the LIS3MDL data rate
+	// -----------------------------------------------------------------------
+	lis3mdl_dataRate_t magnetometer_data_rate;
+
+	lis3mdl.setDataRate(MAG_DATA_RATE);
+	magnetometer_data_rate = lis3mdl.getDataRate();
+	if (magnetometer_data_rate != MAG_DATA_RATE) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Unable to set Magnetometer data rate in LIS3MDL.");
+		#endif
+		while(true) {
+			delay(10);
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// Set the LIS3MDL power/performance mode
+	// -----------------------------------------------------------------------
+	lis3mdl_performancemode_t magnetometer_performance_mode;
+
+	lis3mdl.setPerformanceMode(MAG_POWER_MODE);
+	magnetometer_performance_mode = lis3mdl.getPerformanceMode();
+	if (magnetometer_performance_mode != MAG_POWER_MODE) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Unable to set Magnetometer power mode in LIS3MDL.");
+		#endif
+		while(true) {
+			delay(10);
+		}
+	}	
+
+	// -----------------------------------------------------------------------
+	// Set the LIS3MDL operation mode
+	// -----------------------------------------------------------------------
+	lis3mdl_operationmode_t magnetometer_operation_mode;
+
+	lis3mdl.setOperationMode(MAG_OPERATION_MODE);
+	magnetometer_operation_mode = lis3mdl.getOperationMode();
+	if (magnetometer_operation_mode != MAG_OPERATION_MODE) {
+		#if defined(DEBUG)
+		if (Serial) Serial.println("Unable to set Magnetometer operation mode in LIS3MDL.");
+		#endif
+		while(true) {
+			delay(10);
+		}
+	}
+
+	/*************************************************************************
+	 * Setup Sensors                       
+	 *************************************************************************/
+	// The following 3 lines are equivalent to the init_sensors(void) function 
+	accelerometer = ism330dhcx.getAccelerometerSensor();
+	gyroscope = ism330dhcx.getGyroSensor();
+	magnetometer = &lis3mdl;
+
+	// -----------------------------------------------------------------------
+	// Print the sensor details if debugging
+	// May block if serial port not connected.
+	// -----------------------------------------------------------------------
+	#if defined(DEBUG)
+	accelerometer->printSensorDetails();
+	gyroscope->printSensorDetails();
+	magnetometer->printSensorDetails();	
+	#endif
+
+	/*************************************************************************
+	 * Setup the SensorFusion filter
+	 *************************************************************************/
+	 filter.begin(FILTER_UPDATE_RATE_HZ);
+
+	 timestamp = millis();
+
+	/*************************************************************************
+	 * Set the I2C speed
+	 *************************************************************************/
+
+	Wire.setClock(400000);		// 400 kHz
+
+}
+
+/*****************************************************************************
+ * Main Loop *****************************************************************
+ *****************************************************************************/
+
+void loop() {
+
+	// ------------------------------------------------------------------------
+	// Define variables
+	// ------------------------------------------------------------------------
+	// Union for CAN data. Allows loading different data types into various
+	// parts of the CAN data transmission
+	
+	static union DataUnion 
+	{
+		int16_t integers[4];
+		uint8_t bytes[8];
+		float	floats[2];
+
+	} canData;					
+
+//	unsigned long newTimeStamp, elapsedTime;
+
+	float gx, gy, gz;
+
+	static uint8_t counter = 0;
+
+	// ------------------------------------------------------------------------
+	// --- Send CAN data
+	// ------------------------------------------------------------------------
+
+	// ------------------------------------------------------------------------
+	// --- Send yaw, pitch and roll
+	// ------------------------------------------------------------------------
+	if (millis() > (canEulerTimeStamp + CAN_EULER_PERIOD) + random(50)) {
+		canData.integers[0] = yaw; 
+		canData.integers[1] = pitch;
+		canData.integers[2] = roll;
+		canData.integers[3] = 0;
+		can.beginPacket(CAN_EULER_MSG_ID);
+		can.write(canData.bytes, 8);
+		can.endPacket();
+		canEulerTimeStamp = millis();
+	}
+
+	// ------------------------------------------------------------------------
+	// -- Send accelerations. Fill out the buffer with 0
+	// ------------------------------------------------------------------------
+	if (millis() > (canAccTimeStamp + CAN_ACC_PERIOD) + random(50)) {
+		canData.integers[0] = accelX; 
+		canData.integers[1] = accelY;
+		canData.integers[2] = accelZ;
+		canData.integers[3] = 0;
+		can.beginPacket(CAN_ACC_MSG_ID);
+		can.write(canData.bytes, 8);
+		can.endPacket();
+		canAccTimeStamp = millis();
+	}
+
+	// ------------------------------------------------------------------------
+	// Check if it is time to update the SensorFusion filter.
+	// If it is not then start loop again.
+	// ------------------------------------------------------------------------
+	if ((millis() - timestamp) < (1000 / FILTER_UPDATE_RATE_HZ)) {
+		return;
+	}
+
+	// ------------------------------------------------------------------------
+	// -- Update the time stamps
+	// ------------------------------------------------------------------------
+
+	timestamp = millis();					// get the current time
+
+	/**************************************************************************
+	 * Read the sensor data, calibrate it, and then fuse it.
+	 **************************************************************************/
+
+	// ------------------------------------------------------------------------
+	// Read the motion sensors
+	// ------------------------------------------------------------------------
+	sensors_event_t accel, gyro, mag;	// declare variables to store the data
+	
+										// UNITS
+	accelerometer->getEvent(&accel);	// m/s^2
+	gyroscope->getEvent(&gyro);			// rads/s
+	magnetometer->getEvent(&mag);		// uT
+	
+	#if defined(AHRS_DEBUG_OUTPUT)
+	if (Serial) Serial.print("I2C took "); Serial.print(millis()-timestamp); Serial.println(" ms");
+	#endif
+
+	// ------------------------------------------------------------------------
+	// Apply the calibration to each of the sensors
+	// ------------------------------------------------------------------------
+	cal.calibrate(mag);
+	cal.calibrate(accel);
+	cal.calibrate(gyro);
+	
+	// ------------------------------------------------------------------------
+	// Gyroscope needs to be converted from Rad/s to Degree/s
+	// the rest are not unit-important
+	// ------------------------------------------------------------------------
+	gx = gyro.gyro.x * SENSORS_RADS_TO_DPS;
+	gy = gyro.gyro.y * SENSORS_RADS_TO_DPS;
+	gz = gyro.gyro.z * SENSORS_RADS_TO_DPS;
+
+	// ------------------------------------------------------------------------
+	// Update the SensorFusion filter
+	// ------------------------------------------------------------------------
+	filter.update(gx, gy, gz, 
+				  accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, 
+				  mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+
+	#if defined(AHRS_DEBUG_OUTPUT)
+	if (Serial) Serial.print("Update took "); Serial.print(millis()-timestamp); Serial.println(" ms");
+	#endif
+
+	// ------------------------------------------------------------------------
+	// Calulate the data to send - Maybe only do this when we need to send???
+	// ------------------------------------------------------------------------
+	// Get the roll, pitch and yaw. Convert them to 16 bit integers and 
+	// multiply by 10 for sending over the can bus.
+	// These still need to be adjusted for our airplane convention as the yaw
+	// is inverted from what would normaly be expected. we need to rotate the
+	// co-ordinate system.
+	// ------------------------------------------------------------------------
+
+//	lastYawRaw = yawRaw;
+
+//	yawRaw = filter.getYaw();
+
+	roll = round(filter.getRoll() * 10.0);
+	pitch = round(filter.getPitch() * 10.0);
+	yaw = round(filter.getYaw() * 10.0);
+
+	// // Calculate turn rate as degrees/milisecond * 1000 * 10 to get degrees * 10 / second 
+	// turnRate = round((yawRaw - lastYawRaw) * 10000.0 / elapsedTime);
+
+	accelX = round(accel.acceleration.x * 100.0);
+	accelY = round(accel.acceleration.y * 100.0);
+	accelZ = round(accel.acceleration.z * 100.0);
+
+	#if defined(AHRS_DEBUG_OUTPUT)
+	if (Serial) Serial.print("Additional Calculations took "); Serial.print(millis()-timestamp); Serial.println(" ms");
+	#endif
+
+	// ------------------------------------------------------------------------
+	// Only print the calculated output once in a while
+	// ------------------------------------------------------------------------
+	if (counter++ <= PRINT_EVERY_N_UPDATES) {
+		return;
+	}
+
+	counter = 0;	// reset the counter for the next print update
+
+	// ------------------------------------------------------------------------
+	// Print RAW data if AHRS_DEBUG_OUTPUT defined
+	// ------------------------------------------------------------------------
+	#if defined(AHRS_DEBUG_OUTPUT)
+	if (Serial) Serial.print("Raw: ");
+	if (Serial) Serial.print(accel.acceleration.x, 4); Serial.print(", ");
+	if (Serial) Serial.print(accel.acceleration.y, 4); Serial.print(", ");
+	if (Serial) Serial.print(accel.acceleration.z, 4); Serial.print(", ");
+	if (Serial) Serial.print(gx, 4); Serial.print(", ");
+	if (Serial) Serial.print(gy, 4); Serial.print(", ");
+	if (Serial) Serial.print(gz, 4); Serial.print(", ");
+	if (Serial) Serial.print(mag.magnetic.x, 4); Serial.print(", ");
+	if (Serial) Serial.print(mag.magnetic.y, 4); Serial.print(", ");
+	if (Serial) Serial.print(mag.magnetic.z, 4); Serial.println("");
+	#endif
+
+	// ------------------------------------------------------------------------
+	// Print the heading, pitch and roll
+	// ------------------------------------------------------------------------
+	#if defined(DEBUG)
+	if (Serial) Serial.print("Orientation: ");
+	if (Serial) Serial.print(yaw);
+	if (Serial) Serial.print(", ");
+	if (Serial) Serial.print(pitch);
+	if (Serial) Serial.print(", ");
+	if (Serial) Serial.println(roll);
+	#endif
+
+	// ------------------------------------------------------------------------
+	// Print the gravitational accelerations
+	// ------------------------------------------------------------------------
+	
+	#if defined(DEBUG)
+	if (Serial) Serial.print("Acceleration: ");
+	if (Serial) Serial.print(accelX);
+	if (Serial) Serial.print(", ");
+	if (Serial) Serial.print(accelY);
+	if (Serial) Serial.print(", ");
+	if (Serial) Serial.println(accelZ);
+	#endif
+
+	
+	// ------------------------------------------------------------------------
+	// Print timing if AHRS_DEBUG_OUTOUT is defined
+	// ------------------------------------------------------------------------		
+	#if defined(AHRS_DEBUG_OUTPUT)
+	Serial.print("Took "); Serial.print(millis()-timestamp); Serial.println(" ms");
+	#endif  
+}

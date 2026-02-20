@@ -1,3 +1,12 @@
+# Directories not tracked in this repo
+3D Printing Files/
+CAN Reference/
+Crowbar_OVP/
+Electronics/
+Legacy/
+Reference/
+*.numbers
+
 # Python cache files
 __pycache__/
 *.py[cod]

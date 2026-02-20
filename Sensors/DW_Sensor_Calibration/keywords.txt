@@ -1,0 +1,8 @@
+Sensor_Calibration	KEYWORD1
+crc16_update	KEYWORD2
+hasEEPROM	KEYWORD2
+hasFLASH	KEYWORD2
+saveCalibration	KEYWORD2
+loadCalibration	KEYWORD2
+printSavedCalibration	KEYWORD2
+calibrate	KEYWORD2
