@@ -1,0 +1,19 @@
+# Build artifacts
+*.o
+images.cpp
+MotionCal
+MotionCal.app/
+MotionCal.dmg
+dmg_tmpdir/
+
+# Pre-built directories
+BuiltMotionCal/
+BuildMotionCal/
+PreviousBuild/
+
+# Logs
+log.txt
+make.log.txt
+
+# IDE
+.idea/

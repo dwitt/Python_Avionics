@@ -37,6 +37,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# Claude Code
+.claude/
+
 # IDE
 .vscode/
 .idea/
