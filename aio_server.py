@@ -27,7 +27,7 @@ import os
 DEBUG = False
 DEBUG_CAN = False
 DEBUG_JSON = False
-DEBUG_QNH = True
+DEBUG_QNH = False
 DEBUG_GPS_TIME = False
 DEBUG_BRIGHTNESS = False
 DEBUG_DISABLE_ENCODER = False

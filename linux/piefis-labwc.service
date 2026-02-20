@@ -1,7 +1,9 @@
 [Unit]
-Description=PiEFIS Wayland Kiosk using labwc
-After=systemd-user-sessions.service seatd.service can0.service
-Wants=seatd.service can0.service
+Description=PiEFIS Wayland Kiosk
+After=systemd-user-sessions.service seatd.service
+After=can0.service
+Wants=seatd.service
+Wants=can0.service
 
 # Limit to 5 starts within 30 seconds
 StartLimitIntervalSec=30
