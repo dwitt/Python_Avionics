@@ -125,13 +125,14 @@ First, you need to install pip and virtual env so that it can be used to install
 `sudo apt install --no-install-recommends python3-virtualenv`
 `sudo apt install --no-install-recommends python3-pip`
 
-Next, create a virtual environment and activate it. Do this from the home directory.
+Next, create a virtual environment and activate it.
 
-`virtualenv EFIS`
+`cd ~/EFIS`
+`virtualenv venv`
 
 Activate the environment.
 
-`source EFIS/bin/activate`
+`source venv/bin/activate`
 
 Finally install the required packages.
 

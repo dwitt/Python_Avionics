@@ -4,9 +4,8 @@
 
 ```
 sudo systemctl stop piefis
-cd ~
-source EFIS/bin/activate
-cd EFIS
+cd ~/EFIS
+source venv/bin/activate
 python aio_server.py
 ```
 

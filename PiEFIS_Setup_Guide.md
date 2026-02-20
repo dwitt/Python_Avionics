@@ -196,11 +196,12 @@ You may also need the development tools.
 sudo apt install --no-install-recommends python3-dev build-essential
 ```
 
-Create and activate the virtual environment. Note that the virtual environment is created inside the `~/EFIS` directory alongside the application code:
+Create and activate the virtual environment. The virtual environment is created in a `venv` subdirectory inside `~/EFIS` to keep it separate from the application code:
 
 ```bash
-virtualenv EFIS
-source EFIS/bin/activate
+cd ~/EFIS
+virtualenv venv
+source venv/bin/activate
 ```
 
 Install required packages:

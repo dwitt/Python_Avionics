@@ -12,7 +12,7 @@ Group=david
 WorkingDirectory=/home/david/EFIS
 
 # Specify the full path to your virtualenv's python interpreter
-ExecStart=/home/david/EFIS/bin/python /home/david/EFIS/aio_server.py
+ExecStart=/home/david/EFIS/venv/bin/python /home/david/EFIS/aio_server.py
 
 # If you want the service to automatically restart on failure:
 Restart=on-failure

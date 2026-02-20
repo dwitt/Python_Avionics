@@ -31,13 +31,13 @@ mv ~/Python_Avionics ~/EFIS
 
 ### 4. Remove the old virtualenv and recreate it
 
-The virtualenv has hardcoded absolute paths that break when the directory is renamed. Delete the venv files and recreate in place.
+The virtualenv has hardcoded absolute paths that break when the directory is renamed. Delete the old venv files and recreate in a `venv` subdirectory.
 
 ```bash
 cd ~/EFIS
 rm -rf bin lib lib64 include share pyvenv.cfg
-virtualenv .
-source bin/activate
+virtualenv venv
+source venv/bin/activate
 pip install -r ~/requirements.txt
 deactivate
 ```
