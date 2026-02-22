@@ -28,16 +28,26 @@ export class SoftButtons {
         const softButtonContainer = new Container();
         softButtonContainer.position.set(xPos, yPos);
 
-        const buttonContainer = this.createButtonContainer(height, width, "Menu");
+        const buttonContainer = this.createButtonContainer(height, width, options.text || "Menu");
 
         buttonContainer.eventMode = 'static';
         buttonContainer.cursor = 'pointer';
         buttonContainer.on('pointerdown', this.onClick);
         buttonContainer.userData = this;
 
+        // Notification dot (hidden by default)
+        this._dot = new Graphics();
+        this._dot.fillStyle = { color: 0x00ff00, alpha: 1.0 };
+        this._dot.circle(width - 8, 8, 5);
+        this._dot.fill();
+        this._dot.visible = false;
         softButtonContainer.addChild(buttonContainer);
+        softButtonContainer.addChild(this._dot);
         app.stage.addChild(softButtonContainer);
         }
+
+    showNotification() { this._dot.visible = true; }
+    clearNotification() { this._dot.visible = false; }
 
     createButtonContainer(height, width, text) {
 

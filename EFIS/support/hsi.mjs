@@ -24,6 +24,9 @@ export class HSI {
         this._courseDeviation = 0;   // cross-track error in NM
         this._toFrom = null;         // "TO", "FROM", or null
         this._cdiFullScaleNM = 2;    // full-scale CDI deflection in NM
+        this._desiredTrack = null;   // DTK from flight plan (overrides CRS knob)
+        this._waypointDistance = null;
+        this._waypointId = null;
         this.changeableFirstPass = false;
         this.selected = false;
         this.changable = false;
@@ -56,6 +59,8 @@ export class HSI {
         this._createTrackIndicator();
         this._createBugReadout();
         this._createGroundSpeedReadout();
+        this._createNavReadout();
+        this._createGpsStatusBox();
         this._createSelectionRing();
         this.hsiContainer.addChild(this.fixedContainer);
 
@@ -422,7 +427,13 @@ export class HSI {
     }
 
     _updateCoursePointerRotation() {
-        const offset = (this._bugValue - this._heading) * Math.PI / 180;
+        let course;
+        if (this._desiredTrack !== null && this._desiredTrack !== undefined) {
+            course = this._desiredTrack;  // flight plan DTK drives pointer
+        } else {
+            course = this._bugValue;      // manual CRS knob drives pointer
+        }
+        const offset = (course - this._heading) * Math.PI / 180;
         this.courseContainer.rotation = offset;
     }
 
@@ -516,6 +527,55 @@ export class HSI {
     }
 
     // -----------------------------------------------------------------------
+    // Navigation readout — waypoint ID and distance below ground speed
+    // -----------------------------------------------------------------------
+    _createNavReadout() {
+        const r = this.radius;
+        const navStyle = new TextStyle({
+            fontFamily: 'Tahoma',
+            fontSize: 20,
+            fill: 0xff00ff,  // magenta to match course pointer
+        });
+        this.navText = new Text({ text: '', style: navStyle });
+        this.navText.anchor.set(0.5, 0);
+        this.navText.position.set(0, r + 34);  // below GS readout
+        this.fixedContainer.addChild(this.navText);
+    }
+
+    // -----------------------------------------------------------------------
+    // Desired track property — overrides course pointer when flight plan active
+    // -----------------------------------------------------------------------
+    set desiredTrack(value) {
+        this._desiredTrack = value;
+        this._updateCoursePointerRotation();
+    }
+
+    get desiredTrack() {
+        return this._desiredTrack;
+    }
+
+    // -----------------------------------------------------------------------
+    // Waypoint distance and ID properties
+    // -----------------------------------------------------------------------
+    set waypointDistance(value) {
+        this._waypointDistance = value;
+        this._updateNavReadout();
+    }
+
+    set waypointId(value) {
+        this._waypointId = value;
+        this._updateNavReadout();
+    }
+
+    _updateNavReadout() {
+        if (this._waypointId && this._waypointDistance !== null) {
+            this.navText.text = `${this._waypointId}  ${this._waypointDistance.toFixed(1)} NM`;
+        } else {
+            this.navText.text = '';
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Heading bug property — positions the bug triangle
     // -----------------------------------------------------------------------
     set headingBug(value) {
@@ -533,6 +593,136 @@ export class HSI {
         const offset = (this._bugValue - this._heading) * Math.PI / 180;
         this.bugContainer.rotation = offset;
         this._updateCoursePointerRotation();
+    }
+
+    // -----------------------------------------------------------------------
+    // GPS Status Box — upper-left corner of HSI display
+    // -----------------------------------------------------------------------
+    _createGpsStatusBox() {
+        const screenX = this.app.screen.width / 2;
+        const screenY = this.app.screen.height / 2;
+        const margin = 10;
+        const boxWidth = 120;
+        const boxHeight = 82;
+        const pad = 8;
+        const lineHeight = 18;
+
+        const gpsBox = new Container();
+        gpsBox.position.set(-screenX + margin + boxWidth / 2, -screenY + margin + boxHeight / 2);
+
+        // Background
+        const bg = new Graphics();
+        bg.fillStyle = { color: 0x222222, alpha: 0.85 };
+        bg.strokeStyle = { color: 0x666666, width: 1, alpha: 0.8 };
+        bg.roundRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight, 6);
+        bg.fill();
+        bg.stroke();
+        gpsBox.addChild(bg);
+
+        const labelStyle = new TextStyle({
+            fontFamily: 'Tahoma', fontSize: 13, fill: 0x888888,
+        });
+        const valueStyle = new TextStyle({
+            fontFamily: 'Tahoma', fontSize: 14, fill: 0xbbbbbb,
+        });
+
+        const startY = -boxHeight / 2 + pad + 7;
+
+        // Line 1: Fix type (color changes dynamically)
+        this._gpsFixText = new Text({ text: '---', style: new TextStyle({
+            fontFamily: 'Tahoma', fontSize: 14, fill: 0x888888, fontWeight: 'bold',
+        })});
+        this._gpsFixText.anchor.set(0.5, 0.5);
+        this._gpsFixText.position.set(0, startY);
+        gpsBox.addChild(this._gpsFixText);
+
+        // Line 2: SAT count
+        const satLabel = new Text({ text: 'SAT', style: labelStyle });
+        satLabel.anchor.set(0, 0.5);
+        satLabel.position.set(-boxWidth / 2 + pad, startY + lineHeight);
+        gpsBox.addChild(satLabel);
+
+        this._gpsSatText = new Text({ text: '--', style: new TextStyle({
+            fontFamily: 'Tahoma', fontSize: 14, fill: 0xbbbbbb,
+        })});
+        this._gpsSatText.anchor.set(1, 0.5);
+        this._gpsSatText.position.set(boxWidth / 2 - pad, startY + lineHeight);
+        gpsBox.addChild(this._gpsSatText);
+
+        // Line 3: HDOP
+        const hdopLabel = new Text({ text: 'HDOP', style: labelStyle });
+        hdopLabel.anchor.set(0, 0.5);
+        hdopLabel.position.set(-boxWidth / 2 + pad, startY + lineHeight * 2);
+        gpsBox.addChild(hdopLabel);
+
+        this._gpsHdopText = new Text({ text: '--', style: new TextStyle({
+            fontFamily: 'Tahoma', fontSize: 14, fill: 0xbbbbbb,
+        })});
+        this._gpsHdopText.anchor.set(1, 0.5);
+        this._gpsHdopText.position.set(boxWidth / 2 - pad, startY + lineHeight * 2);
+        gpsBox.addChild(this._gpsHdopText);
+
+        // Line 4: VDOP
+        const vdopLabel = new Text({ text: 'VDOP', style: labelStyle });
+        vdopLabel.anchor.set(0, 0.5);
+        vdopLabel.position.set(-boxWidth / 2 + pad, startY + lineHeight * 3);
+        gpsBox.addChild(vdopLabel);
+
+        this._gpsVdopText = new Text({ text: '--', style: new TextStyle({
+            fontFamily: 'Tahoma', fontSize: 14, fill: 0xbbbbbb,
+        })});
+        this._gpsVdopText.anchor.set(1, 0.5);
+        this._gpsVdopText.position.set(boxWidth / 2 - pad, startY + lineHeight * 3);
+        gpsBox.addChild(this._gpsVdopText);
+
+        this.fixedContainer.addChild(gpsBox);
+    }
+
+    set gpsFixQuality(v) {
+        if (v === null || v === undefined) {
+            this._gpsFixText.text = '---';
+            this._gpsFixText.style.fill = 0x888888;
+        } else if (v === 2) {
+            this._gpsFixText.text = 'DGPS';
+            this._gpsFixText.style.fill = 0x00ff00;  // green — WAAS active
+        } else if (v === 1) {
+            this._gpsFixText.text = 'GPS';
+            this._gpsFixText.style.fill = 0x00ffff;  // cyan — standard fix
+        } else {
+            this._gpsFixText.text = 'No Fix';
+            this._gpsFixText.style.fill = 0xff0000;  // red — no fix
+        }
+    }
+
+    set gpsSatellites(v) {
+        this._gpsSatText.text = (v !== null && v !== undefined) ? String(v) : '--';
+    }
+
+    _dopColor(v) {
+        if (v < 1.5) return 0x00ff00;   // green — excellent
+        if (v < 3.0) return 0x00ffff;   // cyan — good
+        if (v < 5.0) return 0xffff00;   // yellow — moderate
+        return 0xff4444;                 // red — poor
+    }
+
+    set gpsHdop(v) {
+        if (v !== null && v !== undefined) {
+            this._gpsHdopText.text = v.toFixed(1);
+            this._gpsHdopText.style.fill = this._dopColor(v);
+        } else {
+            this._gpsHdopText.text = '--';
+            this._gpsHdopText.style.fill = 0xbbbbbb;
+        }
+    }
+
+    set gpsVdop(v) {
+        if (v !== null && v !== undefined) {
+            this._gpsVdopText.text = v.toFixed(1);
+            this._gpsVdopText.style.fill = this._dopColor(v);
+        } else {
+            this._gpsVdopText.text = '--';
+            this._gpsVdopText.style.fill = 0xbbbbbb;
+        }
     }
 
     // -----------------------------------------------------------------------

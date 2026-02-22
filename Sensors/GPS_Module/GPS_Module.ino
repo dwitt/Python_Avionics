@@ -19,8 +19,8 @@
 /*****************************************************************************
  * Defines to help with debugging
  ****************************************************************************/
-#define DEBUG
-#define DEBUG_NO_CAN    // Skip CAN bus, output messages to Serial instead
+// #define DEBUG
+// #define DEBUG_NO_CAN    // Skip CAN bus, output messages to Serial instead
 
 // ----------------------------------------------------------------------------
 // GPS uses Serial1 (hardware UART on Feather RP2040)
@@ -52,10 +52,12 @@ Adafruit_MCP2515 can(CAN_CS_PIN);
 // CAN Message Constants ------------------------------------------------------
 #define CAN_GPS1_MSG_ID       0x63
 #define CAN_GPS2_MSG_ID       0x64
+#define CAN_GPS3_MSG_ID       0x65
 #define CAN_TIME_SYNC_MSG_ID  0x19
 
 #define CAN_GPS1_PERIOD       1000    // milliseconds
 #define CAN_GPS2_PERIOD       1000    // milliseconds
+#define CAN_GPS3_PERIOD       1000    // milliseconds
 #define CAN_TIME_SYNC_PERIOD  1000    // milliseconds
 
 // ----------------------------------------------------------------------------
@@ -72,6 +74,7 @@ Adafruit_MCP2515 can(CAN_CS_PIN);
 // Timestamps to determine when to send the next CAN message
 static long canGps1TimeStamp = 0;
 static long canGps2TimeStamp = 0;
+static long canGps3TimeStamp = 0;
 static long canTimeSyncTimeStamp = 0;
 
 // Data to send via CAN
@@ -204,9 +207,16 @@ void setup() {
 
   // Enable RMC, GGA, and GSA sentences
   gps.sendCommand("$PMTK314,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29");
+  delay(100);
 
   // Set the NMEA update rate to 1 Hz (1000 ms)
   gps.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+  delay(100);
+
+  // Enable SBAS/WAAS for improved accuracy (especially vertical)
+  gps.sendCommand(PMTK_ENABLE_SBAS);
+  delay(100);
+  gps.sendCommand(PMTK_ENABLE_WAAS);
 
   gps_success = true;  // GPS is fire-and-forget on UART, no handshake
 
@@ -276,11 +286,14 @@ void loop() {
     uint8_t bytes[8];
   } canGps1Data = {};
 
-  // GPS2 message: 4 x int16_t (speed, altitude, track, unused)
+  // GPS2 message: 4 x int16_t (speed, altitude, track, mag track)
   static union {
     int16_t integers[4];
     uint8_t bytes[8];
   } canGps2Data = {};
+
+  // GPS3 message: GPS status (fixquality, fix3d, sats, reserved, HDOP, VDOP)
+  static uint8_t canGps3Data[8] = {};
 
   // Time Sync message: 8 x uint8_t
   static uint8_t canTimeSyncData[8] = {};
@@ -477,4 +490,42 @@ void loop() {
     }
 
   } // end if (gps.fix)
+
+  // --------------------------------------------------------------------------
+  // Send GPS Status (sent regardless of fix, so display shows "No Fix" status)
+  // --------------------------------------------------------------------------
+
+  if (millis() - canGps3TimeStamp > CAN_GPS3_PERIOD + random(50)) {
+    canGps3Data[0] = gps.fixquality;      // 0=No fix, 1=GPS, 2=DGPS (WAAS)
+    canGps3Data[1] = gps.fixquality_3d;   // 1=No fix, 2=2D, 3=3D
+    canGps3Data[2] = gps.satellites;       // Number of satellites in use
+    canGps3Data[3] = 0;                    // Reserved
+
+    // HDOP and VDOP as int16 × 100 (e.g. 1.2 → 120)
+    int16_t hdop = (int16_t)(gps.HDOP * 100);
+    int16_t vdop = (int16_t)(gps.VDOP * 100);
+    canGps3Data[4] = hdop & 0xFF;
+    canGps3Data[5] = (hdop >> 8) & 0xFF;
+    canGps3Data[6] = vdop & 0xFF;
+    canGps3Data[7] = (vdop >> 8) & 0xFF;
+
+    #if defined(DEBUG_NO_CAN)
+    serialPrintCANMsg(CAN_GPS3_MSG_ID, canGps3Data, 8);
+    #else
+    can.beginPacket(CAN_GPS3_MSG_ID);
+    can.write(canGps3Data, 8);
+    can.endPacket();
+    #endif
+    canGps3TimeStamp = millis();
+
+    #if defined(DEBUG)
+    if (Serial) {
+      Serial.print("fix = "); Serial.print(gps.fixquality);
+      Serial.print(", 3d = "); Serial.print(gps.fixquality_3d);
+      Serial.print(", sat = "); Serial.print(gps.satellites);
+      Serial.print(", hdop = "); Serial.print(gps.HDOP);
+      Serial.print(", vdop = "); Serial.println(gps.VDOP);
+    }
+    #endif
+  }
 }

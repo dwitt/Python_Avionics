@@ -13,6 +13,7 @@ import aiohttp #pylint: disable=import-error
 import can #pylint: disable=import-error
 
 from enum import Enum
+from flightplan import FlightPlan, compute_navigation
 
 #import board #pylint: disable=import-error
 from adafruit_extended_bus import ExtendedI2C as I2C
@@ -33,6 +34,7 @@ DEBUG_BRIGHTNESS = False
 DEBUG_DISABLE_ENCODER = False
 DEBUG_DISABLE_CAN = False
 DEBUG_WEBSOCKET = False
+DEBUG_NAV = False
 
 # =============================================================================
 # CAN BUS CONFIGURATION
@@ -53,6 +55,7 @@ class CAN_MSG_ID(Enum):
     ENCODER = 0x38
     GPS1 = 0x63
     GPS2 = 0x64
+    GPS3 = 0x65
     MAGX = 0x81
     MAGY = 0x82
     MAGZ = 0x83
@@ -78,6 +81,12 @@ SEESAW_EXPECTED_PRODUCT_ID = 4991  # Expected product ID for seesaw encoder
 # =============================================================================
 MESSAGE_TIMEOUT = 0.2  # seconds
 JSON_UPDATE_RATE = 0.05  # seconds between JSON updates (20Hz = 50ms)
+
+# =============================================================================
+# FLIGHT PLAN CONFIGURATION
+# =============================================================================
+FLIGHTPLAN_DIR = Path.home() / 'flightplans'
+FLIGHTPLAN_POLL_INTERVAL = 5.0  # seconds between checking for new .fpl files
 
 # =============================================================================
 # DATA CONVERSION AND SCALING FACTORS
@@ -123,6 +132,11 @@ class AvionicsData:
         self.gps_speed = None
         self.gps_altitude = None
         self.true_track = None
+        self.gps_fix_quality = None  # 0=No fix, 1=GPS, 2=DGPS (WAAS)
+        self.gps_fix_3d = None       # 1=No fix, 2=2D, 3=3D
+        self.gps_satellites = None   # Number of satellites in use
+        self.gps_hdop = None         # Horizontal dilution of precision
+        self.gps_vdop = None         # Vertical dilution of precision
         self.magx = None
         self.magy = None
         self.magz = None
@@ -134,6 +148,18 @@ class AvionicsData:
         self.tm_sec = None
         self.position = None
         self.pressed = None
+        # Navigation (computed from flight plan + GPS position)
+        self.dtk = None         # desired track (degrees)
+        self.bearing = None     # bearing to active waypoint (degrees)
+        self.xtrack = None      # cross-track error (NM, +right/-left)
+        self.dist = None        # distance to active waypoint (NM)
+        self.to_from = None     # 'TO' or 'FROM'
+        self.wpt_id = None      # active waypoint identifier
+        self.route_name = None  # flight plan route name
+        self.route_waypoints = None  # list of {id, type} dicts for route display
+        self.active_leg = None       # index of active waypoint in route
+        # Internal (not serialized to JSON)
+        self._flight_plan = None  # FlightPlan instance
 
 # *****************************************************************************
 
@@ -292,6 +318,16 @@ class MyWebSocketResponse:
                     else:
                         if DEBUG_BRIGHTNESS:
                             print("Backlight not available, skipping brightness update")
+
+                # Process active_leg selection (waypoint change from route overlay)
+                active_leg = dict_object.get('active_leg', None)
+                if active_leg is not None and self.data._flight_plan is not None:
+                    active_leg = int(active_leg)
+                    fp = self.data._flight_plan
+                    if 1 <= active_leg < len(fp.waypoints):
+                        fp.active_leg = active_leg
+                        self.data.active_leg = active_leg
+                        print(f"Waypoint selected: {fp.active_waypoint_id} (leg {active_leg})")
 
             except (KeyError, ValueError, TypeError) as e:
                 # Data not received or invalid format, ignore it
@@ -648,6 +684,28 @@ async def process_gps1_message(msg, data, last_received_times):
         #       in the following calculations
         data.latitude = latitude  # / 10^6
         data.longitude = longitude  # / 10^6
+
+        # Compute flight plan navigation if a plan is loaded
+        if data._flight_plan is not None:
+            nav = compute_navigation(latitude, longitude, data._flight_plan)
+            if nav:
+                data.dtk = nav['dtk']
+                data.bearing = nav['bearing']
+                data.xtrack = nav['xtrack']
+                data.dist = nav['dist']
+                data.to_from = nav['to_from']
+                data.wpt_id = nav['wpt_id']
+                data.route_name = nav['route_name']
+                # Keep active_leg in sync (auto-sequencing may have advanced it)
+                data.active_leg = data._flight_plan.active_leg
+                if DEBUG_NAV:
+                    print(f"Nav: {nav['wpt_id']} DTK={nav['dtk']} "
+                          f"BRG={nav['bearing']} XTK={nav['xtrack']} "
+                          f"DST={nav['dist']} {nav['to_from']}")
+            else:
+                data.dtk = data.bearing = data.xtrack = None
+                data.dist = data.to_from = data.wpt_id = data.route_name = None
+
         return True
     except struct.error as e:
         if DEBUG_CAN:
@@ -676,6 +734,35 @@ async def process_gps2_message(msg, data, last_received_times):
     except struct.error as e:
         if DEBUG_CAN:
             print(f"Error unpacking GPS2 message: {e}")
+        return False
+
+async def process_gps3_message(msg, data, last_received_times):
+    """Process GPS3 message (GPS status: fix quality, satellites, HDOP, VDOP)
+
+    Args:
+        msg: CAN message object
+        data: AvionicsData instance to update
+        last_received_times: Dictionary to update with receive timestamp (unused here)
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    if not validate_message_length(msg, 8, "GPS3"):
+        return False
+
+    try:
+        (fq, fq3d, sats, _, hdop_raw, vdop_raw) = (
+            struct.unpack("<BBBBhh", msg.data)
+        )
+        data.gps_fix_quality = fq
+        data.gps_fix_3d = fq3d
+        data.gps_satellites = sats
+        data.gps_hdop = round(hdop_raw / 100.0, 1)
+        data.gps_vdop = round(vdop_raw / 100.0, 1)
+        return True
+    except struct.error as e:
+        if DEBUG_CAN:
+            print(f"Error unpacking GPS3 message: {e}")
         return False
 
 async def process_magx_message(msg, data, last_received_times):
@@ -803,6 +890,7 @@ CAN_MESSAGE_HANDLERS = {
     CAN_MSG_ID.AHRS_ACCEL.value: process_ahrs_accel_message,
     CAN_MSG_ID.GPS1.value: process_gps1_message,
     CAN_MSG_ID.GPS2.value: process_gps2_message,
+    CAN_MSG_ID.GPS3.value: process_gps3_message,
     CAN_MSG_ID.MAGX.value: process_magx_message,
     CAN_MSG_ID.MAGY.value: process_magy_message,
     CAN_MSG_ID.MAGZ.value: process_magz_message,
@@ -928,7 +1016,8 @@ async def send_json(web_socket_response, data):
                 print("Json Alt = ", data.altitude)
             # use an exception handler as the socket could be closed inadvertently
             try:
-                await web_socket_response.web_socket.send_json(data.__dict__)
+                d = {k: v for k, v in data.__dict__.items() if not k.startswith('_')}
+                await web_socket_response.web_socket.send_json(d)
             except (ConnectionResetError, ConnectionAbortedError, 
                     aiohttp.ClientError, RuntimeError) as e:
                 if DEBUG:
@@ -936,6 +1025,53 @@ async def send_json(web_socket_response, data):
                 # Socket is likely closed, will be handled by outer check
         # Rate limit: wait before next send to prevent flooding the websocket
         await asyncio.sleep(JSON_UPDATE_RATE)
+
+
+# -----------------------------------------------------------------------------
+# --- Monitor flight plan directory for new/changed .fpl files              ---
+# -----------------------------------------------------------------------------
+async def monitor_flight_plan(data):
+    """Monitor ~/flightplans for new/changed .fpl files and load the newest."""
+    fp = FlightPlan()
+    last_loaded_file = None
+    last_mtime = 0
+
+    while True:
+        try:
+            if FLIGHTPLAN_DIR.exists():
+                fpl_files = sorted(
+                    FLIGHTPLAN_DIR.glob('*.fpl'),
+                    key=lambda f: f.stat().st_mtime,
+                    reverse=True
+                )
+                if fpl_files:
+                    newest = fpl_files[0]
+                    mtime = newest.stat().st_mtime
+                    if newest != last_loaded_file or mtime != last_mtime:
+                        if fp.load(newest):
+                            data._flight_plan = fp
+                            data.route_waypoints = [
+                                {'id': w['id'], 'type': w['type']}
+                                for w in fp.waypoints
+                            ]
+                            data.active_leg = fp.active_leg
+                            last_loaded_file = newest
+                            last_mtime = mtime
+                        else:
+                            data._flight_plan = None
+                            data.route_waypoints = None
+                            data.active_leg = None
+                else:
+                    if last_loaded_file is not None:
+                        print("No flight plan files found")
+                        data._flight_plan = None
+                        data.route_waypoints = None
+                        data.active_leg = None
+                        last_loaded_file = None
+        except Exception as e:
+            print(f"Error checking flight plans: {e}")
+
+        await asyncio.sleep(FLIGHTPLAN_POLL_INTERVAL)
 
 
 async def read_input(encoder, button, data):
@@ -1155,6 +1291,7 @@ async def main():
     #    process_can_messages(reader, avionics_data, last_received_times),
         monitor_timeout(avionics_data, last_received_times),
         send_json(web_socket_response, avionics_data),
+        monitor_flight_plan(avionics_data),
     #    read_input(encoder, button, avionics_data)
     ]
     

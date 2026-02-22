@@ -190,6 +190,17 @@ class FlightPlan:
             return True
         return False
 
+    def to_dict(self):
+        """Return route data as a JSON-serializable dict."""
+        return {
+            'route_name': self.route_name,
+            'active_leg': self.active_leg,
+            'waypoints': [
+                {'id': w['id'], 'type': w['type']}
+                for w in self.waypoints
+            ],
+        }
+
 
 # =============================================================================
 # Navigation computation

@@ -38,6 +38,7 @@ import { TurnRateIndicator } from './turnRateIndicator.mjs';
 import { SoftButtons } from './softButtons.mjs';
 import { MenuOverlay } from './menuOverlay.mjs';
 import { HSI } from './hsi.mjs';
+import { RouteOverlay } from './routeOverlay.mjs';
 
 
 
@@ -109,6 +110,33 @@ document.body.appendChild(app2.canvas);
 // --- HSI on the second canvas ---
 let hsiDiameter = Math.min(app2.screen.width, app2.screen.height) * 0.75;
 hsi = new HSI(app2, app2.screen.width / 2, app2.screen.height / 2, hsiDiameter);
+
+// --- Route overlay and button ---
+function sendCommand(cmd) {
+    if (myWebSocket.readyState == 1) {
+        myWebSocket.send("json" + JSON.stringify(cmd));
+    }
+}
+let routeOverlay = new RouteOverlay(app2, sendCommand);
+
+// "Route" button — lower right corner of HSI canvas, matching Menu button style
+let routeBtnWidth = 90;
+let routeBtnHeight = 38;
+let routeBtnMargin = 1;
+const routeBtn = new SoftButtons(app2, {
+    addContainer() {
+        routeOverlay.toggle();
+        routeBtn.clearNotification();
+    }
+}, {
+    x: app2.screen.width - routeBtnWidth - routeBtnMargin,
+    y: app2.screen.height - 40 + routeBtnMargin,
+    width: routeBtnWidth,
+    height: routeBtnHeight + 2 * routeBtnMargin,
+    text: "Route"
+});
+let _lastRouteLen = undefined;
+let _lastActiveLeg = undefined;
 
 // ----------------------------------------------------------------------------
 // --- Create a new object to hold the data object coming from the websocket---
@@ -454,11 +482,42 @@ function DisplayUpdateLoop(delta) {
     if (dataObject.gps_speed !== undefined) {
         hsi.groundSpeed = dataObject.gps_speed;
     }
+    if (dataObject.gps_fix_quality !== undefined) {
+        hsi.gpsFixQuality = dataObject.gps_fix_quality;
+        hsi.gpsSatellites = dataObject.gps_satellites;
+        hsi.gpsHdop = dataObject.gps_hdop;
+        hsi.gpsVdop = dataObject.gps_vdop;
+    }
     if (dataObject.xtrack !== undefined && dataObject.xtrack !== null) {
         hsi.courseDeviation = dataObject.xtrack;
     }
     if (dataObject.to_from !== undefined && dataObject.to_from !== null) {
         hsi.toFrom = dataObject.to_from;
+    }
+    if (dataObject.dtk !== undefined && dataObject.dtk !== null) {
+        hsi.desiredTrack = dataObject.dtk;
+    } else {
+        hsi.desiredTrack = null;
+    }
+    if (dataObject.dist !== undefined && dataObject.dist !== null) {
+        hsi.waypointDistance = dataObject.dist;
+    } else {
+        hsi.waypointDistance = null;
+    }
+    if (dataObject.wpt_id !== undefined && dataObject.wpt_id !== null) {
+        hsi.waypointId = dataObject.wpt_id;
+    } else {
+        hsi.waypointId = null;
+    }
+    if (dataObject.route_waypoints !== undefined) {
+        routeOverlay.update(dataObject.route_waypoints, dataObject.active_leg);
+        // Show notification dot when route loads/changes or active leg changes
+        const routeLen = dataObject.route_waypoints ? dataObject.route_waypoints.length : 0;
+        if (routeLen !== _lastRouteLen || dataObject.active_leg !== _lastActiveLeg) {
+            if (routeLen > 0) routeBtn.showNotification();
+            _lastRouteLen = routeLen;
+            _lastActiveLeg = dataObject.active_leg;
+        }
     }
 
     // Update turn rate using spring-mass-damper model (simulates gyro inertia)
@@ -480,23 +539,32 @@ function DisplayUpdateLoop(delta) {
         //                          " | Gyro: " + smoothedTurnRate.toFixed(2);
     }
 
-    // speedDisplay.groundSpeed = dataObject.gps_speed;
+    if (dataObject.gps_speed != null) {
+        speedDisplay.groundSpeed = dataObject.gps_speed;
+    }
+    // TAS requires OAT sensor — disabled until CAN 0x2B format mismatch is fixed
+    // (AIR module sends staticTemp as int16 °C×10 in bytes 2-3, but server
+    //  reads byte 2 as int8 temperature and bytes 3-4 as differential_pressure)
     // speedDisplay.staticPressure = dataObject.static_pressure;
     // speedDisplay.differentialPressure = dataObject.differential_pressure;
     // speedDisplay.indicatedTemperature = dataObject.temperature;
-    // //console.log("Static P = " + dataObject.static_pressure + "| Diff P = " + dataObject.differential_pressure + "| Temp = " + dataObject.temperature);
-    // speedDisplay.update();
-    
+    speedDisplay.update();
+
+    // Temperature from 0x2B is garbled (format mismatch) — disable until fixed
     // tempTimeDisplay.temperature = dataObject.temperature;
-    // tempTimeDisplay.timeHour = dataObject.tm_hour
-    // tempTimeDisplay.timeMinute = dataObject.tm_min;
+    if (dataObject.tm_hour != null && dataObject.tm_min != null) {
+        tempTimeDisplay.timeHour = dataObject.tm_hour;
+        tempTimeDisplay.timeMinute = dataObject.tm_min;
+    }
+    tempTimeDisplay.update();
 
-    // tempTimeDisplay.update();
-
-    // altitudeDisplay.gpsAltitude = dataObject.gps_altitude;
-    // altitudeDisplay.staticPressure = dataObject.static_pressure;
+    altitudeDisplay.gpsAltitude = dataObject.gps_altitude;
+    if (dataObject.static_pressure != null) {
+        altitudeDisplay.staticPressure = dataObject.static_pressure;
+    }
+    // Density altitude requires OAT — disabled until CAN 0x2B format is fixed
     // altitudeDisplay.temperature = dataObject.temperature;
-    // altitudeDisplay.update();
+    altitudeDisplay.update();
 
     //magnetometerCalibrate.plotPoint(dataObject.magx,dataObject.magy,dataObject.magz);
     
