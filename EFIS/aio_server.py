@@ -48,6 +48,7 @@ CAN_TIMEOUT = 0.1
 class CAN_MSG_ID(Enum):
     """CAN message ID enumeration"""
     ALTITUDE_AIRSPEED_VSI = 0x28
+    OAT = 0x2A
     QNH = 0x2E
     STATIC_PRESSURE = 0x2B
     AHRS_ORIENT = 0x48
@@ -117,6 +118,7 @@ class AvionicsData:
         self.static_pressure = None
         self.temperature = None
         self.differential_pressure = None
+        self.oat = None             # Outside Air Temperature (°C, from MAX31865 RTD)
         self.can_qnh = None
         self.can_qnh_hpa = None
         self.yaw = None
@@ -573,6 +575,19 @@ async def process_static_pressure_message(msg, data, last_received_times):
             print(f"Error unpacking static pressure message: {e}")
         return False
 
+async def process_oat_message(msg, data, last_received_times):
+    """Process OAT (Outside Air Temperature) message from MAX31865 RTD sensor"""
+    if not validate_message_length(msg, 8, "OAT"):
+        return False
+    try:
+        (oat_raw, humidity, _, _, _, _, _) = struct.unpack("<hBBBBBB", msg.data)
+        data.oat = oat_raw / 10.0  # Convert from °C × 10 to °C
+        return True
+    except struct.error as e:
+        if DEBUG_CAN:
+            print(f"Error unpacking OAT message: {e}")
+        return False
+
 async def process_qnh_message(msg, data, last_received_times):
     """Process QNH message
     
@@ -884,6 +899,7 @@ async def process_time_sync_message(msg, data, last_received_times):
 # Note: Some handlers require last_received_times parameter, handled in process_can_messages
 CAN_MESSAGE_HANDLERS = {
     CAN_MSG_ID.ALTITUDE_AIRSPEED_VSI.value: process_altitude_message,
+    CAN_MSG_ID.OAT.value: process_oat_message,
     CAN_MSG_ID.STATIC_PRESSURE.value: process_static_pressure_message,
     CAN_MSG_ID.QNH.value: process_qnh_message,
     CAN_MSG_ID.AHRS_ORIENT.value: process_ahrs_orient_message,

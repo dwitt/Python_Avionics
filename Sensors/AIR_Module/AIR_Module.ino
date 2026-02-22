@@ -14,6 +14,7 @@
 #include <Wire.h>               // I2C library
 #include <Adafruit_MCP2515.h>   // for CAN bus FeatherWing
 #include <Adafruit_NeoPixel.h>  // for NeoPixel LED
+#include <Adafruit_MAX31865.h>  // for MAX31865 RTD temperature sensor
 #include "MS4525DO.h"           // MS4525DO Sensor Library
 #include "SSC.h"                // SSC Sensor Library
 #include "KalmanFilter.h"       // Kalman Filter Library
@@ -86,6 +87,12 @@ DeadbandFilter pitotPressureDeadbandFilter(0.12, 0.5);
 
 Adafruit_MCP2515 can(CAN_CS_PIN);
 
+// MAX31865 RTD temperature sensor (OAT) on SPI, separate CS pin
+#define RTD_CS_PIN 24
+#define RTD_NOMINAL 100.0       // PT100 nominal resistance
+#define RTD_REF_RESISTOR 430.0  // Adafruit breakout reference resistor
+Adafruit_MAX31865 rtd(RTD_CS_PIN);
+
 // CAN Message Constants ------------------------------------------------------
 #define CAN_AIR_MSG_ID    0x28
 #define CAN_AOA_MSG_ID    0x29
@@ -125,7 +132,8 @@ static int16_t verticalSpeed = 0;   // CANbus Data: feet/minute
 static int16_t aoa = 0;             // CANbus Data: degrees
 static int32_t staticPressure = 0;  // CANbus Data: hPa * 10
 static int16_t staticTemp = 0;      // CANbus Data: degrees C * 10
-static int16_t oatTemp = 0;         // CANbus Data: degrees C * 10
+static int16_t oatTemp = 0;         // CANbus Data: degrees C * 10 (from MAX31865 RTD)
+static bool rtdAvailable = false;   // tracks whether RTD init succeeded
 static int16_t pitotTemp = 0;       // CANbus Data: degrees C * 10
 static int16_t pitotPressure = 0;   // CANbus Data: 
 
@@ -229,7 +237,14 @@ void setup() {
 	if (!can_success && Serial) Serial.println("Could not find CAN Bus MCP2515!");
 	#endif
 
+  // --------------------------------------------------------------------------
+  // Connect to the MAX31865 RTD temperature sensor (OAT)
+  // --------------------------------------------------------------------------
 
+  rtdAvailable = rtd.begin(MAX31865_3WIRE);
+  #if defined(DEBUG)
+  if (!rtdAvailable && Serial) Serial.println("Could not find MAX31865 RTD sensor!");
+  #endif
 
   // --------------------------------------------------------------------------
   // Make a stop or proceed decision based on whether we could connect
@@ -237,7 +252,7 @@ void setup() {
   // --------------------------------------------------------------------------
 
   if (!ms4525do_pitot_success || !ms4525do_aoa_success ||
-     !ssc_success || !can_success ) {
+     !ssc_success || !can_success || !rtdAvailable ) {
     #if defined(DEBUG)
     if (Serial) Serial.println("Startup failed.");
     #endif
@@ -369,14 +384,43 @@ void loop() {
   // --------------------------------------------------------------------------
 
   if (millis() - canRawTimeStamp > CAN_RAW_PERIOD + random(50)) {
-
-    canData.integers[0] = staticPressure;
-    canData.integers[1] = staticTemp;
+    // Pack to match legacy format: <hbhBBB>
+    // int16 static_pressure (hPa×10), int8 temperature (°C),
+    // int16 differential_pressure (Pa), 3 bytes padding
+    int16_t sp = (int16_t)(staticPressureFiltered * 10);  // hPa → hPa×10
+    canData.bytes[0] = sp & 0xFF;
+    canData.bytes[1] = (sp >> 8) & 0xFF;
+    canData.bytes[2] = (uint8_t)((int8_t)sensorStaticTemp);  // whole °C
+    int16_t diffP = (int16_t)(pitotPressureFiltered * 100);   // hPa → Pa
+    canData.bytes[3] = diffP & 0xFF;
+    canData.bytes[4] = (diffP >> 8) & 0xFF;
+    canData.bytes[5] = 0;
+    canData.bytes[6] = 0;
+    canData.bytes[7] = 0;
 
     can.beginPacket(CAN_RAW_MSG_ID);
     can.write(canData.bytes, 8);
     can.endPacket();
     canRawTimeStamp = millis(); // update the timestamp
+  }
+
+  // --------------------------------------------------------------------------
+  // Send the OAT (Outside Air Temperature) data from the MAX31865 RTD
+  // --------------------------------------------------------------------------
+
+  if (rtdAvailable && millis() - canTempTimeStamp > CAN_TEMP_PERIOD + random(50)) {
+    canData.integers[0] = oatTemp;    // °C × 10 (int16, bytes 0-1)
+    canData.bytes[2] = 0;             // Humidity % (not available)
+    canData.bytes[3] = 0;
+    canData.bytes[4] = 0;
+    canData.bytes[5] = 0;
+    canData.bytes[6] = 0;
+    canData.bytes[7] = 0;
+
+    can.beginPacket(CAN_TEMP_MSG_ID);
+    can.write(canData.bytes, 8);
+    can.endPacket();
+    canTempTimeStamp = millis();
   }
 
   /***************************************************************************
@@ -430,6 +474,18 @@ void loop() {
     pitotPressureFiltered = pitotPressureDeadbandFilter.update(pitotPressureFiltered);
 
     sensorStaticTemp = ssc_temp_event.temperature;
+
+    // Read MAX31865 RTD temperature (OAT)
+    // Must call temperature() first (triggers conversion), then check fault after
+    if (rtdAvailable) {
+      float oatC = rtd.temperature(RTD_NOMINAL, RTD_REF_RESISTOR);
+      uint8_t fault = rtd.readFault();
+      if (fault == 0) {
+        oatTemp = (int16_t)(oatC * 10);  // °C × 10
+      } else {
+        rtd.clearFault();
+      }
+    }
 
     // ------------------------------------------------------------------------
     // Calculate the airspeed

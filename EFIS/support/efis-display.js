@@ -542,16 +542,18 @@ function DisplayUpdateLoop(delta) {
     if (dataObject.gps_speed != null) {
         speedDisplay.groundSpeed = dataObject.gps_speed;
     }
-    // TAS requires OAT sensor — disabled until CAN 0x2B format mismatch is fixed
-    // (AIR module sends staticTemp as int16 °C×10 in bytes 2-3, but server
-    //  reads byte 2 as int8 temperature and bytes 3-4 as differential_pressure)
-    // speedDisplay.staticPressure = dataObject.static_pressure;
-    // speedDisplay.differentialPressure = dataObject.differential_pressure;
-    // speedDisplay.indicatedTemperature = dataObject.temperature;
+    if (dataObject.static_pressure != null &&
+        dataObject.differential_pressure != null &&
+        dataObject.oat != null) {
+        speedDisplay.staticPressure = dataObject.static_pressure;
+        speedDisplay.differentialPressure = dataObject.differential_pressure;
+        speedDisplay.indicatedTemperature = dataObject.oat;
+    }
     speedDisplay.update();
 
-    // Temperature from 0x2B is garbled (format mismatch) — disable until fixed
-    // tempTimeDisplay.temperature = dataObject.temperature;
+    if (dataObject.oat != null) {
+        tempTimeDisplay.temperature = dataObject.oat;
+    }
     if (dataObject.tm_hour != null && dataObject.tm_min != null) {
         tempTimeDisplay.timeHour = dataObject.tm_hour;
         tempTimeDisplay.timeMinute = dataObject.tm_min;
@@ -562,8 +564,9 @@ function DisplayUpdateLoop(delta) {
     if (dataObject.static_pressure != null) {
         altitudeDisplay.staticPressure = dataObject.static_pressure;
     }
-    // Density altitude requires OAT — disabled until CAN 0x2B format is fixed
-    // altitudeDisplay.temperature = dataObject.temperature;
+    if (dataObject.oat != null) {
+        altitudeDisplay.temperature = dataObject.oat;
+    }
     altitudeDisplay.update();
 
     //magnetometerCalibrate.plotPoint(dataObject.magx,dataObject.magy,dataObject.magz);
