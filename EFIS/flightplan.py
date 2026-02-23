@@ -68,6 +68,7 @@ class FlightPlan:
         self.route_name = None
         self.waypoints = []       # ordered route waypoints: [{id, type, lat, lon, alt}, ...]
         self.active_leg = 0       # index of active waypoint (target)
+        self.direct_to_origin = None  # {'lat': float, 'lon': float} — GPS position at D→ activation
         self._filepath = None
 
     def load(self, filepath):
@@ -163,11 +164,19 @@ class FlightPlan:
 
     @property
     def previous_waypoint(self):
-        """Return the waypoint before the active one (leg start), or None."""
+        """Return the leg start point. When Direct-To is active, returns the
+        captured GPS origin so XTE is computed from the activation point."""
+        if self.direct_to_origin is not None:
+            return self.direct_to_origin
         idx = self.active_leg - 1
         if 0 <= idx < len(self.waypoints):
             return self.waypoints[idx]
         return None
+
+    @property
+    def direct_to_active(self):
+        """True when navigating Direct-To (origin captured)."""
+        return self.direct_to_origin is not None
 
     @property
     def active_waypoint_id(self):
@@ -175,9 +184,10 @@ class FlightPlan:
         return wpt['id'] if wpt else None
 
     def next_waypoint(self):
-        """Advance to the next waypoint. Returns True if advanced."""
+        """Advance to the next waypoint. Clears Direct-To. Returns True if advanced."""
         if self.active_leg < len(self.waypoints) - 1:
             self.active_leg += 1
+            self.direct_to_origin = None  # revert to leg-by-leg
             print(f"Nav: sequenced to {self.active_waypoint_id} (leg {self.active_leg})")
             return True
         return False
@@ -186,9 +196,24 @@ class FlightPlan:
         """Go back to the previous waypoint. Returns True if changed."""
         if self.active_leg > 1:  # don't go before first leg
             self.active_leg -= 1
+            self.direct_to_origin = None
             print(f"Nav: sequenced back to {self.active_waypoint_id} (leg {self.active_leg})")
             return True
         return False
+
+    def activate_direct_to(self, waypoint_index, lat, lon):
+        """Activate Direct-To: set target waypoint and capture origin position."""
+        if 1 <= waypoint_index < len(self.waypoints):
+            self.active_leg = waypoint_index
+            self.direct_to_origin = {'lat': lat, 'lon': lon}
+            print(f"Direct-To: {self.active_waypoint_id} from {lat:.6f}, {lon:.6f}")
+            return True
+        return False
+
+    def cancel_direct_to(self):
+        """Cancel Direct-To and revert to leg-by-leg navigation."""
+        self.direct_to_origin = None
+        print(f"Direct-To cancelled, leg mode to {self.active_waypoint_id}")
 
     def to_dict(self):
         """Return route data as a JSON-serializable dict."""

@@ -98,6 +98,9 @@ static uint8_t gpsSecond = 0;
 
 static bool gpsHasDate = false;
 
+static unsigned long lastWmmCompute = 0;
+#define WMM_COMPUTE_INTERVAL 60000  // Recompute magnetic declination every 60 seconds
+
 // ----------------------------------------------------------------------------
 // Convert GPS date/time to a decimal year for WMM calculations.
 // Approximate: each month = 1/12 year, each day = 1/365 year.
@@ -301,10 +304,13 @@ void loop() {
   // --------------------------------------------------------------------------
   // Read and parse GPS data
   // --------------------------------------------------------------------------
-  // gps.read() must be called frequently to keep the NMEA buffer flowing.
-  // When a complete sentence is received, parse it.
+  // Drain the serial buffer by reading all available characters each loop.
+  // gps.read() processes one character at a time; without this loop the
+  // buffer overflows when the rest of the loop is slow (e.g. WMM math).
 
-  gps.read();
+  while (Serial1.available()) {
+    gps.read();
+  }
 
   if (gps.newNMEAreceived()) {
     #if defined(DEBUG)
@@ -371,11 +377,14 @@ void loop() {
       gpsHasDate = true;
     }
 
-    // Compute magnetic declination from WMM2025 when we have a valid date
-    if (gpsHasDate) {
+    // Compute magnetic declination from WMM2025 (throttled — declination
+    // changes negligibly over minutes, but the computation is expensive on
+    // the M0+ with no hardware FPU and was starving the serial buffer)
+    if (gpsHasDate && (millis() - lastWmmCompute > WMM_COMPUTE_INTERVAL)) {
       magDeclination = computeMagDeclination(
         gps.latitudeDegrees, gps.longitudeDegrees, gps.altitude,
         gpsYear, gpsMonth, gpsDay);
+      lastWmmCompute = millis();
     }
 
     if (gps.angle >= 0 && gps.speed >= TRACK_SPEED_THRESHOLD) {

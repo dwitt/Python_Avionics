@@ -160,6 +160,7 @@ class AvionicsData:
         self.route_name = None  # flight plan route name
         self.route_waypoints = None  # list of {id, type} dicts for route display
         self.active_leg = None       # index of active waypoint in route
+        self.direct_to_active = False  # True when Direct-To navigation is active
         # Internal (not serialized to JSON)
         self._flight_plan = None  # FlightPlan instance
 
@@ -321,15 +322,34 @@ class MyWebSocketResponse:
                         if DEBUG_BRIGHTNESS:
                             print("Backlight not available, skipping brightness update")
 
-                # Process active_leg selection (waypoint change from route overlay)
+                # Process active_leg selection (leg mode from route overlay)
                 active_leg = dict_object.get('active_leg', None)
                 if active_leg is not None and self.data._flight_plan is not None:
                     active_leg = int(active_leg)
                     fp = self.data._flight_plan
                     if 1 <= active_leg < len(fp.waypoints):
                         fp.active_leg = active_leg
+                        fp.direct_to_origin = None  # clear any Direct-To
                         self.data.active_leg = active_leg
-                        print(f"Waypoint selected: {fp.active_waypoint_id} (leg {active_leg})")
+                        self.data.direct_to_active = False
+                        print(f"Leg selected: {fp.active_waypoint_id} (leg {active_leg})")
+
+                # Process Direct-To command
+                direct_to = dict_object.get('direct_to', None)
+                if direct_to is not None and self.data._flight_plan is not None:
+                    fp = self.data._flight_plan
+                    index = int(direct_to)
+                    if self.data.latitude is not None and self.data.longitude is not None:
+                        lat = self.data.latitude / 1_000_000
+                        lon = self.data.longitude / 1_000_000
+                        if fp.activate_direct_to(index, lat, lon):
+                            self.data.active_leg = fp.active_leg
+                            self.data.direct_to_active = True
+
+                # Process Cancel Direct-To command
+                if dict_object.get('cancel_direct_to', False) and self.data._flight_plan is not None:
+                    self.data._flight_plan.cancel_direct_to()
+                    self.data.direct_to_active = False
 
             except (KeyError, ValueError, TypeError) as e:
                 # Data not received or invalid format, ignore it
@@ -711,8 +731,9 @@ async def process_gps1_message(msg, data, last_received_times):
                 data.to_from = nav['to_from']
                 data.wpt_id = nav['wpt_id']
                 data.route_name = nav['route_name']
-                # Keep active_leg in sync (auto-sequencing may have advanced it)
+                # Keep active_leg and direct-to state in sync
                 data.active_leg = data._flight_plan.active_leg
+                data.direct_to_active = data._flight_plan.direct_to_active
                 if DEBUG_NAV:
                     print(f"Nav: {nav['wpt_id']} DTK={nav['dtk']} "
                           f"BRG={nav['bearing']} XTK={nav['xtrack']} "

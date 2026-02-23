@@ -5,7 +5,8 @@ import { Container, Graphics, TextStyle, Text } from './pixi.mjs';
 /*****************************************************************************
  * Route overlay for the HSI display.
  * Shows the loaded flight plan waypoints and allows the pilot to tap one
- * to select it as the active waypoint (direct-to).
+ * to select it, then choose "Leg" (normal) or "Direct To" (captures GPS
+ * origin for XTE).
  ****************************************************************************/
 export class RouteOverlay {
 
@@ -22,6 +23,10 @@ export class RouteOverlay {
         // Route data (updated each frame via update())
         this._routeWaypoints = null;
         this._activeLeg = null;
+        this._directToActive = false;
+
+        // Selection state (two-step: tap to select, then confirm action)
+        this._selectedIndex = null;
 
         // Scroll state
         this._scrollY = 0;
@@ -59,11 +64,13 @@ export class RouteOverlay {
      * Update stored route data. If the overlay is visible, rebuild rows
      * so the active leg highlight stays current (e.g. auto-sequencing).
      ***********************************************************************/
-    update(routeWaypoints, activeLeg) {
+    update(routeWaypoints, activeLeg, directToActive) {
         const changed = (activeLeg !== this._activeLeg) ||
-            (routeWaypoints?.length !== this._routeWaypoints?.length);
+            (routeWaypoints?.length !== this._routeWaypoints?.length) ||
+            (directToActive !== this._directToActive);
         this._routeWaypoints = routeWaypoints;
         this._activeLeg = activeLeg;
+        this._directToActive = directToActive || false;
         if (this.visible && changed) {
             this._buildPanel();
         }
@@ -74,6 +81,7 @@ export class RouteOverlay {
      ***********************************************************************/
     show() {
         if (this.visible) return;
+        this._selectedIndex = null;
         this._buildPanel();
         this.app.stage.addChild(this.overlay);
         this.visible = true;
@@ -84,6 +92,7 @@ export class RouteOverlay {
      ***********************************************************************/
     hide() {
         if (!this.visible) return;
+        this._selectedIndex = null;
         this.app.stage.removeChild(this.overlay);
         this.visible = false;
     }
@@ -118,15 +127,19 @@ export class RouteOverlay {
         const rowInset = 10;
         const rowWidth = boxWidth - 2 * rowInset;
 
-        // Fixed rows: title + close; scrollable: waypoints
+        // Bottom area: action buttons if selected, or close + optional cancel D→
+        const hasSelection = this._selectedIndex !== null;
+        const bottomRowCount = hasSelection ? 1 : (this._directToActive ? 2 : 1);
+        const bottomHeight = bottomRowCount * (rowHeight + padding);
+
+        // Fixed rows: title + bottom; scrollable: waypoints
         const titleHeight = rowHeight + padding;
-        const closeHeight = rowHeight + padding;
         const maxBoxHeight = screenH - 40;
         const scrollAreaHeight = Math.min(
             waypoints.length * rowHeight,
-            maxBoxHeight - titleHeight - closeHeight - 2 * padding
+            maxBoxHeight - titleHeight - bottomHeight - 2 * padding
         );
-        const boxHeight = titleHeight + scrollAreaHeight + closeHeight + 2 * padding;
+        const boxHeight = titleHeight + scrollAreaHeight + bottomHeight + 2 * padding;
         const boxX = (screenW - boxWidth) / 2;
         const boxY = (screenH - boxHeight) / 2;
 
@@ -183,37 +196,50 @@ export class RouteOverlay {
             const wpt = waypoints[i];
             const rowY = i * rowHeight;
             const isActive = (i === this._activeLeg);
+            const isSelected = (i === this._selectedIndex);
 
             const row = new Container();
             row.position.set(rowInset, rowY);
 
             // Row background
             const rowBg = new Graphics();
-            if (isActive) {
+            if (isSelected) {
+                // Selected: cyan highlight
+                rowBg.fillStyle = { color: 0x005577, alpha: 0.9 };
+                rowBg.strokeStyle = { color: 0x00ddff, width: 2, alpha: 1.0 };
+                rowBg.roundRect(0, 0, rowWidth, rowHeight - 6, 4);
+                rowBg.fill();
+                rowBg.stroke();
+            } else if (isActive) {
                 rowBg.fillStyle = { color: 0xff00ff, alpha: 0.7 };
+                rowBg.roundRect(0, 0, rowWidth, rowHeight - 6, 4);
+                rowBg.fill();
             } else {
                 rowBg.fillStyle = { color: 0x333333, alpha: 0.9 };
+                rowBg.roundRect(0, 0, rowWidth, rowHeight - 6, 4);
+                rowBg.fill();
             }
-            rowBg.roundRect(0, 0, rowWidth, rowHeight - 6, 4);
-            rowBg.fill();
             row.addChild(rowBg);
 
-            // Waypoint ID (left-aligned)
+            // Waypoint ID (left-aligned) — show D→ prefix if active + direct-to
+            const idFill = (isSelected || isActive) ? 0xffffff : 0xbbbbbb;
             const idStyle = new TextStyle({
                 fontFamily: 'Tahoma',
                 fontSize: 20,
-                fill: isActive ? 0xffffff : 0xbbbbbb,
+                fill: idFill,
             });
-            const idText = new Text({ text: wpt.id, style: idStyle });
+            const prefix = (isActive && this._directToActive) ? 'D\u2192 ' : '';
+            const idText = new Text({ text: prefix + wpt.id, style: idStyle });
             idText.anchor.set(0, 0.5);
             idText.position.set(15, (rowHeight - 6) / 2);
             row.addChild(idText);
 
             // Waypoint type (right-aligned, smaller)
+            const typeFill = (isSelected || isActive) ? 0xdddddd : 0x888888;
             const typeStyle = new TextStyle({
                 fontFamily: 'Tahoma',
                 fontSize: 16,
-                fill: isActive ? 0xdddddd : 0x888888,
+                fill: typeFill,
             });
             const typeMap = { 'INT': 'WPT', 'INT-VRP': 'VRP', 'USER WAYPOINT': 'GPS' };
             const displayType = !wpt.type ? 'GPS' : (typeMap[wpt.type] || wpt.type);
@@ -240,8 +266,8 @@ export class RouteOverlay {
                 row.on('pointerup', ((index) => (e) => {
                     e.stopPropagation();
                     if (!this._dragMoved) {
-                        this.sendCommand({ active_leg: index });
-                        this.hide();
+                        this._selectedIndex = index;
+                        this._buildPanel();
                     }
                     this._dragging = false;
                 })(i));
@@ -282,33 +308,129 @@ export class RouteOverlay {
 
         this.panel.addChild(scrollContainer);
 
-        // --- Close row (fixed at bottom) ---
-        const closeY = scrollTop + scrollAreaHeight + padding;
-        const closeRow = new Container();
-        closeRow.position.set(rowInset, closeY);
+        // --- Bottom buttons ---
+        const bottomY = scrollTop + scrollAreaHeight + padding;
 
-        const closeBg = new Graphics();
-        closeBg.fillStyle = { color: 0x333333, alpha: 0.9 };
-        closeBg.roundRect(0, 0, rowWidth, rowHeight - 6, 4);
-        closeBg.fill();
-        closeRow.addChild(closeBg);
+        if (hasSelection) {
+            // Action buttons: Leg | Direct To | Cancel — in one row
+            const btnCount = 3;
+            const btnGap = 8;
+            const btnWidth = (rowWidth - (btnCount - 1) * btnGap) / btnCount;
+            const btnHeight = rowHeight - 6;
 
-        const closeStyle = new TextStyle({
-            fontFamily: 'Tahoma',
-            fontSize: 20,
-            fill: 0xbbbbbb,
-        });
-        const closeText = new Text({ text: 'Close', style: closeStyle });
-        closeText.anchor.set(0.5, 0.5);
-        closeText.position.set(rowWidth / 2, (rowHeight - 6) / 2);
-        closeRow.addChild(closeText);
+            const buttons = [
+                { label: 'Leg',       color: 0x444444, action: () => {
+                    this.sendCommand({ active_leg: this._selectedIndex });
+                    this.hide();
+                }},
+                { label: 'Direct To', color: 0x8800aa, action: () => {
+                    this.sendCommand({ direct_to: this._selectedIndex });
+                    this.hide();
+                }},
+                { label: 'Cancel',    color: 0x444444, action: () => {
+                    this._selectedIndex = null;
+                    this._buildPanel();
+                }},
+            ];
 
-        closeRow.eventMode = 'static';
-        closeRow.cursor = 'pointer';
-        closeRow.on('pointerdown', (e) => {
-            e.stopPropagation();
-            this.hide();
-        });
-        this.panel.addChild(closeRow);
+            for (let b = 0; b < buttons.length; b++) {
+                const btn = buttons[b];
+                const btnContainer = new Container();
+                btnContainer.position.set(rowInset + b * (btnWidth + btnGap), bottomY);
+
+                const btnBg = new Graphics();
+                btnBg.fillStyle = { color: btn.color, alpha: 0.9 };
+                btnBg.roundRect(0, 0, btnWidth, btnHeight, 4);
+                btnBg.fill();
+                btnContainer.addChild(btnBg);
+
+                const btnStyle = new TextStyle({
+                    fontFamily: 'Tahoma',
+                    fontSize: 17,
+                    fill: 0xffffff,
+                });
+                const btnText = new Text({ text: btn.label, style: btnStyle });
+                btnText.anchor.set(0.5, 0.5);
+                btnText.position.set(btnWidth / 2, btnHeight / 2);
+                btnContainer.addChild(btnText);
+
+                btnContainer.eventMode = 'static';
+                btnContainer.cursor = 'pointer';
+                btnContainer.on('pointerdown', (e) => { e.stopPropagation(); });
+                btnContainer.on('pointerup', (e) => {
+                    e.stopPropagation();
+                    btn.action();
+                });
+
+                this.panel.addChild(btnContainer);
+            }
+        } else {
+            // No selection — show Close button, and Cancel D→ if direct-to is active
+            let currentY = bottomY;
+
+            if (this._directToActive) {
+                const cancelDtoRow = new Container();
+                cancelDtoRow.position.set(rowInset, currentY);
+
+                const cancelDtoBg = new Graphics();
+                cancelDtoBg.fillStyle = { color: 0x883300, alpha: 0.9 };
+                cancelDtoBg.roundRect(0, 0, rowWidth, rowHeight - 6, 4);
+                cancelDtoBg.fill();
+                cancelDtoRow.addChild(cancelDtoBg);
+
+                const cancelDtoStyle = new TextStyle({
+                    fontFamily: 'Tahoma',
+                    fontSize: 20,
+                    fill: 0xffffff,
+                });
+                const cancelDtoText = new Text({
+                    text: 'Cancel D\u2192',
+                    style: cancelDtoStyle,
+                });
+                cancelDtoText.anchor.set(0.5, 0.5);
+                cancelDtoText.position.set(rowWidth / 2, (rowHeight - 6) / 2);
+                cancelDtoRow.addChild(cancelDtoText);
+
+                cancelDtoRow.eventMode = 'static';
+                cancelDtoRow.cursor = 'pointer';
+                cancelDtoRow.on('pointerdown', (e) => { e.stopPropagation(); });
+                cancelDtoRow.on('pointerup', (e) => {
+                    e.stopPropagation();
+                    this.sendCommand({ cancel_direct_to: true });
+                    this.hide();
+                });
+                this.panel.addChild(cancelDtoRow);
+
+                currentY += rowHeight + padding;
+            }
+
+            // Close button
+            const closeRow = new Container();
+            closeRow.position.set(rowInset, currentY);
+
+            const closeBg = new Graphics();
+            closeBg.fillStyle = { color: 0x333333, alpha: 0.9 };
+            closeBg.roundRect(0, 0, rowWidth, rowHeight - 6, 4);
+            closeBg.fill();
+            closeRow.addChild(closeBg);
+
+            const closeStyle = new TextStyle({
+                fontFamily: 'Tahoma',
+                fontSize: 20,
+                fill: 0xbbbbbb,
+            });
+            const closeText = new Text({ text: 'Close', style: closeStyle });
+            closeText.anchor.set(0.5, 0.5);
+            closeText.position.set(rowWidth / 2, (rowHeight - 6) / 2);
+            closeRow.addChild(closeText);
+
+            closeRow.eventMode = 'static';
+            closeRow.cursor = 'pointer';
+            closeRow.on('pointerdown', (e) => {
+                e.stopPropagation();
+                this.hide();
+            });
+            this.panel.addChild(closeRow);
+        }
     }
 }

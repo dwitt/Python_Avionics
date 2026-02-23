@@ -510,7 +510,7 @@ function DisplayUpdateLoop(delta) {
         hsi.waypointId = null;
     }
     if (dataObject.route_waypoints !== undefined) {
-        routeOverlay.update(dataObject.route_waypoints, dataObject.active_leg);
+        routeOverlay.update(dataObject.route_waypoints, dataObject.active_leg, dataObject.direct_to_active);
         // Show notification dot when route loads/changes or active leg changes
         const routeLen = dataObject.route_waypoints ? dataObject.route_waypoints.length : 0;
         if (routeLen !== _lastRouteLen || dataObject.active_leg !== _lastActiveLeg) {
